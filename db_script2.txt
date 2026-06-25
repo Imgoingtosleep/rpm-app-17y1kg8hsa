@@ -1,4 +1,13 @@
--- 1. ตารางข้อมูลหลักสถานี (Sites Master)
+-- 1. ตารางสิทธิ์ผู้ใช้งาน (Users & Roles)
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. ตารางข้อมูลหลักสถานี (Sites Master)
 CREATE TABLE sites (
     site_id SERIAL PRIMARY KEY,
     site_code VARCHAR(50) UNIQUE NOT NULL, -- ใช้เป็น Unique สำหรับอ้างอิงภายนอก

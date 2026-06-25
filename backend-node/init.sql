@@ -1,4 +1,13 @@
--- 1. ตารางข้อมูลหลักสถานี (Sites Master)
+-- 1. ตารางสิทธิ์ผู้ใช้งาน (Users & Roles)
+CREATE TABLE IF NOT EXISTS users (
+    user_id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. ตารางข้อมูลหลักสถานี (Sites Master)
 CREATE TABLE IF NOT EXISTS sites (
     site_id SERIAL PRIMARY KEY,
     site_code VARCHAR(50) UNIQUE NOT NULL, -- ใช้เป็น Unique สำหรับอ้างอิงภายนอก
@@ -114,3 +123,11 @@ CREATE INDEX IF NOT EXISTS idx_rpm_site ON rpm_records_master(site_code);
 CREATE INDEX IF NOT EXISTS idx_rect_rpm ON power_rectifier(rpm_id);
 CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
 CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
+
+-- Seed initial users
+INSERT INTO users (email, name, role) VALUES
+('anan.dev@rpm.com', 'Anan Developer', 'Admin'),
+('inspector@rpm.com', 'John Inspector', 'Inspector'),
+('viewer@rpm.com', 'Jane Viewer', 'Viewer')
+ON CONFLICT (email) DO NOTHING;

@@ -322,4 +322,51 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
   }
 });
 
+// 8. Google OAuth Authentication Verification
+router.post('/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ error: 'Credential token is required' });
+  }
+
+  try {
+    // Verify the token with Google Token Info API
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    if (!response.ok) {
+      return res.status(401).json({ error: 'ยืนยันตัวตนกับ Google ไม่สำเร็จ (Invalid Token)' });
+    }
+
+    const payload = await response.json();
+    const email = payload.email;
+    const googleName = payload.name || 'Google User';
+
+    // Query database users table
+    let dbUserResult = await db.query('SELECT * FROM users WHERE email = $1;', [email]);
+    let dbUser;
+
+    if (dbUserResult.rows.length > 0) {
+      dbUser = dbUserResult.rows[0];
+    } else {
+      // Auto-register user with Viewer role
+      const insertResult = await db.query(
+        'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *;',
+        [email, googleName, 'Viewer']
+      );
+      dbUser = insertResult.rows[0];
+    }
+    
+    // Construct user object with DB role
+    const user = {
+      name: dbUser.name,
+      email: dbUser.email,
+      role: dbUser.role, // 'Admin', 'Inspector', or 'Viewer'
+      avatar: payload.picture || dbUser.name.charAt(0)
+    };
+
+    res.json({ message: 'ลงชื่อเข้าใช้สำเร็จ', user });
+  } catch (err) {
+    res.status(500).json({ error: 'เกิดข้อผิดพลาดจากทางเซิร์ฟเวอร์: ' + err.message });
+  }
+});
+
 module.exports = router;

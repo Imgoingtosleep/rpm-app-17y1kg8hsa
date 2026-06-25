@@ -1,7 +1,24 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function MainLayout({ children, currentStep, currentSite, onNavigateBack }) {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('inspectorName');
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-dark-bg text-gray-100 flex flex-col md:flex-row font-sans relative overflow-x-hidden">
@@ -105,13 +122,64 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-emerald-500/10 text-emerald-400">
+          <div className="flex items-center gap-2 sm:gap-4 relative">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-emerald-500/10 text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Online
             </span>
-            <div className="h-8 w-8 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm">
-              AD
+            
+            {/* User Profile Dropdown */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 focus:outline-none group"
+              >
+                {user?.avatar && user.avatar.startsWith('http') ? (
+                  <img 
+                    src={user.avatar} 
+                    alt={user.name} 
+                    className="h-8 w-8 rounded-full object-cover border border-indigo-500/30 group-hover:border-indigo-500 transition-all duration-200"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm border border-indigo-500/30 group-hover:border-indigo-500 transition-all duration-200">
+                    {user?.avatar || 'U'}
+                  </div>
+                )}
+                <span className="hidden md:inline text-sm text-gray-300 group-hover:text-white transition-colors max-w-[150px] truncate">
+                  {user?.name || 'User'} ({user?.role || 'Viewer'})
+                </span>
+                <svg className="hidden md:inline w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-dark-card border border-dark-border rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-2 border-b border-dark-border/60">
+                    <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">บัญชีผู้ใช้</p>
+                    <p className="text-sm font-bold text-white truncate mt-0.5">{user?.name || 'User'}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{user?.email || 'no-email@google.com'}</p>
+                    <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      user?.role === 'Admin' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
+                      user?.role === 'Inspector' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                    }`}>
+                      Role: {user?.role || 'Viewer'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    ออกจากระบบ (Logout)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
