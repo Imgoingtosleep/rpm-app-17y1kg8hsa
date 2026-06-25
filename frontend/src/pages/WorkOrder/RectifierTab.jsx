@@ -14,6 +14,7 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
   const [breakerImg, setBreakerImg] = useState(null);
   const [pdbTempImg, setPdbTempImg] = useState(null);
   const [surgeRectImg, setSurgeRectImg] = useState(null);
+  const [fieldConfigs, setFieldConfigs] = useState([]);
 
   const [existingPaths, setExistingPaths] = useState({
     breaker: null,
@@ -38,6 +39,16 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
 
   useEffect(() => {
     fetchRectifiers();
+
+    // Fetch configs
+    fetch('/api/field-configs')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFieldConfigs(data.filter(c => c.tab_name === 'rectifier'));
+        }
+      })
+      .catch(err => console.error("Error fetching field configs:", err));
   }, [rpmId]);
 
   // Load rectifier details when rectNo select option changes or rectifier list updates
@@ -81,6 +92,25 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
     setSurgeRectImg(null);
   }, [rectNo, rectifiers]);
 
+  const getFieldConfig = (name) => {
+    const cfg = fieldConfigs.find(c => c.field_name === name);
+    return {
+      isEnabled: cfg ? cfg.is_enabled : true,
+      isRequired: cfg ? cfg.is_required : true
+    };
+  };
+
+  const configsMap = {
+    model: getFieldConfig('model'),
+    ac_cable_size: getFieldConfig('ac_cable_size'),
+    breaker_size: getFieldConfig('breaker_size'),
+    modules_all: getFieldConfig('modules_all'),
+    modules_fail: getFieldConfig('modules_fail'),
+    input_current_ac: getFieldConfig('input_current_ac'),
+    output_current_dc: getFieldConfig('output_current_dc'),
+    surge_status: getFieldConfig('surge_status'),
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!rpmId) {
@@ -88,34 +118,69 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
       return;
     }
 
-    const hasBreaker = breakerImg || existingPaths.breaker;
-    const hasPdbTemp = pdbTempImg || existingPaths.pdbTemp;
-    const hasSurgeRect = surgeRectImg || existingPaths.surgeRect;
-
-    if (!hasBreaker || !hasPdbTemp || !hasSurgeRect) {
-      alert('กรุณาอัปโหลดรูปถ่ายประจำตู้ Rectifier ให้ครบถ้วนทั้ง 3 รูปก่อนทำการบันทึก!');
+    // Dynamic validations
+    if (configsMap.model.isEnabled && configsMap.model.isRequired && !model.trim()) {
+      alert('กรุณากรอก Model');
+      return;
+    }
+    if (configsMap.ac_cable_size.isEnabled && configsMap.ac_cable_size.isRequired && !acCableSize.trim()) {
+      alert('กรุณากรอก AC Cable Size');
+      return;
+    }
+    if (configsMap.breaker_size.isEnabled && configsMap.breaker_size.isRequired && !breakerSize.trim()) {
+      alert('กรุณากรอก Breaker Size');
+      return;
+    }
+    if (configsMap.surge_status.isEnabled && configsMap.surge_status.isRequired && !surgeStatus.trim()) {
+      alert('กรุณากรอก Surge Status');
       return;
     }
 
+    // Verify if active uploads are needed
+    const checkFile = (configName, uploadKey, originalName) => {
+      const cfg = configsMap[configName];
+      if (cfg.isEnabled && cfg.isRequired) {
+        if (!imagesMap[uploadKey] && !existingPaths[uploadKey]) {
+          alert(`กรุณาอัปโหลดรูปภาพประกอบสำหรับ ${originalName}`);
+          return false;
+        }
+      }
+      return true;
+    };
+
+    const imagesMap = {
+      breaker: breakerImg,
+      pdbTemp: pdbTempImg,
+      surgeRect: surgeRectImg
+    };
+
+    if (!checkFile('breaker_size', 'breaker', 'ภาพเบรกเกอร์')) return;
+    if (!checkFile('model', 'pdbTemp', 'ภาพเทอร์โมสแกน/ภายในตู้')) return;
+    if (!checkFile('surge_status', 'surgeRect', 'ภาพอุปกรณ์กันฟ้าตู้ Rect')) return;
+
     const formData = new FormData();
     formData.append('rect_no', rectNo);
-    formData.append('model', model);
-    formData.append('ac_cable_size', acCableSize);
-    formData.append('breaker_size', breakerSize);
-    formData.append('modules_all', modulesAll);
-    formData.append('modules_fail', modulesFail);
-    formData.append('input_current_ac', inputCurrentAc);
-    formData.append('output_current_dc', outputCurrentDc);
-    formData.append('surge_status', surgeStatus);
+    formData.append('model', configsMap.model.isEnabled ? model : '');
+    formData.append('ac_cable_size', configsMap.ac_cable_size.isEnabled ? acCableSize : '');
+    formData.append('breaker_size', configsMap.breaker_size.isEnabled ? breakerSize : '');
+    formData.append('modules_all', configsMap.modules_all.isEnabled ? modulesAll : 0);
+    formData.append('modules_fail', configsMap.modules_fail.isEnabled ? modulesFail : 0);
+    formData.append('input_current_ac', configsMap.input_current_ac.isEnabled ? inputCurrentAc : 0.0);
+    formData.append('output_current_dc', configsMap.output_current_dc.isEnabled ? outputCurrentDc : 0.0);
+    formData.append('surge_status', configsMap.surge_status.isEnabled ? surgeStatus : '');
 
-    if (breakerImg) formData.append('breaker_img', breakerImg);
-    else if (existingPaths.breaker) formData.append('breaker_img_path', existingPaths.breaker);
-
-    if (pdbTempImg) formData.append('pdb_temp_img', pdbTempImg);
-    else if (existingPaths.pdbTemp) formData.append('pdb_temp_img_path', existingPaths.pdbTemp);
-
-    if (surgeRectImg) formData.append('surge_rect_img', surgeRectImg);
-    else if (existingPaths.surgeRect) formData.append('surge_rect_img_path', existingPaths.surgeRect);
+    if (configsMap.breaker_size.isEnabled) {
+      if (breakerImg) formData.append('breaker_img', breakerImg);
+      else if (existingPaths.breaker) formData.append('breaker_img_path', existingPaths.breaker);
+    }
+    if (configsMap.model.isEnabled) {
+      if (pdbTempImg) formData.append('pdb_temp_img', pdbTempImg);
+      else if (existingPaths.pdbTemp) formData.append('pdb_temp_img_path', existingPaths.pdbTemp);
+    }
+    if (configsMap.surge_status.isEnabled) {
+      if (surgeRectImg) formData.append('surge_rect_img', surgeRectImg);
+      else if (existingPaths.surgeRect) formData.append('surge_rect_img_path', existingPaths.surgeRect);
+    }
 
     try {
       const res = await fetch(`/api/workorder/${rpmId}/rectifier`, {
@@ -158,44 +223,92 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
                 <option>ตู้ที่ 4</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Model</label>
-              <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={model} onChange={(e) => setModel(e.target.value)} />
-            </div>
+            {configsMap.model.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Model {configsMap.model.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={model} onChange={(e) => setModel(e.target.value)} required={configsMap.model.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through flex items-center justify-center">Model (Disabled)</div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Cable Size</label>
-              <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={acCableSize} onChange={(e) => setAcCableSize(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Breaker Size</label>
-              <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerSize} onChange={(e) => setBreakerSize(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Surge Status</label>
-              <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeStatus} onChange={(e) => setSurgeStatus(e.target.value)} />
-            </div>
+            {configsMap.ac_cable_size.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  AC Cable Size {configsMap.ac_cable_size.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={acCableSize} onChange={(e) => setAcCableSize(e.target.value)} required={configsMap.ac_cable_size.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">AC Cable Size (Disabled)</div>
+            )}
+            {configsMap.breaker_size.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Breaker Size {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerSize} onChange={(e) => setBreakerSize(e.target.value)} required={configsMap.breaker_size.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Breaker Size (Disabled)</div>
+            )}
+            {configsMap.surge_status.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Surge Status {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeStatus} onChange={(e) => setSurgeStatus(e.target.value)} required={configsMap.surge_status.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Surge Status (Disabled)</div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules All</label>
-              <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(parseInt(e.target.value))} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules Fail</label>
-              <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(parseInt(e.target.value))} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Input Current AC (A)</label>
-              <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(parseFloat(e.target.value))} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Output Current DC (A)</label>
-              <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(parseFloat(e.target.value))} />
-            </div>
+            {configsMap.modules_all.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Modules All {configsMap.modules_all.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(parseInt(e.target.value))} required={configsMap.modules_all.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules All (Disabled)</div>
+            )}
+            {configsMap.modules_fail.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Modules Fail {configsMap.modules_fail.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(parseInt(e.target.value))} required={configsMap.modules_fail.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules Fail (Disabled)</div>
+            )}
+            {configsMap.input_current_ac.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Input Current AC (A) {configsMap.input_current_ac.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Input Current AC (Disabled)</div>
+            )}
+            {configsMap.output_current_dc.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  Output Current DC (A) {configsMap.output_current_dc.isRequired && <span className="text-red-400">*</span>}
+                </label>
+                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Output Current DC (Disabled)</div>
+            )}
           </div>
 
           <hr className="border-dark-border" />
@@ -203,18 +316,30 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
           <div>
             <h4 className="font-bold text-white mb-4">📷 รูปถ่ายประจำตู้ Rectifier (ครบถ้วนตาม Diagram)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-xs text-gray-400 mb-2">ภาพเบรกเกอร์ (breaker_img)</label>
-                <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(e.target.files[0])} />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2">ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img)</label>
-                <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(e.target.files[0])} />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-2">ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img)</label>
-                <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(e.target.files[0])} />
-              </div>
+              {configsMap.breaker_size.isEnabled && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">
+                    ภาพเบรกเกอร์ (breaker_img) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
+                  </label>
+                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(e.target.files[0])} />
+                </div>
+              )}
+              {configsMap.model.isEnabled && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">
+                    ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img) {configsMap.model.isRequired && <span className="text-red-400">*</span>}
+                  </label>
+                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(e.target.files[0])} />
+                </div>
+              )}
+              {configsMap.surge_status.isEnabled && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">
+                    ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img) {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
+                  </label>
+                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(e.target.files[0])} />
+                </div>
+              )}
             </div>
           </div>
         </fieldset>

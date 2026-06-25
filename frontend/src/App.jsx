@@ -10,6 +10,7 @@ import AcMainTab from './pages/WorkOrder/AcMainTab';
 import RectifierTab from './pages/WorkOrder/RectifierTab';
 import BatteryTab from './pages/WorkOrder/BatteryTab';
 import FacilitiesTab from './pages/WorkOrder/FacilitiesTab';
+import FieldSettings from './pages/FieldSettings';
 
 function WorkOrderPanel() {
   const { site_code, tab } = useParams();
@@ -307,6 +308,7 @@ export default function App() {
         <Route path="/select-site" element={<GatekeeperWrapper />} />
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
+        <Route path="/admin/fields" element={<FieldSettings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

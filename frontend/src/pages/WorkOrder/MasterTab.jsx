@@ -5,9 +5,20 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [fieldConfigs, setFieldConfigs] = useState([]);
 
-  // Load existing data if available
+  // Load existing data and configs
   useEffect(() => {
+    // Fetch configs for Master site
+    fetch('/api/field-configs')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFieldConfigs(data.filter(c => c.tab_name === 'master'));
+        }
+      })
+      .catch(err => console.error("Error loading configs:", err));
+
     if (!site?.code) return;
     fetch('/api/workorder/start', {
       method: 'POST',
@@ -33,6 +44,25 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
       alert('ไม่พบรหัสใบงานหลัก (rpmId) กรุณาลองใหม่อีกครั้ง');
       return;
     }
+
+    // Dynamic validations
+    const sl6Cfg = fieldConfigs.find(c => c.field_name === 'job_number_sl6');
+    const sapCfg = fieldConfigs.find(c => c.field_name === 'sap_number');
+    const issueCfg = fieldConfigs.find(c => c.field_name === 'summary_issue');
+
+    if (sl6Cfg?.is_enabled && sl6Cfg?.is_required && !sl6Number.trim()) {
+      alert('กรุณากรอก SL6 Number');
+      return;
+    }
+    if (sapCfg?.is_enabled && sapCfg?.is_required && !sapNumber.trim()) {
+      alert('กรุณากรอก SAP Number');
+      return;
+    }
+    if (issueCfg?.is_enabled && issueCfg?.is_required && !summaryIssue.trim()) {
+      alert('กรุณากรอก สรุปปัญหาหน้างาน');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await fetch(`/api/workorder/${rpmId}/master`, {
@@ -41,9 +71,9 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          job_number_sl6: sl6Number,
-          sap_number: sapNumber,
-          summary_issue: summaryIssue
+          job_number_sl6: (sl6Cfg?.is_enabled ?? true) ? sl6Number : '',
+          sap_number: (sapCfg?.is_enabled ?? true) ? sapNumber : '',
+          summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : ''
         })
       });
       if (res.ok) {
@@ -78,6 +108,18 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
     }
   };
 
+  const getFieldConfig = (name) => {
+    const cfg = fieldConfigs.find(c => c.field_name === name);
+    return {
+      isEnabled: cfg ? cfg.is_enabled : true,
+      isRequired: cfg ? cfg.is_required : true
+    };
+  };
+
+  const sl6Config = getFieldConfig('job_number_sl6');
+  const sapConfig = getFieldConfig('sap_number');
+  const issueConfig = getFieldConfig('summary_issue');
+
   return (
     <div className="p-8 space-y-6">
       <div>
@@ -108,41 +150,67 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">SL6 Number *</label>
-            <input 
-              type="text" 
-              required
-              disabled={isReadOnly}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
-              value={sl6Number}
-              onChange={(e) => setSl6Number(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">SAP Number *</label>
-            <input 
-              type="text" 
-              required
-              disabled={isReadOnly}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
-              value={sapNumber}
-              onChange={(e) => setSapNumber(e.target.value)}
-            />
-          </div>
+          {sl6Config.isEnabled ? (
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                SL6 Number {sl6Config.isRequired && <span className="text-red-400">*</span>}
+              </label>
+              <input 
+                type="text" 
+                required={sl6Config.isRequired}
+                disabled={isReadOnly}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+                value={sl6Number}
+                onChange={(e) => setSl6Number(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-4 border border-dark-border/40 rounded-lg flex items-center justify-center text-xs text-gray-500 line-through">
+              SL6 Number (ถูกปิดใช้งานโดย Admin)
+            </div>
+          )}
+
+          {sapConfig.isEnabled ? (
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                SAP Number {sapConfig.isRequired && <span className="text-red-400">*</span>}
+              </label>
+              <input 
+                type="text" 
+                required={sapConfig.isRequired}
+                disabled={isReadOnly}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+                value={sapNumber}
+                onChange={(e) => setSapNumber(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-4 border border-dark-border/40 rounded-lg flex items-center justify-center text-xs text-gray-500 line-through">
+              SAP Number (ถูกปิดใช้งานโดย Admin)
+            </div>
+          )}
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">สรุปปัญหาหน้างาน</label>
-          <textarea 
-            rows={4}
-            disabled={isReadOnly}
-            placeholder="รายละเอียดหรือปัญหาที่พบระหว่างตรวจสอบ..."
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
-            value={summaryIssue}
-            onChange={(e) => setSummaryIssue(e.target.value)}
-          />
-        </div>
+        {issueConfig.isEnabled ? (
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+              สรุปปัญหาหน้างาน {issueConfig.isRequired && <span className="text-red-400">*</span>}
+            </label>
+            <textarea 
+              rows={4}
+              required={issueConfig.isRequired}
+              disabled={isReadOnly}
+              placeholder="รายละเอียดหรือปัญหาที่พบระหว่างตรวจสอบ..."
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+              value={summaryIssue}
+              onChange={(e) => setSummaryIssue(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className="opacity-40 bg-dark-bg/20 p-6 border border-dark-border/40 rounded-lg flex items-center justify-center text-xs text-gray-500 line-through">
+            สรุปปัญหาหน้างาน (ถูกปิดใช้งานโดย Admin)
+          </div>
+        )}
 
         <div className="pt-2">
           {!isReadOnly ? (

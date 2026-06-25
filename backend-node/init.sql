@@ -125,9 +125,40 @@ CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
 CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);
 CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
 
+-- Table for Admin field management
+CREATE TABLE IF NOT EXISTS field_configs (
+    field_id SERIAL PRIMARY KEY,
+    tab_name VARCHAR(100) NOT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    is_required BOOLEAN DEFAULT TRUE,
+    is_enabled BOOLEAN DEFAULT TRUE,
+    UNIQUE(tab_name, field_name)
+);
+
 -- Seed initial users
 INSERT INTO users (email, name, role) VALUES
 ('anan.dev@rpm.com', 'Anan Developer', 'Admin'),
 ('inspector@rpm.com', 'John Inspector', 'Inspector'),
 ('viewer@rpm.com', 'Jane Viewer', 'Viewer')
 ON CONFLICT (email) DO NOTHING;
+
+-- Seed field configs for Facilities Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('facilities', 'alarm_door', true, true),
+('facilities', 'alarm_ac_fail', true, true),
+('facilities', 'alarm_low_bat', true, true),
+('facilities', 'alarm_high_temp', true, true),
+('facilities', 'alarm_smoke', true, true),
+('facilities', 'alarm_air_fail', true, true),
+('facilities', 'vent_ac_fan', true, true),
+('facilities', 'vent_ac_fan_hood', true, true),
+('facilities', 'vent_dc_fan', true, true),
+('facilities', 'vent_dc_fan_hood', true, true),
+('facilities', 'vent_air_cond', true, true),
+('facilities', 'vent_filters', true, true),
+('facilities', 'fac_site_sign', true, true),
+('facilities', 'fac_outdoor_clean', true, true),
+('facilities', 'fac_indoor_clean', true, true),
+('facilities', 'fac_lighting', true, true),
+('facilities', 'fac_grass_cut', true, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;

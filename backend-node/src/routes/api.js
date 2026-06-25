@@ -369,4 +369,32 @@ router.post('/auth/google', async (req, res) => {
   }
 });
 
+// 9. Get Field Configs
+router.get('/field-configs', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM field_configs ORDER BY tab_name, field_id;');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 10. Update Field Config
+router.post('/field-configs/update', async (req, res) => {
+  const { tab_name, field_name, is_required, is_enabled } = req.body;
+  try {
+    const result = await db.query(
+      `INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tab_name, field_name)
+       DO UPDATE SET is_required = EXCLUDED.is_required, is_enabled = EXCLUDED.is_enabled
+       RETURNING *;`,
+      [tab_name, field_name, is_required, is_enabled]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

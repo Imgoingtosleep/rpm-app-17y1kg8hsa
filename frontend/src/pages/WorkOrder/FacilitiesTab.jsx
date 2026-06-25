@@ -25,8 +25,19 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
   });
 
   const [existingPaths, setExistingPaths] = useState({});
+  const [fieldConfigs, setFieldConfigs] = useState([]);
 
   useEffect(() => {
+    // Fetch field configs
+    fetch('/api/field-configs')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFieldConfigs(data.filter(c => c.tab_name === 'facilities'));
+        }
+      })
+      .catch(err => console.error("Error fetching field configs:", err));
+
     if (!rpmId) return;
     fetch(`/api/workorder/${rpmId}/facilities`)
       .then(res => res.json())
@@ -95,8 +106,16 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
     if (isReadOnly) return;
     
     for (const [key, item] of Object.entries(params)) {
+      const cfg = fieldConfigs.find(c => c.field_name === key);
+      const isEnabled = cfg ? cfg.is_enabled : true;
+      const isRequired = cfg ? cfg.is_required : true;
+
+      // Skip validation if the field is disabled by Admin
+      if (!isEnabled) continue;
+
       const hasImg = item.file || existingPaths[key];
-      if (item.status !== 'ไม่มีระบบนี้' && !hasImg) {
+      // Only require image if Admin has "isRequired" set to true and state is not 'ไม่มีระบบนี้'
+      if (isRequired && item.status !== 'ไม่มีระบบนี้' && !hasImg) {
         const friendlyName = labelMap[key] || key;
         alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" หรือเลือกสถานะเป็น "ไม่มีระบบนี้" ก่อนทำการบันทึก!`);
         return;
@@ -105,6 +124,11 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
 
     const formData = new FormData();
     Object.entries(params).forEach(([key, item]) => {
+      // Check if disabled by admin
+      const cfg = fieldConfigs.find(c => c.field_name === key);
+      const isEnabled = cfg ? cfg.is_enabled : true;
+      if (!isEnabled) return; // skip sending disabled fields
+
       formData.append(key, item.status);
       if (item.file) {
         formData.append(`${key}_img`, item.file);
@@ -131,11 +155,28 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
   };
 
   const renderRow = (key, label) => {
+    const cfg = fieldConfigs.find(c => c.field_name === key);
+    const isEnabled = cfg ? cfg.is_enabled : true;
+    const isRequired = cfg ? cfg.is_required : true;
+
+    // Do not show field if disabled by Admin
+    if (!isEnabled) {
+      return (
+        <div key={key} className="py-3 border-b border-dark-border/20 opacity-40 bg-dark-bg/10 px-2 flex justify-between items-center">
+          <span className="text-xs text-gray-500 font-medium line-through">{label} (ถูกปิดใช้งานโดย Admin)</span>
+          <span className="text-[10px] text-red-500/80 font-semibold px-2 py-0.5 border border-red-500/20 bg-red-500/5 rounded">Disabled</span>
+        </div>
+      );
+    }
+
     const item = params[key];
     return (
       <div key={key} className="py-4 border-b border-dark-border/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="md:w-1/3">
-          <span className="text-sm font-bold text-gray-200">{label}</span>
+          <span className="text-sm font-bold text-gray-200">
+            {label}
+            {isRequired && <span className="text-red-400 ml-1">*</span>}
+          </span>
           <p className="text-[10px] text-gray-500 font-mono mt-0.5">{key}</p>
         </div>
 

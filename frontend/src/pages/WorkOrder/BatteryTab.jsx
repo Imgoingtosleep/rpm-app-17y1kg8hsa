@@ -6,6 +6,7 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
   const [rectifiers, setRectifiers] = useState([]);
   const [activeRectId, setActiveRectId] = useState(null);
   const [batteries, setBatteries] = useState([]);
+  const [fieldConfigs, setFieldConfigs] = useState([]);
 
   // State for cells 1 to 4
   const [cells, setCells] = useState({
@@ -26,6 +27,16 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
         }
       })
       .catch(err => console.error("Error fetching rectifiers:", err));
+
+    // Fetch configs
+    fetch('/api/field-configs')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFieldConfigs(data.filter(c => c.tab_name === 'battery'));
+        }
+      })
+      .catch(err => console.error("Error fetching field configs:", err));
   }, [rpmId]);
 
   // 2. Resolve active rect_id when selectedRect name changes
@@ -93,6 +104,20 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
     return (ir > 10.0 || voltage < 12.0) ? 'เสื่อม' : 'ปกติ';
   };
 
+  const getFieldConfig = (name) => {
+    const cfg = fieldConfigs.find(c => c.field_name === name);
+    return {
+      isEnabled: cfg ? cfg.is_enabled : true,
+      isRequired: cfg ? cfg.is_required : true
+    };
+  };
+
+  const configsMap = {
+    voltage: getFieldConfig('voltage'),
+    internal_resistance: getFieldConfig('internal_resistance'),
+    status: getFieldConfig('status'),
+  };
+
   const handleSaveCell = async (num) => {
     if (!activeRectId) {
       alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกแบตเตอรี่ครับ!');
@@ -100,25 +125,30 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
     }
 
     const cell = cells[num];
-    const hasImg = cell.file || cell.existingPath;
 
-    if (!hasImg) {
-      alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
-      return;
+    // Check if image required
+    if (configsMap.status.isEnabled && configsMap.status.isRequired) {
+      const hasImg = cell.file || cell.existingPath;
+      if (!hasImg) {
+        alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
+        return;
+      }
     }
 
     const status = evaluateStatus(cell.voltage, cell.ir);
     const formData = new FormData();
     formData.append('bank_name', bankNo);
     formData.append('cell_no', num);
-    formData.append('voltage', cell.voltage);
-    formData.append('internal_resistance', cell.ir);
-    formData.append('status', status);
+    formData.append('voltage', configsMap.voltage.isEnabled ? cell.voltage : 0.0);
+    formData.append('internal_resistance', configsMap.internal_resistance.isEnabled ? cell.ir : 0.0);
+    formData.append('status', configsMap.status.isEnabled ? status : 'ปกติ');
 
-    if (cell.file) {
-      formData.append('battery_img', cell.file);
-    } else if (cell.existingPath) {
-      formData.append('battery_img_path', cell.existingPath);
+    if (configsMap.status.isEnabled) {
+      if (cell.file) {
+        formData.append('battery_img', cell.file);
+      } else if (cell.existingPath) {
+        formData.append('battery_img_path', cell.existingPath);
+      }
     }
 
     try {
@@ -207,45 +237,69 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
-                <div>
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">Volt (V)</label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    disabled={isReadOnly}
-                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
-                    value={cell.voltage}
-                    onChange={(e) => handleCellChange(num, 'voltage', parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">IR (mΩ)</label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    disabled={isReadOnly}
-                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
-                    value={cell.ir}
-                    onChange={(e) => handleCellChange(num, 'ir', parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">ผลประเมิน</label>
-                  <span className={`inline-block w-full text-center py-2 rounded text-xs font-bold ${
-                    status === 'ปกติ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                  }`}>
-                    {status}
-                  </span>
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">รูปถ่าย (battery_img)</label>
-                  <input 
-                    type="file" 
-                    disabled={isReadOnly}
-                    className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300 disabled:opacity-50"
-                    onChange={(e) => handleCellChange(num, 'file', e.target.files[0])}
-                  />
-                </div>
+                {configsMap.voltage.isEnabled ? (
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-500 mb-1">
+                      Volt (V) {configsMap.voltage.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      disabled={isReadOnly}
+                      className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                      value={cell.voltage}
+                      onChange={(e) => handleCellChange(num, 'voltage', parseFloat(e.target.value))}
+                      required={configsMap.voltage.isRequired}
+                    />
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">Volt (Disabled)</div>
+                )}
+
+                {configsMap.internal_resistance.isEnabled ? (
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-500 mb-1">
+                      IR (mΩ) {configsMap.internal_resistance.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      disabled={isReadOnly}
+                      className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                      value={cell.ir}
+                      onChange={(e) => handleCellChange(num, 'ir', parseFloat(e.target.value))}
+                      required={configsMap.internal_resistance.isRequired}
+                    />
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">IR (Disabled)</div>
+                )}
+
+                {configsMap.status.isEnabled ? (
+                  <>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">ผลประเมิน</label>
+                      <span className={`inline-block w-full text-center py-2 rounded text-xs font-bold ${
+                        status === 'ปกติ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {status}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">
+                        รูปถ่าย (battery_img) {configsMap.status.isRequired && <span className="text-red-400">*</span>}
+                      </label>
+                      <input 
+                        type="file" 
+                        disabled={isReadOnly}
+                        className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300 disabled:opacity-50"
+                        onChange={(e) => handleCellChange(num, 'file', e.target.files[0])}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-2 opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Status & Photo Upload (Disabled)</div>
+                )}
               </div>
 
               <div>
