@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function BatteryTab({ site, rpmId, onComplete }) {
+export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
   const [rectifiers, setRectifiers] = useState([]);
@@ -150,7 +150,8 @@ export default function BatteryTab({ site, rpmId, onComplete }) {
         <div>
           <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ระบุตู้ Rectifier</label>
           <select 
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none"
+            disabled={isReadOnly}
+            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
             value={selectedRect}
             onChange={(e) => setSelectedRect(e.target.value)}
           >
@@ -163,7 +164,8 @@ export default function BatteryTab({ site, rpmId, onComplete }) {
         <div>
           <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลือก Bank</label>
           <select 
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none"
+            disabled={isReadOnly}
+            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
             value={bankNo}
             onChange={(e) => setBankNo(e.target.value)}
           >
@@ -210,7 +212,8 @@ export default function BatteryTab({ site, rpmId, onComplete }) {
                   <input 
                     type="number" 
                     step="0.01" 
-                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" 
+                    disabled={isReadOnly}
+                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                     value={cell.voltage}
                     onChange={(e) => handleCellChange(num, 'voltage', parseFloat(e.target.value))}
                   />
@@ -220,7 +223,8 @@ export default function BatteryTab({ site, rpmId, onComplete }) {
                   <input 
                     type="number" 
                     step="0.01" 
-                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" 
+                    disabled={isReadOnly}
+                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                     value={cell.ir}
                     onChange={(e) => handleCellChange(num, 'ir', parseFloat(e.target.value))}
                   />
@@ -237,19 +241,26 @@ export default function BatteryTab({ site, rpmId, onComplete }) {
                   <label className="block text-[10px] uppercase text-gray-500 mb-1">รูปถ่าย (battery_img)</label>
                   <input 
                     type="file" 
-                    className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
+                    disabled={isReadOnly}
+                    className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300 disabled:opacity-50"
                     onChange={(e) => handleCellChange(num, 'file', e.target.files[0])}
                   />
                 </div>
               </div>
 
               <div>
-                <button 
-                  onClick={() => handleSaveCell(num)}
-                  className="w-full lg:w-auto px-4 py-2 bg-dark-accent border border-dark-border hover:border-indigo-500 text-gray-200 font-semibold rounded text-xs transition-colors"
-                >
-                  บันทึกข้อมูลลูกที่ {num}
-                </button>
+                {!isReadOnly ? (
+                  <button 
+                    onClick={() => handleSaveCell(num)}
+                    className="w-full lg:w-auto px-4 py-2 bg-dark-accent border border-dark-border hover:border-indigo-500 text-gray-200 font-semibold rounded text-xs transition-colors"
+                  >
+                    บันทึกข้อมูลลูกที่ {num}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-gray-500 font-medium italic">
+                    โหมดอ่านอย่างเดียว
+                  </span>
+                )}
               </div>
             </div>
           );

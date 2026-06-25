@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspectionDateTime, onComplete }) {
+export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspectionDateTime, onComplete, isReadOnly }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
@@ -113,7 +113,8 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
             <input 
               type="text" 
               required
-              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+              disabled={isReadOnly}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
               value={sl6Number}
               onChange={(e) => setSl6Number(e.target.value)}
             />
@@ -123,7 +124,8 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
             <input 
               type="text" 
               required
-              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+              disabled={isReadOnly}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
               value={sapNumber}
               onChange={(e) => setSapNumber(e.target.value)}
             />
@@ -134,21 +136,28 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
           <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">สรุปปัญหาหน้างาน</label>
           <textarea 
             rows={4}
+            disabled={isReadOnly}
             placeholder="รายละเอียดหรือปัญหาที่พบระหว่างตรวจสอบ..."
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+            className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
             value={summaryIssue}
             onChange={(e) => setSummaryIssue(e.target.value)}
           />
         </div>
 
         <div className="pt-2">
-          <button 
-            type="submit"
-            disabled={isSaving}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition-all shadow-md"
-          >
-            {isSaving ? 'กำลังบันทึก...' : '💾 บันทึกข้อมูลใบงานหลัก'}
-          </button>
+          {!isReadOnly ? (
+            <button 
+              type="submit"
+              disabled={isSaving}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition-all shadow-md"
+            >
+              {isSaving ? 'กำลังบันทึก...' : '💾 บันทึกข้อมูลใบงานหลัก'}
+            </button>
+          ) : (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
+              ⚠️ คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+            </div>
+          )}
         </div>
       </form>
     </div>

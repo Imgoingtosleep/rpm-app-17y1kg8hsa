@@ -21,6 +21,7 @@ function WorkOrderPanel() {
   const [rpmCycle, setRpmCycle] = useState('');
   const [inspectionDateTime, setInspectionDateTime] = useState('');
   const [rpmId, setRpmId] = useState(null);
+  const [userRole, setUserRole] = useState('Viewer');
 
   // Track completed sections
   const [completedSections, setCompletedSections] = useState(() => {
@@ -91,6 +92,16 @@ function WorkOrderPanel() {
     setInspector(storedInspector);
     setRpmCycle(storedCycle);
     setInspectionDateTime(storedDateTime);
+
+    // Retrieve and set user role
+    try {
+      const userObj = JSON.parse(user);
+      if (userObj && userObj.role) {
+        setUserRole(userObj.role);
+      }
+    } catch (e) {
+      setUserRole('Viewer');
+    }
   }, [site_code]);
 
   const handleReset = () => {
@@ -108,19 +119,20 @@ function WorkOrderPanel() {
   const progressPercent = Math.round((totalCompleted / 5) * 100);
 
   const renderTabContent = () => {
+    const isReadOnly = userRole === 'Viewer';
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
       case 'acmain':
-        return <AcMainTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('acmain')} />;
+        return <AcMainTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
       case 'rectifier':
-        return <RectifierTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('rectifier')} />;
+        return <RectifierTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} />;
       case 'battery':
-        return <BatteryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('battery')} />;
+        return <BatteryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} />;
       case 'facilities':
-        return <FacilitiesTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('facilities')} />;
+        return <FacilitiesTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
       default:
-        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
     }
   };
 
@@ -154,6 +166,7 @@ function WorkOrderPanel() {
             </button>
             {/* RESET BUTTON FOR TESTING (FUTURE DELETE) */}
             <button 
+              disabled={userRole === 'Viewer'}
               onClick={() => {
                 if (window.confirm('คุณต้องการรีเซ็ตข้อมูลความคืบหน้าทั้งหมดของไซต์นี้ เพื่อเริ่มทดสอบใหม่ใช่หรือไม่?')) {
                   localStorage.removeItem(`completed_${site_code}`);
@@ -161,11 +174,16 @@ function WorkOrderPanel() {
                   alert('รีเซ็ตสถานะความคืบหน้าของไซต์นี้เรียบร้อยแล้ว!');
                 }
               }}
-              className="px-4 py-2 border border-red-900/40 bg-red-900/10 hover:bg-red-900/30 rounded-lg text-sm text-red-400 font-semibold transition-colors"
+              className={`px-4 py-2 border rounded-lg text-sm font-semibold transition-colors ${
+                userRole === 'Viewer'
+                  ? 'border-gray-800 bg-gray-900/20 text-gray-600 cursor-not-allowed opacity-50'
+                  : 'border-red-900/40 bg-red-900/10 hover:bg-red-900/30 text-red-400'
+              }`}
             >
               Reset Draft (Test Mode)
             </button>
             <button 
+              disabled={userRole === 'Viewer'}
               onClick={() => {
                 if (totalCompleted < 5) {
                   alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 5 ส่วนก่อนส่งงานครับ!');
@@ -177,7 +195,9 @@ function WorkOrderPanel() {
                 }
               }}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
-                totalCompleted === 5
+                userRole === 'Viewer'
+                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
+                  : totalCompleted === 5
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-indigo-600/20'
               }`}

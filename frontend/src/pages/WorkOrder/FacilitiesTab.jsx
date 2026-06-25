@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function FacilitiesTab({ site, rpmId, onComplete }) {
+export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
   // Facility parameters config
   const [params, setParams] = useState({
     alarm_door: { status: 'ปกติ', file: null },
@@ -55,6 +55,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
   }, [rpmId]);
 
   const handleStatusChange = (key, status) => {
+    if (isReadOnly) return;
     setParams(prev => ({
       ...prev,
       [key]: { ...prev[key], status }
@@ -62,6 +63,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
   };
 
   const handleFileChange = (key, file) => {
+    if (isReadOnly) return;
     setParams(prev => ({
       ...prev,
       [key]: { ...prev[key], file }
@@ -90,6 +92,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
 
   const handleSaveAll = async (e) => {
     e.preventDefault();
+    if (isReadOnly) return;
     
     for (const [key, item] of Object.entries(params)) {
       const hasImg = item.file || existingPaths[key];
@@ -143,8 +146,11 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
               <button
                 key={statusOption}
                 type="button"
+                disabled={isReadOnly}
                 onClick={() => handleStatusChange(key, statusOption)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  isReadOnly ? 'opacity-60 cursor-not-allowed' : ''
+                } ${
                   item.status === statusOption
                     ? statusOption === 'ปกติ'
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -161,11 +167,29 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
 
           {/* Image Uploader */}
           <div className="flex-1 min-w-[200px]">
-            <input
-              type="file"
-              className="w-full text-[10px] text-gray-500 file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
-              onChange={(e) => handleFileChange(key, e.target.files[0])}
-            />
+            {isReadOnly ? (
+              existingPaths[key] ? (
+                <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                  <span>มีรูปภาพอัปโหลดไว้แล้ว:</span>
+                  <a href={`/storage/${existingPaths[key]}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-emerald-300">
+                    ดูรูปภาพ
+                  </a>
+                </div>
+              ) : (
+                <span className="text-[10px] text-gray-500 italic">ไม่มีรูปภาพประกอบ</span>
+              )
+            ) : (
+              <div className="flex flex-col gap-1">
+                <input
+                  type="file"
+                  className="w-full text-[10px] text-gray-500 file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
+                  onChange={(e) => handleFileChange(key, e.target.files[0])}
+                />
+                {existingPaths[key] && (
+                  <span className="text-[9px] text-gray-400">รูปภาพเดิม: <a href={`/storage/${existingPaths[key]}`} target="_blank" rel="noopener noreferrer" className="underline">{existingPaths[key]}</a></span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -174,54 +198,69 @@ export default function FacilitiesTab({ site, rpmId, onComplete }) {
 
   return (
     <div className="p-8 space-y-6">
+      {isReadOnly && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2">
+          <span>⚠️</span>
+          <span>คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ระบบจะปิดการใช้งานฟิลด์ป้อนข้อมูล ปุ่มบันทึกข้อมูล และการอัปโหลดไฟล์ในหน้านี้ทั้งหมด</span>
+        </div>
+      )}
+
       <div>
         <h3 className="text-xl font-bold text-white">🚨 5. Alarms & Facilities (Systems & Facilities)</h3>
         <p className="text-gray-400 text-sm mt-1">บันทึกสถานะ Alarms, ระบบระบายอากาศ และความสะอาดของสถานที่</p>
       </div>
 
       <form onSubmit={handleSaveAll} className="space-y-8">
-        {/* Group 1: Alarms */}
-        <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-          <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🚨 1. หมวดสัญญาณเตือนภัย (Alarms)</h4>
-          <div className="divide-y divide-dark-border/20">
-            {renderRow('alarm_door', 'Door Open Alarm')}
-            {renderRow('alarm_ac_fail', 'AC Failure Alarm')}
-            {renderRow('alarm_low_bat', 'Low Battery Alarm')}
-            {renderRow('alarm_high_temp', 'High Temperature Alarm')}
-            {renderRow('alarm_smoke', 'Smoke & Fire Detector Alarm')}
-            {renderRow('alarm_air_fail', 'Air Conditioner Failure Alarm')}
+        <fieldset disabled={isReadOnly} className="space-y-8 border-0 p-0 m-0">
+          {/* Group 1: Alarms */}
+          <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🚨 1. หมวดสัญญาณเตือนภัย (Alarms)</h4>
+            <div className="divide-y divide-dark-border/20">
+              {renderRow('alarm_door', 'Door Open Alarm')}
+              {renderRow('alarm_ac_fail', 'AC Failure Alarm')}
+              {renderRow('alarm_low_bat', 'Low Battery Alarm')}
+              {renderRow('alarm_high_temp', 'High Temperature Alarm')}
+              {renderRow('alarm_smoke', 'Smoke & Fire Detector Alarm')}
+              {renderRow('alarm_air_fail', 'Air Conditioner Failure Alarm')}
+            </div>
           </div>
-        </div>
 
-        {/* Group 2: Ventilation */}
-        <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-          <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌀 2. หมวดระบบระบายอากาศ (Ventilation Systems)</h4>
-          <div className="divide-y divide-dark-border/20">
-            {renderRow('vent_ac_fan', 'Ventilation AC Fan Status')}
-            {renderRow('vent_ac_fan_hood', 'Ventilation AC Fan Hood')}
-            {renderRow('vent_dc_fan', 'Ventilation DC Fan Status')}
-            {renderRow('vent_dc_fan_hood', 'Ventilation DC Fan Hood')}
-            {renderRow('vent_air_cond', 'Air Conditioner System Test')}
-            {renderRow('vent_filters', 'Air Filters Condition')}
+          {/* Group 2: Ventilation */}
+          <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌀 2. หมวดระบบระบายอากาศ (Ventilation Systems)</h4>
+            <div className="divide-y divide-dark-border/20">
+              {renderRow('vent_ac_fan', 'Ventilation AC Fan Status')}
+              {renderRow('vent_ac_fan_hood', 'Ventilation AC Fan Hood')}
+              {renderRow('vent_dc_fan', 'Ventilation DC Fan Status')}
+              {renderRow('vent_dc_fan_hood', 'Ventilation DC Fan Hood')}
+              {renderRow('vent_air_cond', 'Air Conditioner System Test')}
+              {renderRow('vent_filters', 'Air Filters Condition')}
+            </div>
           </div>
-        </div>
 
-        {/* Group 3: Site Facility */}
-        <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-          <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌳 3. หมวดความสะอาดและสิ่งอำนวยความสะดวกสถานี (Site Facility)</h4>
-          <div className="divide-y divide-dark-border/20">
-            {renderRow('fac_site_sign', 'ป้ายชื่อสถานี (Site Sign)')}
-            {renderRow('fac_outdoor_clean', 'ความสะอาดภายนอกห้องเครื่อง')}
-            {renderRow('fac_indoor_clean', 'ความสะอาดภายในห้องเครื่อง')}
-            {renderRow('fac_lighting', 'ระบบไฟส่องสว่างสถานี (Lighting)')}
-            {renderRow('fac_grass_cut', 'การตัดหญ้า/ถางวัชพืช')}
+          {/* Group 3: Site Facility */}
+          <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌳 3. หมวดความสะอาดและสิ่งอำนวยความสะดวกสถานี (Site Facility)</h4>
+            <div className="divide-y divide-dark-border/20">
+              {renderRow('fac_site_sign', 'ป้ายชื่อสถานี (Site Sign)')}
+              {renderRow('fac_outdoor_clean', 'ความสะอาดภายนอกห้องเครื่อง')}
+              {renderRow('fac_indoor_clean', 'ความสะอาดภายในห้องเครื่อง')}
+              {renderRow('fac_lighting', 'ระบบไฟส่องสว่างสถานี (Lighting)')}
+              {renderRow('fac_grass_cut', 'การตัดหญ้า/ถางวัชพืช')}
+            </div>
           </div>
-        </div>
+        </fieldset>
 
         <div className="pt-4 flex justify-end">
-          <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm shadow-lg transition-all hover:shadow-indigo-600/20">
-            🚀 บันทึกข้อมูลสรุประบบและปิดเล่มใบงาน (Submit All Data)
-          </button>
+          {!isReadOnly ? (
+            <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm shadow-lg transition-all hover:shadow-indigo-600/20">
+              🚀 บันทึกข้อมูลสรุประบบและปิดเล่มใบงาน (Submit All Data)
+            </button>
+          ) : (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold w-full text-center">
+              ⚠️ ไม่สามารถบันทึกข้อมูลสรุประบบและปิดเล่มได้เนื่องจากคุณอยู่ในสิทธิ์ Viewer (ดูข้อมูลได้อย่างเดียว)
+            </div>
+          )}
         </div>
       </form>
     </div>
