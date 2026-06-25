@@ -20,6 +20,7 @@ function WorkOrderPanel() {
   const [inspector, setInspector] = useState('');
   const [rpmCycle, setRpmCycle] = useState('');
   const [inspectionDateTime, setInspectionDateTime] = useState('');
+  const [rpmId, setRpmId] = useState(null);
 
   // Track completed sections
   const [completedSections, setCompletedSections] = useState(() => {
@@ -67,6 +68,22 @@ function WorkOrderPanel() {
         setSelectedSite({ code: site_code, name: `Station ${site_code}` });
       });
 
+    // Start or load work order from backend
+    fetch('/api/workorder/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ site_code: site_code })
+    })
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.data && resData.data.rpm_id) {
+          setRpmId(resData.data.rpm_id);
+        }
+      })
+      .catch(err => console.error("Error starting workorder:", err));
+
     // Retrieve inspector name, cycle, and datetime
     const storedInspector = localStorage.getItem('inspectorName') || 'Inspector';
     const storedCycle = localStorage.getItem('rpmCycle') || '';
@@ -93,17 +110,17 @@ function WorkOrderPanel() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
       case 'acmain':
-        return <AcMainTab site={selectedSite} onComplete={() => handleSectionComplete('acmain')} />;
+        return <AcMainTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('acmain')} />;
       case 'rectifier':
-        return <RectifierTab site={selectedSite} onComplete={() => handleSectionComplete('rectifier')} />;
+        return <RectifierTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('rectifier')} />;
       case 'battery':
-        return <BatteryTab site={selectedSite} onComplete={() => handleSectionComplete('battery')} />;
+        return <BatteryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('battery')} />;
       case 'facilities':
-        return <FacilitiesTab site={selectedSite} onComplete={() => handleSectionComplete('facilities')} />;
+        return <FacilitiesTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('facilities')} />;
       default:
-        return <MasterTab site={selectedSite} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} />;
     }
   };
 

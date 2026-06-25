@@ -1,20 +1,63 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, inspector, rpmCycle, inspectionDateTime, onComplete }) {
-  const [sl6Number, setSl6Number] = useState(`SL6-TEMP-${site?.code || 'SITE'}`);
-  const [sapNumber, setSapNumber] = useState(`SAP-TEMP-${site?.code || 'SITE'}`);
+export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspectionDateTime, onComplete }) {
+  const [sl6Number, setSl6Number] = useState('');
+  const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Load existing data if available
+  useEffect(() => {
+    if (!site?.code) return;
+    fetch('/api/workorder/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ site_code: site.code })
+    })
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.data) {
+          setSl6Number(resData.data.job_number_sl6 || `SL6-TEMP-${site.code}`);
+          setSapNumber(resData.data.sap_number || `SAP-TEMP-${site.code}`);
+          setSummaryIssue(resData.data.summary_issue || '');
+        }
+      })
+      .catch(err => console.error("Error loading master info:", err));
+  }, [site?.code]);
+
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!rpmId) {
+      alert('ไม่พบรหัสใบงานหลัก (rpmId) กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
     setIsSaving(true);
-    // Mock save endpoint or direct call
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/workorder/${rpmId}/master`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          job_number_sl6: sl6Number,
+          sap_number: sapNumber,
+          summary_issue: summaryIssue
+        })
+      });
+      if (res.ok) {
+        alert('บันทึกข้อมูลใบงานหลักสำเร็จ!');
+        if (onComplete) onComplete();
+      } else {
+        const errorData = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
       setIsSaving(false);
-      alert('บันทึกข้อมูลใบงานหลักสำเร็จ!');
-      if (onComplete) onComplete();
-    }, 800);
+    }
   };
 
   // Helper to format date-time

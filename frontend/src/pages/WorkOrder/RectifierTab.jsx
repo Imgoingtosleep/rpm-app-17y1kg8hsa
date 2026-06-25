@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function RectifierTab({ site, onComplete }) {
+export default function RectifierTab({ site, rpmId, onComplete }) {
   const [rectNo, setRectNo] = useState('ตู้ที่ 1');
   const [model, setModel] = useState('');
   const [acCableSize, setAcCableSize] = useState('');
@@ -15,14 +15,124 @@ export default function RectifierTab({ site, onComplete }) {
   const [pdbTempImg, setPdbTempImg] = useState(null);
   const [surgeRectImg, setSurgeRectImg] = useState(null);
 
-  const handleSave = (e) => {
+  const [existingPaths, setExistingPaths] = useState({
+    breaker: null,
+    pdbTemp: null,
+    surgeRect: null,
+  });
+
+  const [rectifiers, setRectifiers] = useState([]);
+
+  // Fetch all rectifiers for the work order
+  const fetchRectifiers = () => {
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/rectifiers`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRectifiers(data);
+        }
+      })
+      .catch(err => console.error("Error fetching rectifiers:", err));
+  };
+
+  useEffect(() => {
+    fetchRectifiers();
+  }, [rpmId]);
+
+  // Load rectifier details when rectNo select option changes or rectifier list updates
+  useEffect(() => {
+    const found = rectifiers.find(r => r.rect_no === rectNo);
+    if (found) {
+      setModel(found.model || '');
+      setAcCableSize(found.ac_cable_size || '');
+      setBreakerSize(found.breaker_size || '');
+      setModulesAll(found.modules_all || 0);
+      setModulesFail(found.modules_fail || 0);
+      setInputCurrentAc(found.input_current_ac ? parseFloat(found.input_current_ac) : 0.0);
+      setOutputCurrentDc(found.output_current_dc ? parseFloat(found.output_current_dc) : 0.0);
+      setSurgeStatus(found.surge_status || 'ปกติ');
+      
+      setExistingPaths({
+        breaker: found.breaker_img || null,
+        pdbTemp: found.pdb_temp_img || null,
+        surgeRect: found.surge_rect_img || null,
+      });
+    } else {
+      // Clear fields for new rectifier entries
+      setModel('');
+      setAcCableSize('');
+      setBreakerSize('');
+      setModulesAll(4);
+      setModulesFail(0);
+      setInputCurrentAc(0.0);
+      setOutputCurrentDc(0.0);
+      setSurgeStatus('ปกติ');
+      
+      setExistingPaths({
+        breaker: null,
+        pdbTemp: null,
+        surgeRect: null,
+      });
+    }
+    // Clear newly selected files
+    setBreakerImg(null);
+    setPdbTempImg(null);
+    setSurgeRectImg(null);
+  }, [rectNo, rectifiers]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!breakerImg || !pdbTempImg || !surgeRectImg) {
+    if (!rpmId) {
+      alert('ไม่พบรหัสใบงานหลัก (rpmId)');
+      return;
+    }
+
+    const hasBreaker = breakerImg || existingPaths.breaker;
+    const hasPdbTemp = pdbTempImg || existingPaths.pdbTemp;
+    const hasSurgeRect = surgeRectImg || existingPaths.surgeRect;
+
+    if (!hasBreaker || !hasPdbTemp || !hasSurgeRect) {
       alert('กรุณาอัปโหลดรูปถ่ายประจำตู้ Rectifier ให้ครบถ้วนทั้ง 3 รูปก่อนทำการบันทึก!');
       return;
     }
-    alert(`บันทึกข้อมูล ${rectNo} สำเร็จ!`);
-    if (onComplete) onComplete();
+
+    const formData = new FormData();
+    formData.append('rect_no', rectNo);
+    formData.append('model', model);
+    formData.append('ac_cable_size', acCableSize);
+    formData.append('breaker_size', breakerSize);
+    formData.append('modules_all', modulesAll);
+    formData.append('modules_fail', modulesFail);
+    formData.append('input_current_ac', inputCurrentAc);
+    formData.append('output_current_dc', outputCurrentDc);
+    formData.append('surge_status', surgeStatus);
+
+    if (breakerImg) formData.append('breaker_img', breakerImg);
+    else if (existingPaths.breaker) formData.append('breaker_img_path', existingPaths.breaker);
+
+    if (pdbTempImg) formData.append('pdb_temp_img', pdbTempImg);
+    else if (existingPaths.pdbTemp) formData.append('pdb_temp_img_path', existingPaths.pdbTemp);
+
+    if (surgeRectImg) formData.append('surge_rect_img', surgeRectImg);
+    else if (existingPaths.surgeRect) formData.append('surge_rect_img_path', existingPaths.surgeRect);
+
+    try {
+      const res = await fetch(`/api/workorder/${rpmId}/rectifier`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        alert(`บันทึกข้อมูล ${rectNo} สำเร็จ!`);
+        fetchRectifiers(); // Reload the data
+        if (onComplete) onComplete();
+      } else {
+        const errorData = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
   };
 
   return (

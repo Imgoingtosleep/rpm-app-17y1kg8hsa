@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function FacilitiesTab({ site, onComplete }) {
+export default function FacilitiesTab({ site, rpmId, onComplete }) {
   // Facility parameters config
   const [params, setParams] = useState({
     alarm_door: { status: 'ปกติ', file: null },
@@ -23,6 +23,36 @@ export default function FacilitiesTab({ site, onComplete }) {
     fac_lighting: { status: 'ปกติ', file: null },
     fac_grass_cut: { status: 'ปกติ', file: null },
   });
+
+  const [existingPaths, setExistingPaths] = useState({});
+
+  useEffect(() => {
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/facilities`)
+      .then(res => res.json())
+      .then(data => {
+        if (data) {
+          setParams(prev => {
+            const updated = { ...prev };
+            Object.keys(updated).forEach(key => {
+              if (data[key]) {
+                updated[key].status = data[key];
+              }
+            });
+            return updated;
+          });
+
+          const newExisting = {};
+          Object.keys(params).forEach(key => {
+            if (data[`${key}_img`]) {
+              newExisting[key] = data[`${key}_img`];
+            }
+          });
+          setExistingPaths(newExisting);
+        }
+      })
+      .catch(err => console.error("Error fetching facilities:", err));
+  }, [rpmId]);
 
   const handleStatusChange = (key, status) => {
     setParams(prev => ({
@@ -58,19 +88,43 @@ export default function FacilitiesTab({ site, onComplete }) {
     fac_grass_cut: 'การตัดหญ้า/ถางวัชพืช'
   };
 
-  const handleSaveAll = (e) => {
+  const handleSaveAll = async (e) => {
     e.preventDefault();
     
     for (const [key, item] of Object.entries(params)) {
-      if (item.status !== 'ไม่มีระบบนี้' && !item.file) {
+      const hasImg = item.file || existingPaths[key];
+      if (item.status !== 'ไม่มีระบบนี้' && !hasImg) {
         const friendlyName = labelMap[key] || key;
         alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" หรือเลือกสถานะเป็น "ไม่มีระบบนี้" ก่อนทำการบันทึก!`);
         return;
       }
     }
 
-    alert('บันทึกข้อมูลและอัปโหลดรูปภาพ Systems & Facilities ครบถ้วนเสร็จสมบูรณ์!');
-    if (onComplete) onComplete();
+    const formData = new FormData();
+    Object.entries(params).forEach(([key, item]) => {
+      formData.append(key, item.status);
+      if (item.file) {
+        formData.append(`${key}_img`, item.file);
+      } else if (existingPaths[key]) {
+        formData.append(`${key}_img_path`, existingPaths[key]);
+      }
+    });
+
+    try {
+      const res = await fetch(`/api/workorder/${rpmId}/facilities`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        alert('บันทึกข้อมูลและอัปโหลดรูปภาพ Systems & Facilities ครบถ้วนเสร็จสมบูรณ์!');
+        if (onComplete) onComplete();
+      } else {
+        const errorData = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
   };
 
   const renderRow = (key, label) => {

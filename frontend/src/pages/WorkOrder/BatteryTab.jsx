@@ -1,16 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function BatteryTab({ site, onComplete }) {
+export default function BatteryTab({ site, rpmId, onComplete }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
-  
+  const [rectifiers, setRectifiers] = useState([]);
+  const [activeRectId, setActiveRectId] = useState(null);
+  const [batteries, setBatteries] = useState([]);
+
   // State for cells 1 to 4
   const [cells, setCells] = useState({
-    1: { voltage: 13.2, ir: 4.5, file: null },
-    2: { voltage: 13.2, ir: 4.5, file: null },
-    3: { voltage: 13.2, ir: 4.5, file: null },
-    4: { voltage: 13.2, ir: 4.5, file: null }
+    1: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+    2: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+    3: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+    4: { voltage: 13.2, ir: 4.5, file: null, existingPath: null }
   });
+
+  // 1. Fetch rectifiers for current workorder
+  useEffect(() => {
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/rectifiers`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRectifiers(data);
+        }
+      })
+      .catch(err => console.error("Error fetching rectifiers:", err));
+  }, [rpmId]);
+
+  // 2. Resolve active rect_id when selectedRect name changes
+  useEffect(() => {
+    const found = rectifiers.find(r => r.rect_no === selectedRect);
+    if (found) {
+      setActiveRectId(found.rect_id);
+    } else {
+      setActiveRectId(null);
+      setBatteries([]);
+    }
+  }, [selectedRect, rectifiers]);
+
+  // 3. Fetch batteries for active rectifier
+  const fetchBatteries = () => {
+    if (!activeRectId) return;
+    fetch(`/api/rectifier/${activeRectId}/batteries`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBatteries(data);
+        }
+      })
+      .catch(err => console.error("Error fetching batteries:", err));
+  };
+
+  useEffect(() => {
+    fetchBatteries();
+  }, [activeRectId]);
+
+  // 4. Update UI cells state when active batteries list or bank selection changes
+  useEffect(() => {
+    const updatedCells = {
+      1: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+      2: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+      3: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
+      4: { voltage: 13.2, ir: 4.5, file: null, existingPath: null }
+    };
+
+    // Filter batteries for selected bank
+    const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
+    bankBatteries.forEach(bat => {
+      const cellNo = bat.cell_no;
+      if (updatedCells[cellNo]) {
+        updatedCells[cellNo].voltage = bat.voltage ? parseFloat(bat.voltage) : 13.2;
+        updatedCells[cellNo].ir = bat.internal_resistance ? parseFloat(bat.internal_resistance) : 4.5;
+        updatedCells[cellNo].existingPath = bat.battery_img || null;
+      }
+    });
+
+    setCells(updatedCells);
+  }, [bankNo, batteries]);
 
   const handleCellChange = (num, field, value) => {
     setCells(prev => ({
@@ -26,15 +93,50 @@ export default function BatteryTab({ site, onComplete }) {
     return (ir > 10.0 || voltage < 12.0) ? 'เสื่อม' : 'ปกติ';
   };
 
-  const handleSaveCell = (num) => {
+  const handleSaveCell = async (num) => {
+    if (!activeRectId) {
+      alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกแบตเตอรี่ครับ!');
+      return;
+    }
+
     const cell = cells[num];
-    if (!cell.file) {
+    const hasImg = cell.file || cell.existingPath;
+
+    if (!hasImg) {
       alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
       return;
     }
+
     const status = evaluateStatus(cell.voltage, cell.ir);
-    alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) เรียบร้อยแล้ว!`);
-    if (onComplete) onComplete();
+    const formData = new FormData();
+    formData.append('bank_name', bankNo);
+    formData.append('cell_no', num);
+    formData.append('voltage', cell.voltage);
+    formData.append('internal_resistance', cell.ir);
+    formData.append('status', status);
+
+    if (cell.file) {
+      formData.append('battery_img', cell.file);
+    } else if (cell.existingPath) {
+      formData.append('battery_img_path', cell.existingPath);
+    }
+
+    try {
+      const res = await fetch(`/api/rectifier/${activeRectId}/battery`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) เรียบร้อยแล้ว!`);
+        fetchBatteries(); // Reload batteries list
+        if (onComplete) onComplete();
+      } else {
+        const errorData = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
   };
 
   return (

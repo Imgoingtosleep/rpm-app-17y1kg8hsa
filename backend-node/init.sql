@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS rpm_records_master (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. ตารางระบบไฟฟ้าเมนหลัก (Power Main AC) - สัมพันธ์แบบ 1 ต่อ 1 กับใบงานหลัก
+-- 3. ตารางระบบไฟฟ้าเมนหลัก (Power Main AC) [1-to-1 กับใบงาน]
 CREATE TABLE IF NOT EXISTS power_main_ac (
     main_ac_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE, -- 1 ใบงานมีได้ 1 บันทึก AC
@@ -62,12 +62,19 @@ CREATE TABLE IF NOT EXISTS power_rectifier (
     surge_rect_img VARCHAR(500)
 );
 
--- 5. ตารางตรวจสอบแบตเตอรี่รายลูก (Battery Tests) - สัมพันธ์กับตู้ Rectifier (1 ตู้มีหลายลูก)
+-- 5. ตารางชั้น Bank (Rectifier Banks) [1 ตู้ มีหลาย Bank]
+CREATE TABLE IF NOT EXISTS rectifier_banks (
+    bank_id SERIAL PRIMARY KEY,
+    rect_id INT NOT NULL REFERENCES power_rectifier(rect_id) ON DELETE CASCADE,
+    bank_name VARCHAR(50) NOT NULL, -- เช่น 'Bank 1', 'Bank 2'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. ตารางตรวจสอบแบตเตอรี่รายลูก (Battery Tests) [1 Bank มี 4 ลูก]
 CREATE TABLE IF NOT EXISTS battery_tests (
     bat_id SERIAL PRIMARY KEY,
-    rect_id INT NOT NULL REFERENCES power_rectifier(rect_id) ON DELETE CASCADE, -- ลิงก์ตรงไปที่ไอดีตู้ Rectifier
-    bank_no VARCHAR(50) NOT NULL,  -- เช่น Bank 1, Bank 2
-    cell_no INT NOT NULL,          -- ลูกที่ 1, 2, 3, ..., 48
+    bank_id INT NOT NULL REFERENCES rectifier_banks(bank_id) ON DELETE CASCADE, -- อ้างอิง Bank แทน Rectifier
+    cell_no INT NOT NULL,          -- ลูกที่ 1, 2, 3, 4
     voltage NUMERIC(4,2),          -- เช่น 13.21
     internal_resistance NUMERIC(5,2), -- ค่า IR (มิลลิโอห์ม)
     status VARCHAR(100),           -- ปกติ / เสื่อม
@@ -76,7 +83,7 @@ CREATE TABLE IF NOT EXISTS battery_tests (
     battery_img VARCHAR(500)
 );
 
--- 6. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) - สัมพันธ์แบบ 1 ต่อ 1 กับใบงานหลัก
+-- 7. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) [1-to-1 กับใบงาน]
 CREATE TABLE IF NOT EXISTS systems_and_facilities (
     facility_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
@@ -105,12 +112,5 @@ CREATE TABLE IF NOT EXISTS systems_and_facilities (
 -- สร้าง Index
 CREATE INDEX IF NOT EXISTS idx_rpm_site ON rpm_records_master(site_code);
 CREATE INDEX IF NOT EXISTS idx_rect_rpm ON power_rectifier(rpm_id);
-CREATE INDEX IF NOT EXISTS idx_bat_rect ON battery_tests(rect_id);
-
--- Seed initial sites
-INSERT INTO sites (site_code, site_name, site_grade, site_type) VALUES 
-('BKK-001', 'Bangkok Central Tower', 'A', 'Indoor'),
-('CM-002', 'Chiang Mai Gateway', 'B', 'Indoor'),
-('PKT-003', 'Phuket Coastal Hub', 'A', 'Outdoor'),
-('KKN-004', 'Khon Kaen Link', 'C', 'Outdoor')
-ON CONFLICT (site_code) DO NOTHING;
+CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
+CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);

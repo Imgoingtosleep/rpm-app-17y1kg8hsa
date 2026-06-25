@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function AcMainTab({ site, onComplete }) {
+export default function AcMainTab({ site, rpmId, onComplete }) {
   // Input fields state
   const [meterSize, setMeterSize] = useState('');
   const [cableStatus, setCableStatus] = useState('');
@@ -17,6 +17,16 @@ export default function AcMainTab({ site, onComplete }) {
   const [cur3, setCur3] = useState(0.0);
   const [groundResistance, setGroundResistance] = useState(0.0);
 
+  // Existing image paths from server
+  const [existingPaths, setExistingPaths] = useState({
+    meter: null,
+    cable: null,
+    changeOver: null,
+    surge: null,
+    mdb: null,
+    ground: null,
+  });
+
   // File uploads
   const [images, setImages] = useState({
     meter: null,
@@ -27,18 +37,112 @@ export default function AcMainTab({ site, onComplete }) {
     ground: null,
   });
 
+  useEffect(() => {
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/ac`)
+      .then(res => res.json())
+      .then(data => {
+        if (data) {
+          setMeterSize(data.meter_ac_size || '');
+          setCableStatus(data.cable_status || '');
+          setChangeOverSwitch(data.change_over_switch || '');
+          setPhaseQty(data.ac_phase_qty || '');
+          setSurgeProtection(data.surge_protection || '');
+          setMdbTemp(data.mdb_temp ? parseFloat(data.mdb_temp) : 25.0);
+          setV1(data.voltage_p1 || 220);
+          setV2(data.voltage_p2 || 220);
+          setV3(data.voltage_p3 || 220);
+          setCur1(data.current_p1 ? parseFloat(data.current_p1) : 0.0);
+          setCur2(data.current_p2 ? parseFloat(data.current_p2) : 0.0);
+          setCur3(data.current_p3 ? parseFloat(data.current_p3) : 0.0);
+          setGroundResistance(data.ground_resistance ? parseFloat(data.ground_resistance) : 0.0);
+
+          setExistingPaths({
+            meter: data.meter_ac_img || null,
+            cable: data.cable_img || null,
+            changeOver: data.change_over_img || null,
+            surge: data.surge_img || null,
+            mdb: data.mdb_temp_img || null,
+            ground: data.ground_img || null,
+          });
+        }
+      })
+      .catch(err => console.error("Error fetching AC details:", err));
+  }, [rpmId]);
+
   const handleFileChange = (field, file) => {
     setImages(prev => ({ ...prev, [field]: file }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!images.meter || !images.cable || !images.changeOver || !images.surge || !images.mdb || !images.ground) {
+    if (!rpmId) {
+      alert('ไม่พบรหัสใบงานหลัก (rpmId)');
+      return;
+    }
+
+    // Verify if all files are provided (either newly uploaded or already existing on the server)
+    const hasMeter = images.meter || existingPaths.meter;
+    const hasCable = images.cable || existingPaths.cable;
+    const hasChangeOver = images.changeOver || existingPaths.changeOver;
+    const hasSurge = images.surge || existingPaths.surge;
+    const hasMdb = images.mdb || existingPaths.mdb;
+    const hasGround = images.ground || existingPaths.ground;
+
+    if (!hasMeter || !hasCable || !hasChangeOver || !hasSurge || !hasMdb || !hasGround) {
       alert('กรุณาอัปโหลดรูปภาพประกอบระบบไฟฟ้า AC ให้ครบถ้วนทั้ง 6 รูปก่อนทำการบันทึก!');
       return;
     }
-    alert('บันทึกระบบไฟฟ้า AC และข้อมูลรูปภาพเรียบร้อยแล้ว!');
-    if (onComplete) onComplete();
+
+    const formData = new FormData();
+    formData.append('meter_ac_size', meterSize);
+    formData.append('cable_status', cableStatus);
+    formData.append('change_over_switch', changeOverSwitch);
+    formData.append('ac_phase_qty', phaseQty);
+    formData.append('surge_protection', surgeProtection);
+    formData.append('mdb_temp', mdbTemp);
+    formData.append('voltage_p1', v1);
+    formData.append('voltage_p2', v2);
+    formData.append('voltage_p3', v3);
+    formData.append('current_p1', cur1);
+    formData.append('current_p2', cur2);
+    formData.append('current_p3', cur3);
+    formData.append('ground_resistance', groundResistance);
+
+    // Append files or original paths
+    if (images.meter) formData.append('meter_ac_img', images.meter);
+    else if (existingPaths.meter) formData.append('meter_ac_img_path', existingPaths.meter);
+
+    if (images.cable) formData.append('cable_img', images.cable);
+    else if (existingPaths.cable) formData.append('cable_img_path', existingPaths.cable);
+
+    if (images.changeOver) formData.append('change_over_img', images.changeOver);
+    else if (existingPaths.changeOver) formData.append('change_over_img_path', existingPaths.changeOver);
+
+    if (images.surge) formData.append('surge_img', images.surge);
+    else if (existingPaths.surge) formData.append('surge_img_path', existingPaths.surge);
+
+    if (images.mdb) formData.append('mdb_temp_img', images.mdb);
+    else if (existingPaths.mdb) formData.append('mdb_temp_img_path', existingPaths.mdb);
+
+    if (images.ground) formData.append('ground_img', images.ground);
+    else if (existingPaths.ground) formData.append('ground_img_path', existingPaths.ground);
+
+    try {
+      const res = await fetch(`/api/workorder/${rpmId}/ac`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        alert('บันทึกระบบไฟฟ้า AC และข้อมูลรูปภาพเรียบร้อยแล้ว!');
+        if (onComplete) onComplete();
+      } else {
+        const errorData = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
   };
 
   return (

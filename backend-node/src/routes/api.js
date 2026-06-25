@@ -190,7 +190,14 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
 router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   const { rect_id } = req.params;
   try {
-    const result = await db.query('SELECT * FROM battery_tests WHERE rect_id = $1 ORDER BY cell_no;', [rect_id]);
+    const result = await db.query(
+      `SELECT bt.*, rb.bank_name 
+       FROM battery_tests bt 
+       JOIN rectifier_banks rb ON bt.bank_id = rb.bank_id 
+       WHERE rb.rect_id = $1 
+       ORDER BY rb.bank_name, bt.cell_no;`,
+      [rect_id]
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -199,11 +206,33 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
 
 router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (req, res) => {
   const { rect_id } = req.params;
-  const { bank_no, cell_no, voltage, internal_resistance, status } = req.body;
+  const { bank_name, cell_no, voltage, internal_resistance, status } = req.body;
   const battery_img = req.file ? `/storage/sites/${req.file.filename}` : req.body.battery_img_path || null;
 
   try {
-    const existing = await db.query('SELECT bat_id FROM battery_tests WHERE rect_id = $1 AND bank_no = $2 AND cell_no = $3;', [rect_id, bank_no, cell_no]);
+    // 1. Get or Create the Bank record
+    let bankResult = await db.query(
+      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
+      [rect_id, bank_name || 'Bank 1']
+    );
+    
+    let bank_id;
+    if (bankResult.rows.length > 0) {
+      bank_id = bankResult.rows[0].bank_id;
+    } else {
+      const newBank = await db.query(
+        'INSERT INTO rectifier_banks (rect_id, bank_name) VALUES ($1, $2) RETURNING bank_id;',
+        [rect_id, bank_name || 'Bank 1']
+      );
+      bank_id = newBank.rows[0].bank_id;
+    }
+
+    // 2. Check if battery test already exists for this bank and cell_no
+    const existing = await db.query(
+      'SELECT bat_id FROM battery_tests WHERE bank_id = $1 AND cell_no = $2;',
+      [bank_id, cell_no]
+    );
+    
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
@@ -213,9 +242,9 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
       );
     } else {
       result = await db.query(
-        `INSERT INTO battery_tests (rect_id, bank_no, cell_no, voltage, internal_resistance, status, battery_img)
-        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`,
-        [rect_id, bank_no, cell_no, voltage, internal_resistance, status, battery_img]
+        `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img)
+        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
+        [bank_id, cell_no, voltage, internal_resistance, status, battery_img]
       );
     }
     res.json(result.rows[0]);
