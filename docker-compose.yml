@@ -48,13 +48,16 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: rpm-frontend
     restart: always
     depends_on:
       - backend
     ports:
       - "1000:1000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   postgres_data:

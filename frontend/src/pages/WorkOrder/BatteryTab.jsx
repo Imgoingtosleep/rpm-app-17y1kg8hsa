@@ -51,6 +51,7 @@ export default function BatteryTab({ site, onComplete }) {
             <option>ตู้ที่ 1</option>
             <option>ตู้ที่ 2</option>
             <option>ตู้ที่ 3</option>
+            <option>ตู้ที่ 4</option>
           </select>
         </div>
         <div>
@@ -62,12 +63,24 @@ export default function BatteryTab({ site, onComplete }) {
           >
             <option>Bank 1</option>
             <option>Bank 2</option>
+            <option>Bank 3</option>
+            <option>Bank 4</option>
+            <option>Bank 5</option>
+            <option>Bank 6</option>
+            <option>Bank 7</option>
+            <option>Bank 8</option>
+            <option>Bank 9</option>
+            <option>Bank 10</option>
+            <option>Bank 11</option>
+            <option>Bank 12</option>
           </select>
         </div>
       </div>
 
       <div className="space-y-6 pt-4">
-        <h4 className="font-bold text-white text-md border-b border-dark-border pb-2">📝 บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
+        <div className="flex justify-between items-center border-b border-dark-border pb-2">
+          <h4 className="font-bold text-white text-md">📝 บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
+        </div>
         
         {[1, 2, 3, 4].map((num) => {
           const cell = cells[num];

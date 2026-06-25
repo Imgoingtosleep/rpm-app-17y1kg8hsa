@@ -40,6 +40,7 @@ export default function RectifierTab({ site, onComplete }) {
               <option>ตู้ที่ 1</option>
               <option>ตู้ที่ 2</option>
               <option>ตู้ที่ 3</option>
+              <option>ตู้ที่ 4</option>
             </select>
           </div>
           <div>
