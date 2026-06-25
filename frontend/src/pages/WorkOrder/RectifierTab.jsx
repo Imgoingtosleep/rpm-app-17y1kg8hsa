@@ -17,6 +17,10 @@ export default function RectifierTab({ site, onComplete }) {
 
   const handleSave = (e) => {
     e.preventDefault();
+    if (!breakerImg || !pdbTempImg || !surgeRectImg) {
+      alert('กรุณาอัปโหลดรูปถ่ายประจำตู้ Rectifier ให้ครบถ้วนทั้ง 3 รูปก่อนทำการบันทึก!');
+      return;
+    }
     alert(`บันทึกข้อมูล ${rectNo} สำเร็จ!`);
     if (onComplete) onComplete();
   };

@@ -38,8 +38,37 @@ export default function FacilitiesTab({ site, onComplete }) {
     }));
   };
 
+  const labelMap = {
+    alarm_door: 'Door Open Alarm',
+    alarm_ac_fail: 'AC Failure Alarm',
+    alarm_low_bat: 'Low Battery Alarm',
+    alarm_high_temp: 'High Temperature Alarm',
+    alarm_smoke: 'Smoke & Fire Detector Alarm',
+    alarm_air_fail: 'Air Conditioner Failure Alarm',
+    vent_ac_fan: 'Ventilation AC Fan Status',
+    vent_ac_fan_hood: 'Ventilation AC Fan Hood',
+    vent_dc_fan: 'Ventilation DC Fan Status',
+    vent_dc_fan_hood: 'Ventilation DC Fan Hood',
+    vent_air_cond: 'Air Conditioner System Test',
+    vent_filters: 'Air Filters Condition',
+    fac_site_sign: 'ป้ายชื่อสถานี (Site Sign)',
+    fac_outdoor_clean: 'ความสะอาดภายนอกห้องเครื่อง',
+    fac_indoor_clean: 'ความสะอาดภายในห้องเครื่อง',
+    fac_lighting: 'ระบบไฟส่องสว่างสถานี (Lighting)',
+    fac_grass_cut: 'การตัดหญ้า/ถางวัชพืช'
+  };
+
   const handleSaveAll = (e) => {
     e.preventDefault();
+    
+    for (const [key, item] of Object.entries(params)) {
+      if (item.status !== 'ไม่มีระบบนี้' && !item.file) {
+        const friendlyName = labelMap[key] || key;
+        alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" หรือเลือกสถานะเป็น "ไม่มีระบบนี้" ก่อนทำการบันทึก!`);
+        return;
+      }
+    }
+
     alert('บันทึกข้อมูลและอัปโหลดรูปภาพ Systems & Facilities ครบถ้วนเสร็จสมบูรณ์!');
     if (onComplete) onComplete();
   };

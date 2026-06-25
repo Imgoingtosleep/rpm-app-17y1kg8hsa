@@ -28,6 +28,10 @@ export default function BatteryTab({ site, onComplete }) {
 
   const handleSaveCell = (num) => {
     const cell = cells[num];
+    if (!cell.file) {
+      alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
+      return;
+    }
     const status = evaluateStatus(cell.voltage, cell.ir);
     alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) เรียบร้อยแล้ว!`);
     if (onComplete) onComplete();

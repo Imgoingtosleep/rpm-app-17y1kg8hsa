@@ -12,6 +12,16 @@ export default defineConfig({
     },
     hmr: {
       clientPort: 1000
+    },
+    proxy: {
+      '/api': {
+        target: 'http://backend:5000',
+        changeOrigin: true
+      },
+      '/storage': {
+        target: 'http://backend:5000',
+        changeOrigin: true
+      }
     }
   }
 })

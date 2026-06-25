@@ -33,6 +33,10 @@ export default function AcMainTab({ site, onComplete }) {
 
   const handleSave = (e) => {
     e.preventDefault();
+    if (!images.meter || !images.cable || !images.changeOver || !images.surge || !images.mdb || !images.ground) {
+      alert('กรุณาอัปโหลดรูปภาพประกอบระบบไฟฟ้า AC ให้ครบถ้วนทั้ง 6 รูปก่อนทำการบันทึก!');
+      return;
+    }
     alert('บันทึกระบบไฟฟ้า AC และข้อมูลรูปภาพเรียบร้อยแล้ว!');
     if (onComplete) onComplete();
   };
