@@ -138,7 +138,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
     });
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/facilities`, {
+      const res = await fetch(`/api/workorder/${rpmId}/facilities?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });

@@ -183,7 +183,7 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
     }
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/rectifier`, {
+      const res = await fetch(`/api/workorder/${rpmId}/rectifier?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });

@@ -188,7 +188,7 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
     appendFile('ground_resistance', 'ground', 'ground');
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/ac`, {
+      const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });

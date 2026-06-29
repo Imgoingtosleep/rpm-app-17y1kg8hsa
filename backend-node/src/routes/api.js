@@ -81,7 +81,16 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
   } = req.body;
 
   // Retrieve file paths from multer
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
+  const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
+  const getSubFolder = (fieldname) => {
+    if (fieldname.startsWith('meter_ac') || fieldname.startsWith('cable') || 
+        fieldname.startsWith('change_over') || fieldname.startsWith('surge') || 
+        fieldname.startsWith('mdb_temp') || fieldname.startsWith('ground')) {
+      return 'ac_main';
+    }
+    return 'misc';
+  };
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/${getSubFolder(fieldname)}/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
 
   const meter_ac_img = getPath('meter_ac_img');
   const cable_img = getPath('cable_img');
@@ -153,7 +162,8 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
     input_current_ac, output_current_dc, surge_status
   } = req.body;
 
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
+  const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/power_rectifier/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
 
   const breaker_img = getPath('breaker_img');
   const pdb_temp_img = getPath('pdb_temp_img');
@@ -207,7 +217,22 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
 router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (req, res) => {
   const { rect_id } = req.params;
   const { bank_name, cell_no, voltage, internal_resistance, status } = req.body;
-  const battery_img = req.file ? `/storage/sites/${req.file.filename}` : req.body.battery_img_path || null;
+  let rpm_id = req.query.rpm_id || 'UNKNOWN';
+  let site_code = req.query.site_code || req.body.site_code || 'UNKNOWN';
+
+  // If rpm_id or site_code is not passed, let's query them from rectifier
+  if (rpm_id === 'UNKNOWN' || site_code === 'UNKNOWN') {
+    const rectQuery = await db.query(
+      'SELECT r.rpm_id, m.site_code FROM power_rectifier r JOIN rpm_records_master m ON r.rpm_id = m.rpm_id WHERE r.rect_id = $1;',
+      [rect_id]
+    );
+    if (rectQuery.rows.length > 0) {
+      rpm_id = rectQuery.rows[0].rpm_id;
+      site_code = rectQuery.rows[0].site_code;
+    }
+  }
+
+  const battery_img = req.file ? `/storage/sites/${site_code}/${rpm_id}/db_img/power_rectifier/${req.file.filename}` : req.body.battery_img_path || null;
 
   try {
     // 1. Get or Create the Bank record
@@ -268,11 +293,12 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
   const { rpm_id } = req.params;
   const data = req.body;
 
+  const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
   // Retrieve files map
   const filesMap = {};
   if (req.files) {
     req.files.forEach(f => {
-      filesMap[f.fieldname] = `/storage/sites/${f.filename}`;
+      filesMap[f.fieldname] = `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/systems_and_facilities/${f.filename}`;
     });
   }
 
