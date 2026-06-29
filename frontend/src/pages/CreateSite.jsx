@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 
@@ -9,6 +9,23 @@ export default function CreateSite() {
   const [siteGrade, setSiteGrade] = useState('A');
   const [siteType, setSiteType] = useState('Indoor');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const user = localStorage.getItem('user');
+      if (user) {
+        const parsed = JSON.parse(user);
+        if (parsed.role !== 'Admin') {
+          alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะผู้ดูแลระบบ Admin เท่านั้น)');
+          navigate('/select-site');
+        }
+      } else {
+        navigate('/');
+      }
+    } catch (e) {
+      navigate('/');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
