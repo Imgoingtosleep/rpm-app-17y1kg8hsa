@@ -3,13 +3,34 @@ const router = express.Router();
 const db = require('../config/db');
 const upload = require('../middlewares/upload');
 
-// 1. Get all sites
+// 1. Get & Create sites
 router.get('/sites', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM sites ORDER BY site_code;');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/sites', async (req, res) => {
+  const { site_code, site_name, site_grade, site_type } = req.body;
+  if (!site_code || !site_name) {
+    return res.status(400).json({ error: 'site_code และ site_name จำเป็นต้องระบุข้อมูล' });
+  }
+  try {
+    const result = await db.query(
+      `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
+       VALUES ($1, $2, $3, $4) RETURNING *;`,
+      [site_code.toUpperCase(), site_name, site_grade || 'A', site_type || 'Indoor']
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') { // Unique constraint code
+      res.status(400).json({ error: `รหัสสถานี ${site_code} นี้มีอยู่แล้วในระบบ` });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
@@ -90,7 +111,8 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
     }
     return 'misc';
   };
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${rpm_id}/power_ac_main/${req.files[fieldname][0].filename}` : null;
+  const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_ac_main/${req.files[fieldname][0].filename}` : null;
 
   try {
     const existing = await db.query('SELECT * FROM power_main_ac WHERE rpm_id = $1;', [rpm_id]);
@@ -197,7 +219,8 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
     return rNo.replace(/\s+/g, '_').toLowerCase();
   };
 
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${rpm_id}/power_rectifier/${getCleanRectNo()}/${req.files[fieldname][0].filename}` : null;
+  const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_rectifier/${getCleanRectNo()}/${req.files[fieldname][0].filename}` : null;
 
   try {
     const existing = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
@@ -312,13 +335,14 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
   // Retrieve rect_no to format the exact path
   let rect_no = req.body.rect_no || 'rect_1';
   
+  const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
   const getBatteryPath = async () => {
     if (!req.file) return null;
     const rectQuery = await db.query('SELECT rect_no FROM power_rectifier WHERE rect_id = $1;', [rect_id]);
     if (rectQuery.rows.length > 0) {
       rect_no = rectQuery.rows[0].rect_no;
     }
-    return `/storage/db_img/${site_code}/${rpm_id}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${cell_no}/${req.file.filename}`;
+    return `/storage/db_img/${site_code}/${getCycleDir()}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${cell_no}/${req.file.filename}`;
   };
 
   try {
@@ -406,12 +430,13 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
     if (req.files.length > 10) {
       return res.status(400).json({ error: 'ไม่สามารถอัปโหลดรูปภาพได้เกิน 10 รูปต่อการบันทึก 1 ครั้ง' });
     }
+    const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
     req.files.forEach(f => {
       let sub = 'misc';
       if (f.fieldname.startsWith('alarm')) sub = 'alarm';
       else if (f.fieldname.startsWith('vent')) sub = 'vent';
       else if (f.fieldname.startsWith('fac')) sub = 'fac';
-      filesMap[f.fieldname] = `/storage/db_img/${getSiteCode()}/${rpm_id}/system_and_facilities/${sub}/${f.filename}`;
+      filesMap[f.fieldname] = `/storage/db_img/${getSiteCode()}/${getCycleDir()}/system_and_facilities/${sub}/${f.filename}`;
     });
   }
 

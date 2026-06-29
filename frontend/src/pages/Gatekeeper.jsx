@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Gatekeeper({ onOpenWorkOrder }) {
   const [sites, setSites] = useState([]);
@@ -53,6 +54,8 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
     onOpenWorkOrder(selectedSite, inspectorName, rpmCycle, inspectionDateTime);
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -60,6 +63,15 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
           <h2 className="text-3xl font-extrabold text-white tracking-tight">Select Site & Launch</h2>
           <p className="text-gray-400 mt-1">Select a telecom/power station to initialize a work order checklist.</p>
         </div>
+        <button
+          onClick={() => navigate('/create-site')}
+          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add Station
+        </button>
       </div>
 
       {loading ? (

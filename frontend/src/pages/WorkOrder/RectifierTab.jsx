@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
+export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   const [rectNo, setRectNo] = useState('ตู้ที่ 1');
   const [model, setModel] = useState('');
   const [acCableSize, setAcCableSize] = useState('');
@@ -192,7 +192,7 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
     }
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/rectifier?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/rectifier?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
         method: 'POST',
         body: formData
       });

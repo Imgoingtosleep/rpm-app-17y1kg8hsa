@@ -12,6 +12,8 @@ import BatteryTab from './pages/WorkOrder/BatteryTab';
 import FacilitiesTab from './pages/WorkOrder/FacilitiesTab';
 import FieldSettings from './pages/FieldSettings';
 
+import CreateSite from './pages/CreateSite';
+
 function WorkOrderPanel() {
   const { site_code, tab } = useParams();
   const navigate = useNavigate();
@@ -131,17 +133,17 @@ function WorkOrderPanel() {
     const isReadOnly = userRole === 'Viewer';
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
       case 'acmain':
-        return <AcMainTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
+        return <AcMainTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
       case 'rectifier':
-        return <RectifierTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} />;
+        return <RectifierTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} />;
       case 'battery':
-        return <BatteryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} />;
+        return <BatteryTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} />;
       case 'facilities':
-        return <FacilitiesTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
+        return <FacilitiesTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
       default:
-        return <MasterTab site={selectedSite} rpmId={rpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
     }
   };
 
@@ -314,6 +316,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<StartPage />} />
         <Route path="/select-site" element={<GatekeeperWrapper />} />
+        <Route path="/create-site" element={<CreateSite />} />
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
         <Route path="/admin/fields" element={<FieldSettings />} />

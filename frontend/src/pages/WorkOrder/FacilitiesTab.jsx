@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
+export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Facility parameters config
   const [params, setParams] = useState({
     alarm_door: { status: 'ปกติ', file: null },
@@ -139,7 +139,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
     });
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/facilities?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/facilities?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
         method: 'POST',
         body: formData
       });

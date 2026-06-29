@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspectionDateTime, onComplete, isReadOnly }) {
+export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDateTime, onComplete, isReadOnly }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
@@ -36,6 +36,9 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
           setSl6Number(resData.data.job_number_sl6 || `SL6-TEMP-${site.code}`);
           setSapNumber(resData.data.sap_number || `SAP-TEMP-${site.code}`);
           setSummaryIssue(resData.data.summary_issue || '');
+          if (resData.data.rpm_id && setRpmId) {
+            setRpmId(resData.data.rpm_id);
+          }
         }
       })
       .catch(err => console.error("Error loading master info:", err));

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
+export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Input fields state
   const [meterSize, setMeterSize] = useState('');
   const [cableStatus, setCableStatus] = useState('');
@@ -191,7 +191,7 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
     appendFile('ground_resistance', 'ground', 'ground');
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
         method: 'POST',
         body: formData
       });

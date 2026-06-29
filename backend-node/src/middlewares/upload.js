@@ -13,7 +13,8 @@ if (!fs.existsSync(storageDir)) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const site_code = req.query.site_code || req.body.site_code || 'UNKNOWN';
-    const rpm_id = req.query.rpm_id || req.params.rpm_id || req.body.rpm_id || 'UNKNOWN';
+    // Use rpm_cycle for [rpm_id] directory name parameter as requested
+    const cycleDir = req.query.rpm_cycle || req.body.rpm_cycle || req.query.rpm_id || req.params.rpm_id || req.body.rpm_id || 'UNKNOWN';
 
     // Helper sanitization for folder names to match rectifier spec
     const getCleanRectNo = () => {
@@ -52,8 +53,8 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'fac');
     }
 
-    // Resolves to: /app/storage/db_img/[site_code]/[rpm_id]/[targetSubpath]
-    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(rpm_id), targetSubpath);
+    // Resolves to: /app/storage/db_img/[site_code]/[rpm_cycle]/[targetSubpath]
+    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(cycleDir), targetSubpath);
     
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
@@ -62,7 +63,7 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const site_code = req.query.site_code || req.body.site_code || 'UNKNOWN';
-    const rpm_id = req.query.rpm_id || req.params.rpm_id || req.body.rpm_id || 'UNKNOWN';
+    const cycleDir = req.query.rpm_cycle || req.body.rpm_cycle || req.query.rpm_id || req.params.rpm_id || req.body.rpm_id || 'UNKNOWN';
 
     const getCleanRectNo = () => {
       const rNo = req.body.rect_no || req.query.rect_no || 'rectifier_1';
@@ -98,7 +99,7 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'fac');
     }
 
-    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(rpm_id), targetSubpath);
+    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(cycleDir), targetSubpath);
 
     // Map exact filenames according to storage files layout
     let filePrefix = file.fieldname;

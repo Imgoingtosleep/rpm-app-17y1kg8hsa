@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
+export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
   const [rectifiers, setRectifiers] = useState([]);
@@ -153,7 +153,7 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
     }
 
     try {
-      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}`, {
+      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
         method: 'POST',
         body: formData
       });
