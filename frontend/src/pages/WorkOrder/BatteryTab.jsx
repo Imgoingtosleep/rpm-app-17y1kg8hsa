@@ -152,7 +152,7 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
     }
 
     try {
-      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}`, {
         method: 'POST',
         body: formData
       });

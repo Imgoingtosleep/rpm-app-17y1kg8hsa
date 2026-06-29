@@ -90,7 +90,7 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
     }
     return 'misc';
   };
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/${getSubFolder(fieldname)}/${req.files[fieldname][0].filename}` : null;
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${rpm_id}/power_ac_main/${req.files[fieldname][0].filename}` : null;
 
   try {
     const existing = await db.query('SELECT * FROM power_main_ac WHERE rpm_id = $1;', [rpm_id]);
@@ -188,7 +188,16 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
   } = req.body;
 
   const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/power_rectifier/${req.files[fieldname][0].filename}` : null;
+  
+  const getCleanRectNo = () => {
+    const rNo = rect_no || 'rect_1';
+    if (rNo.includes('ตู้ที่')) {
+      return 'rect_' + rNo.replace(/[^0-9]/g, '');
+    }
+    return rNo.replace(/\s+/g, '_').toLowerCase();
+  };
+
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${rpm_id}/power_rectifier/${getCleanRectNo()}/${req.files[fieldname][0].filename}` : null;
 
   try {
     const existing = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
@@ -287,9 +296,33 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
     }
   }
 
-  const battery_img = req.file ? `/storage/sites/${site_code}/${rpm_id}/db_img/power_rectifier/${req.file.filename}` : req.body.battery_img_path || null;
+  const getCleanRectNo = (rNo) => {
+    const rawNo = rNo || 'rect_1';
+    if (rawNo.includes('ตู้ที่')) {
+      return 'rect_' + rawNo.replace(/[^0-9]/g, '');
+    }
+    return rawNo.replace(/\s+/g, '_').toLowerCase();
+  };
+
+  const getCleanBankName = (bName) => {
+    const rawName = bName || 'bank_1';
+    return rawName.replace(/\s+/g, '_').toLowerCase();
+  };
+
+  // Retrieve rect_no to format the exact path
+  let rect_no = req.body.rect_no || 'rect_1';
+  
+  const getBatteryPath = async () => {
+    if (!req.file) return null;
+    const rectQuery = await db.query('SELECT rect_no FROM power_rectifier WHERE rect_id = $1;', [rect_id]);
+    if (rectQuery.rows.length > 0) {
+      rect_no = rectQuery.rows[0].rect_no;
+    }
+    return `/storage/db_img/${site_code}/${rpm_id}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${cell_no}/${req.file.filename}`;
+  };
 
   try {
+    const battery_img = req.file ? await getBatteryPath() : req.body.battery_img_path || null;
     // 1. Get or Create the Bank record
     let bankResult = await db.query(
       'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
@@ -374,7 +407,11 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
       return res.status(400).json({ error: 'ไม่สามารถอัปโหลดรูปภาพได้เกิน 10 รูปต่อการบันทึก 1 ครั้ง' });
     }
     req.files.forEach(f => {
-      filesMap[f.fieldname] = `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/systems_and_facilities/${f.filename}`;
+      let sub = 'misc';
+      if (f.fieldname.startsWith('alarm')) sub = 'alarm';
+      else if (f.fieldname.startsWith('vent')) sub = 'vent';
+      else if (f.fieldname.startsWith('fac')) sub = 'fac';
+      filesMap[f.fieldname] = `/storage/db_img/${getSiteCode()}/${rpm_id}/system_and_facilities/${sub}/${f.filename}`;
     });
   }
 
