@@ -193,6 +193,14 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
   try {
     const existing = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
     
+    // If it's a new rectifier entry, check if total count of rectifiers is already 6
+    if (existing.rows.length === 0) {
+      const countRes = await db.query('SELECT COUNT(*) FROM power_rectifier WHERE rpm_id = $1;', [rpm_id]);
+      if (parseInt(countRes.rows[0].count, 10) >= 6) {
+        return res.status(400).json({ error: 'ไม่สามารถเพิ่มตู้ Rectifier ได้เกิน 6 ตู้ต่อ 1 ใบงาน' });
+      }
+    }
+    
     const mergeImgs = (existingRow, fieldName) => {
       let arr = [];
       if (existingRow && Array.isArray(existingRow[`${fieldName}_img`])) {

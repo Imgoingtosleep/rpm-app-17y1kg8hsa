@@ -189,6 +189,8 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
             <option>ตู้ที่ 2</option>
             <option>ตู้ที่ 3</option>
             <option>ตู้ที่ 4</option>
+            <option>ตู้ที่ 5</option>
+            <option>ตู้ที่ 6</option>
           </select>
         </div>
         <div>
