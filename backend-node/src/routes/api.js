@@ -90,17 +90,42 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
     }
     return 'misc';
   };
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/${getSubFolder(fieldname)}/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
-
-  const meter_ac_img = getPath('meter_ac_img');
-  const cable_img = getPath('cable_img');
-  const change_over_img = getPath('change_over_img');
-  const surge_img = getPath('surge_img');
-  const mdb_temp_img = getPath('mdb_temp_img');
-  const ground_img = getPath('ground_img');
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/${getSubFolder(fieldname)}/${req.files[fieldname][0].filename}` : null;
 
   try {
-    const existing = await db.query('SELECT main_ac_id FROM power_main_ac WHERE rpm_id = $1;', [rpm_id]);
+    const existing = await db.query('SELECT * FROM power_main_ac WHERE rpm_id = $1;', [rpm_id]);
+    
+    // Helper to merge existing paths array and new path, limiting to 10
+    const mergeImgs = (existingRow, fieldName) => {
+      let arr = [];
+      if (existingRow && Array.isArray(existingRow[`${fieldName}_img`])) {
+        arr = [...existingRow[`${fieldName}_img`]];
+      } else if (existingRow && existingRow[`${fieldName}_img`]) {
+        arr = [existingRow[`${fieldName}_img`]];
+      }
+      
+      const newFile = getPath(`${fieldName}_img`);
+      if (newFile) {
+        arr.push(newFile);
+      } else if (req.body[`${fieldName}_img_path`]) {
+        // If sent as path/array from client
+        const pathVal = req.body[`${fieldName}_img_path`];
+        if (Array.isArray(pathVal)) arr = pathVal;
+        else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
+      }
+      // Cap at 10
+      if (arr.length > 10) arr = arr.slice(-10);
+      return arr;
+    };
+
+    const existingRow = existing.rows[0] || null;
+    const meter_ac_img = mergeImgs(existingRow, 'meter_ac');
+    const cable_img = mergeImgs(existingRow, 'cable');
+    const change_over_img = mergeImgs(existingRow, 'change_over');
+    const surge_img = mergeImgs(existingRow, 'surge');
+    const mdb_temp_img = mergeImgs(existingRow, 'mdb_temp');
+    const ground_img = mergeImgs(existingRow, 'ground');
+
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
@@ -163,14 +188,36 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
   } = req.body;
 
   const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/power_rectifier/${req.files[fieldname][0].filename}` : req.body[`${fieldname}_path`] || null;
-
-  const breaker_img = getPath('breaker_img');
-  const pdb_temp_img = getPath('pdb_temp_img');
-  const surge_rect_img = getPath('surge_rect_img');
+  const getPath = (fieldname) => req.files[fieldname] ? `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/power_rectifier/${req.files[fieldname][0].filename}` : null;
 
   try {
-    const existing = await db.query('SELECT rect_id FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
+    const existing = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
+    
+    const mergeImgs = (existingRow, fieldName) => {
+      let arr = [];
+      if (existingRow && Array.isArray(existingRow[`${fieldName}_img`])) {
+        arr = [...existingRow[`${fieldName}_img`]];
+      } else if (existingRow && existingRow[`${fieldName}_img`]) {
+        arr = [existingRow[`${fieldName}_img`]];
+      }
+      
+      const newFile = getPath(`${fieldName}_img`);
+      if (newFile) {
+        arr.push(newFile);
+      } else if (req.body[`${fieldName}_img_path`]) {
+        const pathVal = req.body[`${fieldName}_img_path`];
+        if (Array.isArray(pathVal)) arr = pathVal;
+        else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
+      }
+      if (arr.length > 10) arr = arr.slice(-10);
+      return arr;
+    };
+
+    const existingRow = existing.rows[0] || null;
+    const breaker_img = mergeImgs(existingRow, 'breaker');
+    const pdb_temp_img = mergeImgs(existingRow, 'pdb_temp');
+    const surge_rect_img = mergeImgs(existingRow, 'surge_rect');
+
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
@@ -254,22 +301,40 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
 
     // 2. Check if battery test already exists for this bank and cell_no
     const existing = await db.query(
-      'SELECT bat_id FROM battery_tests WHERE bank_id = $1 AND cell_no = $2;',
+      'SELECT * FROM battery_tests WHERE bank_id = $1 AND cell_no = $2;',
       [bank_id, cell_no]
     );
+
+    // Merge existing battery images array
+    let batteryImgArr = [];
+    const existingRow = existing.rows[0] || null;
+    if (existingRow && Array.isArray(existingRow.battery_img)) {
+      batteryImgArr = [...existingRow.battery_img];
+    } else if (existingRow && existingRow.battery_img) {
+      batteryImgArr = [existingRow.battery_img];
+    }
+
+    if (req.file) {
+      batteryImgArr.push(battery_img);
+    } else if (req.body.battery_img_path) {
+      const pathVal = req.body.battery_img_path;
+      if (Array.isArray(pathVal)) batteryImgArr = pathVal;
+      else if (typeof pathVal === 'string' && !batteryImgArr.includes(pathVal)) batteryImgArr.push(pathVal);
+    }
+    if (batteryImgArr.length > 10) batteryImgArr = batteryImgArr.slice(-10);
     
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
         `UPDATE battery_tests SET voltage = $1, internal_resistance = $2, status = $3, battery_img = $4
         WHERE bat_id = $5 RETURNING *;`,
-        [voltage, internal_resistance, status, battery_img, existing.rows[0].bat_id]
+        [voltage, internal_resistance, status, batteryImgArr, existing.rows[0].bat_id]
       );
     } else {
       result = await db.query(
         `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img)
         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
-        [bank_id, cell_no, voltage, internal_resistance, status, battery_img]
+        [bank_id, cell_no, voltage, internal_resistance, status, batteryImgArr]
       );
     }
     res.json(result.rows[0]);
@@ -297,6 +362,9 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
   // Retrieve files map
   const filesMap = {};
   if (req.files) {
+    if (req.files.length > 10) {
+      return res.status(400).json({ error: 'ไม่สามารถอัปโหลดรูปภาพได้เกิน 10 รูปต่อการบันทึก 1 ครั้ง' });
+    }
     req.files.forEach(f => {
       filesMap[f.fieldname] = `/storage/sites/${getSiteCode()}/${rpm_id}/db_img/systems_and_facilities/${f.filename}`;
     });
@@ -308,27 +376,46 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
     'fac_site_sign', 'fac_outdoor_clean', 'fac_indoor_clean', 'fac_lighting', 'fac_grass_cut'
   ];
 
-  const updateParts = [];
-  const updateValues = [];
-  const insertFields = ['rpm_id'];
-  const insertValues = [rpm_id];
-  const placeholders = ['$1'];
-
-  fields.forEach((field, i) => {
-    const val = data[field] || 'ปกติ';
-    const imgVal = filesMap[`${field}_img`] || data[`${field}_img_path`] || null;
-
-    updateParts.push(`${field} = $${i*2 + 1}`);
-    updateParts.push(`${field}_img = $${i*2 + 2}`);
-    updateValues.push(val, imgVal);
-
-    insertFields.push(field, `${field}_img`);
-    insertValues.push(val, imgVal);
-    placeholders.push(`$${i*2 + 2}`, `$${i*2 + 3}`);
-  });
-
   try {
-    const existing = await db.query('SELECT facility_id FROM systems_and_facilities WHERE rpm_id = $1;', [rpm_id]);
+    const existing = await db.query('SELECT * FROM systems_and_facilities WHERE rpm_id = $1;', [rpm_id]);
+    const existingRow = existing.rows[0] || null;
+
+    const updateParts = [];
+    const updateValues = [];
+    const insertFields = ['rpm_id'];
+    const insertValues = [rpm_id];
+    const placeholders = ['$1'];
+
+    fields.forEach((field, i) => {
+      const val = data[field] || 'ปกติ';
+      
+      // Merge image arrays
+      let arr = [];
+      if (existingRow && Array.isArray(existingRow[`${field}_img`])) {
+        arr = [...existingRow[`${field}_img`]];
+      } else if (existingRow && existingRow[`${field}_img`]) {
+        arr = [existingRow[`${field}_img`]];
+      }
+
+      const newFile = filesMap[`${field}_img`];
+      if (newFile) {
+        arr.push(newFile);
+      } else if (data[`${field}_img_path`]) {
+        const pathVal = data[`${field}_img_path`];
+        if (Array.isArray(pathVal)) arr = pathVal;
+        else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
+      }
+      if (arr.length > 10) arr = arr.slice(-10);
+
+      updateParts.push(`${field} = $${i*2 + 1}`);
+      updateParts.push(`${field}_img = $${i*2 + 2}`);
+      updateValues.push(val, arr);
+
+      insertFields.push(field, `${field}_img`);
+      insertValues.push(val, arr);
+      placeholders.push(`$${i*2 + 2}`, `$${i*2 + 3}`);
+    });
+
     let result;
     if (existing.rows.length > 0) {
       updateValues.push(rpm_id);
