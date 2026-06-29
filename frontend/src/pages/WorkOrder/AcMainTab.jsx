@@ -207,7 +207,7 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
   return (
     <div className="p-8 space-y-8">
       <div>
-        <h3 className="text-xl font-bold text-white">⚡ 2. ระบบไฟเมน AC (Power Main AC)</h3>
+        <h3 className="text-xl font-bold text-white">2. ระบบไฟเมน AC (Power Main AC)</h3>
         <p className="text-gray-400 text-sm mt-1">กรอกข้อมูลระบบไฟฟ้าและอัปโหลดภาพประกอบรายงาน</p>
       </div>
 
@@ -369,7 +369,7 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
 
           {/* Uploads Section */}
           <div>
-            <h4 className="font-bold text-white mb-4">📷 อัปโหลดรูปภาพระบบไฟ AC (จัดเก็บลงตารางตาม Diagram)</h4>
+            <h4 className="font-bold text-white mb-4">อัปโหลดรูปภาพระบบไฟ AC (จัดเก็บลงตารางตาม Diagram)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 {configsMap.meter_ac_size.isEnabled && (
@@ -430,11 +430,11 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
         <div className="pt-4">
           {!isReadOnly ? (
             <button type="submit" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm shadow-md transition-colors">
-              💾 บันทึกระบบไฟฟ้า AC
+              บันทึกระบบไฟฟ้า AC
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              ⚠️ คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
             </div>
           )}
         </div>

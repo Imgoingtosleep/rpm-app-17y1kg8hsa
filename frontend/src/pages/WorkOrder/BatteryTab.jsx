@@ -172,7 +172,7 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white">🔋 4. ผลทดสอบแบตเตอรี่ (Battery Tests)</h3>
+        <h3 className="text-xl font-bold text-white">4. ผลทดสอบแบตเตอรี่ (Battery Tests)</h3>
         <p className="text-gray-400 text-sm mt-1">บันทึกข้อมูลแรงดันไฟฟ้า ความต้านทานภายใน และรูปภาพแยกรายลูก</p>
       </div>
 
@@ -217,7 +217,7 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
 
       <div className="space-y-6 pt-4">
         <div className="flex justify-between items-center border-b border-dark-border pb-2">
-          <h4 className="font-bold text-white text-md">📝 บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
+          <h4 className="font-bold text-white text-md">บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
         </div>
         
         {[1, 2, 3, 4].map((num) => {

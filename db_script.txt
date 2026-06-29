@@ -14,6 +14,7 @@ CREATE TABLE rpm_records_master (
     site_code VARCHAR(50) NOT NULL REFERENCES sites(site_code) ON UPDATE CASCADE ON DELETE RESTRICT,
     job_number_sl6 VARCHAR(100) UNIQUE NOT NULL, -- SL6 No.
     sap_number VARCHAR(100) NOT NULL,            -- SAP No.
+    rpm_cycle VARCHAR(50),                       -- รอบการตรวจ เช่น 2026-R1
     rpm_date DATE NOT NULL DEFAULT CURRENT_DATE,
     summary_issue TEXT,                          -- สรุปปัญหาหน้างาน
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

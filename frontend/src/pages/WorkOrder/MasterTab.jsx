@@ -25,7 +25,10 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ site_code: site.code })
+      body: JSON.stringify({ 
+        site_code: site.code,
+        rpm_cycle: localStorage.getItem('rpmCycle') || ''
+      })
     })
       .then(res => res.json())
       .then(resData => {
@@ -73,7 +76,8 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
         body: JSON.stringify({
           job_number_sl6: (sl6Cfg?.is_enabled ?? true) ? sl6Number : '',
           sap_number: (sapCfg?.is_enabled ?? true) ? sapNumber : '',
-          summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : ''
+          summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : '',
+          rpm_cycle: rpmCycle || ''
         })
       });
       if (res.ok) {
@@ -123,7 +127,7 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white">📝 ข้อมูลใบงานหลัก (Master Records)</h3>
+        <h3 className="text-xl font-bold text-white">ข้อมูลใบงานหลัก (Master Records)</h3>
         <p className="text-gray-400 text-sm mt-1">กรอกข้อมูลอ้างอิงใบงานหลักและสรุปปัญหาสถานี</p>
       </div>
 
@@ -219,11 +223,11 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
               disabled={isSaving}
               className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition-all shadow-md"
             >
-              {isSaving ? 'กำลังบันทึก...' : '💾 บันทึกข้อมูลใบงานหลัก'}
+              {isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูลใบงานหลัก'}
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              ⚠️ คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
             </div>
           )}
         </div>

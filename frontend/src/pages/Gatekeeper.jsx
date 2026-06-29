@@ -156,7 +156,7 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">วันเวลาที่ตรวจสอบ (Inspection Date & Time)</label>
                 <input 
                   type="datetime-local" 
@@ -165,7 +165,7 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                   value={inspectionDateTime}
                   onChange={(e) => setInspectionDateTime(e.target.value)}
                 />
-              </div>
+              </div> */}
 
               <button 
                 type="submit"

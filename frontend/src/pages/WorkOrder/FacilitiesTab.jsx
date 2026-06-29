@@ -247,7 +247,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
       )}
 
       <div>
-        <h3 className="text-xl font-bold text-white">🚨 5. Alarms & Facilities (Systems & Facilities)</h3>
+        <h3 className="text-xl font-bold text-white">5. Alarms & Facilities (Systems & Facilities)</h3>
         <p className="text-gray-400 text-sm mt-1">บันทึกสถานะ Alarms, ระบบระบายอากาศ และความสะอาดของสถานที่</p>
       </div>
 
@@ -255,7 +255,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
         <fieldset disabled={isReadOnly} className="space-y-8 border-0 p-0 m-0">
           {/* Group 1: Alarms */}
           <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🚨 1. หมวดสัญญาณเตือนภัย (Alarms)</h4>
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">1. หมวดสัญญาณเตือนภัย (Alarms)</h4>
             <div className="divide-y divide-dark-border/20">
               {renderRow('alarm_door', 'Door Open Alarm')}
               {renderRow('alarm_ac_fail', 'AC Failure Alarm')}
@@ -268,7 +268,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
 
           {/* Group 2: Ventilation */}
           <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌀 2. หมวดระบบระบายอากาศ (Ventilation Systems)</h4>
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">2. หมวดระบบระบายอากาศ (Ventilation Systems)</h4>
             <div className="divide-y divide-dark-border/20">
               {renderRow('vent_ac_fan', 'Ventilation AC Fan Status')}
               {renderRow('vent_ac_fan_hood', 'Ventilation AC Fan Hood')}
@@ -281,7 +281,7 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
 
           {/* Group 3: Site Facility */}
           <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
-            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">🌳 3. หมวดความสะอาดและสิ่งอำนวยความสะดวกสถานี (Site Facility)</h4>
+            <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">3. หมวดความสะอาดและสิ่งอำนวยความสะดวกสถานี (Site Facility)</h4>
             <div className="divide-y divide-dark-border/20">
               {renderRow('fac_site_sign', 'ป้ายชื่อสถานี (Site Sign)')}
               {renderRow('fac_outdoor_clean', 'ความสะอาดภายนอกห้องเครื่อง')}
@@ -295,11 +295,11 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
         <div className="pt-4 flex justify-end">
           {!isReadOnly ? (
             <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm shadow-lg transition-all hover:shadow-indigo-600/20">
-              🚀 บันทึกข้อมูลสรุประบบและปิดเล่มใบงาน (Submit All Data)
+              บันทึกข้อมูลสรุประบบและปิดเล่มใบงาน (Submit All Data)
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold w-full text-center">
-              ⚠️ ไม่สามารถบันทึกข้อมูลสรุประบบและปิดเล่มได้เนื่องจากคุณอยู่ในสิทธิ์ Viewer (ดูข้อมูลได้อย่างเดียว)
+              ไม่สามารถบันทึกข้อมูลสรุประบบและปิดเล่มได้เนื่องจากคุณอยู่ในสิทธิ์ Viewer (ดูข้อมูลได้อย่างเดียว)
             </div>
           )}
         </div>

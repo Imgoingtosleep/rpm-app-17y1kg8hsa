@@ -76,12 +76,19 @@ function WorkOrderPanel() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ site_code: site_code })
+      body: JSON.stringify({ 
+        site_code: site_code,
+        rpm_cycle: localStorage.getItem('rpmCycle') || ''
+      })
     })
       .then(res => res.json())
       .then(resData => {
         if (resData.data && resData.data.rpm_id) {
           setRpmId(resData.data.rpm_id);
+          if (resData.data.rpm_cycle) {
+            setRpmCycle(resData.data.rpm_cycle);
+            localStorage.setItem('rpmCycle', resData.data.rpm_cycle);
+          }
         }
       })
       .catch(err => console.error("Error starting workorder:", err));

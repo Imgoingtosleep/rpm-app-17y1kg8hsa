@@ -203,7 +203,7 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h3 className="text-xl font-bold text-white">⚙️ 3. ระบบตู้แปลงกระแสไฟฟ้า (Power Rectifier)</h3>
+        <h3 className="text-xl font-bold text-white">3. ระบบตู้แปลงกระแสไฟฟ้า (Power Rectifier)</h3>
         <p className="text-gray-400 text-sm mt-1">เพิ่มหรืออัปเดตข้อมูลตู้ Rectifier และรูปภาพของแต่ละตู้</p>
       </div>
 
@@ -314,7 +314,7 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
           <hr className="border-dark-border" />
 
           <div>
-            <h4 className="font-bold text-white mb-4">📷 รูปถ่ายประจำตู้ Rectifier (ครบถ้วนตาม Diagram)</h4>
+            <h4 className="font-bold text-white mb-4">รูปถ่ายประจำตู้ Rectifier (ครบถ้วนตาม Diagram)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {configsMap.breaker_size.isEnabled && (
                 <div>
@@ -347,11 +347,11 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
         <div className="pt-4">
           {!isReadOnly ? (
             <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm shadow-md transition-colors">
-              💾 บันทึก/เพิ่ม ตู้ Rectifier ตัวนี้
+              บันทึก/เพิ่ม ตู้ Rectifier ตัวนี้
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              ⚠️ คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
             </div>
           )}
         </div>
