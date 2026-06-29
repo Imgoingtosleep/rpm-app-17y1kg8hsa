@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function StartPage() {
   const navigate = useNavigate();
-  const clientId = '1098192783957-79ecas4tjir7hunaco5etk1nujav3aro.apps.googleusercontent.com';
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleCredentialResponse = async (response) => {
