@@ -70,6 +70,14 @@ function WorkOrderPanel() {
         setSelectedSite({ code: site_code, name: `Station ${site_code}` });
       });
 
+    // Retrieve inspector name, cycle, and datetime
+    const storedInspector = localStorage.getItem('inspectorName') || 'Inspector';
+    const storedCycle = localStorage.getItem('rpmCycle') || '';
+    const storedDateTime = localStorage.getItem('inspectionDateTime') || '';
+    setInspector(storedInspector);
+    setRpmCycle(storedCycle);
+    setInspectionDateTime(storedDateTime);
+
     // Start or load work order from backend
     fetch('/api/workorder/start', {
       method: 'POST',
@@ -78,7 +86,8 @@ function WorkOrderPanel() {
       },
       body: JSON.stringify({ 
         site_code: site_code,
-        rpm_cycle: localStorage.getItem('rpmCycle') || ''
+        rpm_cycle: storedCycle || '',
+        inspection_date_time: storedDateTime || null
       })
     })
       .then(res => res.json())
@@ -92,14 +101,6 @@ function WorkOrderPanel() {
         }
       })
       .catch(err => console.error("Error starting workorder:", err));
-
-    // Retrieve inspector name, cycle, and datetime
-    const storedInspector = localStorage.getItem('inspectorName') || 'Inspector';
-    const storedCycle = localStorage.getItem('rpmCycle') || '';
-    const storedDateTime = localStorage.getItem('inspectionDateTime') || '';
-    setInspector(storedInspector);
-    setRpmCycle(storedCycle);
-    setInspectionDateTime(storedDateTime);
 
     // Retrieve and set user role
     try {

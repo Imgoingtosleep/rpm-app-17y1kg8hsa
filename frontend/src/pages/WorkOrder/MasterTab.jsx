@@ -77,7 +77,8 @@ export default function MasterTab({ site, rpmId, inspector, rpmCycle, inspection
           job_number_sl6: (sl6Cfg?.is_enabled ?? true) ? sl6Number : '',
           sap_number: (sapCfg?.is_enabled ?? true) ? sapNumber : '',
           summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : '',
-          rpm_cycle: rpmCycle || ''
+          rpm_cycle: rpmCycle || '',
+          inspection_date_time: inspectionDateTime || null
         })
       });
       if (res.ok) {

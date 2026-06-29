@@ -15,7 +15,7 @@ router.get('/sites', async (req, res) => {
 
 // 2. Load or Start Work Order
 router.post('/workorder/start', async (req, res) => {
-  const { site_code, job_number_sl6, sap_number, rpm_cycle } = req.body;
+  const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time } = req.body;
   try {
     // Check if master record exists
     const existing = await db.query(
@@ -29,8 +29,8 @@ router.post('/workorder/start', async (req, res) => {
 
     // Create a new master record
     const newRecord = await db.query(
-      'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle) VALUES ($1, $2, $3, $4) RETURNING *;',
-      [site_code, job_number_sl6 || `SL6-${site_code}-${Date.now()}`, sap_number || `SAP-${site_code}-${Date.now()}`, rpm_cycle || null]
+      'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time) VALUES ($1, $2, $3, $4, $5) RETURNING *;',
+      [site_code, job_number_sl6 || `SL6-${site_code}-${Date.now()}`, sap_number || `SAP-${site_code}-${Date.now()}`, rpm_cycle || null, inspection_date_time || null]
     );
 
     res.status(201).json({ message: 'Started new work order', data: newRecord.rows[0], isNew: true });
@@ -42,11 +42,11 @@ router.post('/workorder/start', async (req, res) => {
 // 3. Update Master Record Info
 router.put('/workorder/:rpm_id/master', async (req, res) => {
   const { rpm_id } = req.params;
-  const { job_number_sl6, sap_number, summary_issue, rpm_cycle } = req.body;
+  const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time } = req.body;
   try {
     const result = await db.query(
-      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4 WHERE rpm_id = $5 RETURNING *;',
-      [job_number_sl6, sap_number, summary_issue, rpm_cycle, rpm_id]
+      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date_time = $5 WHERE rpm_id = $6 RETURNING *;',
+      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time || null, rpm_id]
     );
     res.json(result.rows[0]);
   } catch (err) {
