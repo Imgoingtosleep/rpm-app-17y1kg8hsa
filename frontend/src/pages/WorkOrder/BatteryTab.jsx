@@ -128,7 +128,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
     // Check if image required
     if (configsMap.status.isEnabled && configsMap.status.isRequired) {
-      const hasImg = cell.file || cell.existingPath;
+      const hasImg = (cell.file && cell.file.length > 0) || cell.existingPath;
       if (!hasImg) {
         alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
         return;
@@ -144,8 +144,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     formData.append('status', configsMap.status.isEnabled ? status : 'ปกติ');
 
     if (configsMap.status.isEnabled) {
-      if (cell.file) {
-        formData.append('battery_img', cell.file);
+      if (cell.file && cell.file.length > 0) {
+        cell.file.forEach(f => {
+          formData.append('battery_img', f);
+        });
       } else if (cell.existingPath) {
         const pathVal = Array.isArray(cell.existingPath) ? cell.existingPath : [cell.existingPath];
         pathVal.forEach(p => formData.append('battery_img_path', p));
@@ -294,9 +296,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                       </label>
                       <input 
                         type="file" 
+                        multiple
                         disabled={isReadOnly}
                         className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300 disabled:opacity-50"
-                        onChange={(e) => handleCellChange(num, 'file', e.target.files[0])}
+                        onChange={(e) => handleCellChange(num, 'file', Array.from(e.target.files))}
                       />
                     </div>
                   </>

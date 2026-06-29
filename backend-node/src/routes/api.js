@@ -87,12 +87,12 @@ router.get('/workorder/:rpm_id/ac', async (req, res) => {
 });
 
 router.post('/workorder/:rpm_id/ac', upload.fields([
-  { name: 'meter_ac_img', maxCount: 1 },
-  { name: 'cable_img', maxCount: 1 },
-  { name: 'change_over_img', maxCount: 1 },
-  { name: 'surge_img', maxCount: 1 },
-  { name: 'mdb_temp_img', maxCount: 1 },
-  { name: 'ground_img', maxCount: 1 }
+  { name: 'meter_ac_img', maxCount: 10 },
+  { name: 'cable_img', maxCount: 10 },
+  { name: 'change_over_img', maxCount: 10 },
+  { name: 'surge_img', maxCount: 10 },
+  { name: 'mdb_temp_img', maxCount: 10 },
+  { name: 'ground_img', maxCount: 10 }
 ]), async (req, res) => {
   const { rpm_id } = req.params;
   const {
@@ -112,7 +112,13 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
     return 'misc';
   };
   const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_ac_main/${req.files[fieldname][0].filename}` : null;
+  
+  const getPaths = (fieldname) => {
+    if (req.files && req.files[fieldname]) {
+      return req.files[fieldname].map(f => `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_ac_main/${f.filename}`);
+    }
+    return [];
+  };
 
   try {
     const existing = await db.query('SELECT * FROM power_main_ac WHERE rpm_id = $1;', [rpm_id]);
@@ -126,11 +132,12 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
         arr = [existingRow[`${fieldName}_img`]];
       }
       
-      const newFile = getPath(`${fieldName}_img`);
-      if (newFile) {
+      const newFiles = getPaths(`${fieldName}_img`);
+      newFiles.forEach(newFile => {
         arr.push(newFile);
-      } else if (req.body[`${fieldName}_img_path`]) {
-        // If sent as path/array from client
+      });
+      
+      if (req.body[`${fieldName}_img_path`]) {
         const pathVal = req.body[`${fieldName}_img_path`];
         if (Array.isArray(pathVal)) arr = pathVal;
         else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
@@ -199,9 +206,9 @@ router.get('/workorder/:rpm_id/rectifiers', async (req, res) => {
 });
 
 router.post('/workorder/:rpm_id/rectifier', upload.fields([
-  { name: 'breaker_img', maxCount: 1 },
-  { name: 'pdb_temp_img', maxCount: 1 },
-  { name: 'surge_rect_img', maxCount: 1 }
+  { name: 'breaker_img', maxCount: 10 },
+  { name: 'pdb_temp_img', maxCount: 10 },
+  { name: 'surge_rect_img', maxCount: 10 }
 ]), async (req, res) => {
   const { rpm_id } = req.params;
   const {
@@ -220,7 +227,13 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
   };
 
   const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
-  const getPath = (fieldname) => req.files[fieldname] ? `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_rectifier/${getCleanRectNo()}/${req.files[fieldname][0].filename}` : null;
+  
+  const getPaths = (fieldname) => {
+    if (req.files && req.files[fieldname]) {
+      return req.files[fieldname].map(f => `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_rectifier/${getCleanRectNo()}/${f.filename}`);
+    }
+    return [];
+  };
 
   try {
     const existing = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 AND rect_no = $2;', [rpm_id, rect_no]);
@@ -241,10 +254,12 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
         arr = [existingRow[`${fieldName}_img`]];
       }
       
-      const newFile = getPath(`${fieldName}_img`);
-      if (newFile) {
+      const newFiles = getPaths(`${fieldName}_img`);
+      newFiles.forEach(newFile => {
         arr.push(newFile);
-      } else if (req.body[`${fieldName}_img_path`]) {
+      });
+      
+      if (req.body[`${fieldName}_img_path`]) {
         const pathVal = req.body[`${fieldName}_img_path`];
         if (Array.isArray(pathVal)) arr = pathVal;
         else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
@@ -301,7 +316,7 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   }
 });
 
-router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (req, res) => {
+router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), async (req, res) => {
   const { rect_id } = req.params;
   const { bank_name, cell_no, voltage, internal_resistance, status } = req.body;
   let rpm_id = req.query.rpm_id || 'UNKNOWN';
@@ -336,17 +351,18 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
   let rect_no = req.body.rect_no || 'rect_1';
   
   const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
-  const getBatteryPath = async () => {
-    if (!req.file) return null;
+  
+  const getBatteryPaths = async () => {
+    if (!req.files || req.files.length === 0) return [];
     const rectQuery = await db.query('SELECT rect_no FROM power_rectifier WHERE rect_id = $1;', [rect_id]);
     if (rectQuery.rows.length > 0) {
       rect_no = rectQuery.rows[0].rect_no;
     }
-    return `/storage/db_img/${site_code}/${getCycleDir()}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${cell_no}/${req.file.filename}`;
+    return req.files.map(f => `/storage/db_img/${site_code}/${getCycleDir()}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${cell_no}/${f.filename}`);
   };
 
   try {
-    const battery_img = req.file ? await getBatteryPath() : req.body.battery_img_path || null;
+    const newBatteryImgs = await getBatteryPaths();
     // 1. Get or Create the Bank record
     let bankResult = await db.query(
       'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
@@ -379,9 +395,11 @@ router.post('/rectifier/:rect_id/battery', upload.single('battery_img'), async (
       batteryImgArr = [existingRow.battery_img];
     }
 
-    if (req.file) {
-      batteryImgArr.push(battery_img);
-    } else if (req.body.battery_img_path) {
+    newBatteryImgs.forEach(img => {
+      batteryImgArr.push(img);
+    });
+
+    if (req.body.battery_img_path) {
       const pathVal = req.body.battery_img_path;
       if (Array.isArray(pathVal)) batteryImgArr = pathVal;
       else if (typeof pathVal === 'string' && !batteryImgArr.includes(pathVal)) batteryImgArr.push(pathVal);

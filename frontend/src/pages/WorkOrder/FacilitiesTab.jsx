@@ -73,11 +73,11 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     }));
   };
 
-  const handleFileChange = (key, file) => {
+  const handleFileChange = (key, fileList) => {
     if (isReadOnly) return;
     setParams(prev => ({
       ...prev,
-      [key]: { ...prev[key], file }
+      [key]: { ...prev[key], file: Array.from(fileList) }
     }));
   };
 
@@ -113,7 +113,7 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
       // Skip validation if the field is disabled by Admin
       if (!isEnabled) continue;
 
-      const hasImg = item.file || existingPaths[key];
+      const hasImg = (item.file && item.file.length > 0) || existingPaths[key];
       // Only require image if Admin has "isRequired" set to true and state is not 'ไม่มีระบบนี้'
       if (isRequired && item.status !== 'ไม่มีระบบนี้' && !hasImg) {
         const friendlyName = labelMap[key] || key;
@@ -130,8 +130,10 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
       if (!isEnabled) return; // skip sending disabled fields
 
       formData.append(key, item.status);
-      if (item.file) {
-        formData.append(`${key}_img`, item.file);
+      if (item.file && item.file.length > 0) {
+        item.file.forEach(f => {
+          formData.append(`${key}_img`, f);
+        });
       } else if (existingPaths[key]) {
         const pathVal = Array.isArray(existingPaths[key]) ? existingPaths[key] : [existingPaths[key]];
         pathVal.forEach(p => formData.append(`${key}_img_path`, p));
@@ -224,8 +226,9 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
               <div className="flex flex-col gap-1">
                 <input
                   type="file"
+                  multiple
                   className="w-full text-[10px] text-gray-500 file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
-                  onChange={(e) => handleFileChange(key, e.target.files[0])}
+                  onChange={(e) => handleFileChange(key, e.target.files)}
                 />
                 {existingPaths[key] && (
                   <span className="text-[9px] text-gray-400">รูปภาพเดิม: <a href={`/storage/${existingPaths[key]}`} target="_blank" rel="noopener noreferrer" className="underline">{existingPaths[key]}</a></span>

@@ -81,8 +81,10 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
       .catch(err => console.error("Error fetching AC details:", err));
   }, [rpmId]);
 
-  const handleFileChange = (field, file) => {
-    setImages(prev => ({ ...prev, [field]: file }));
+  const handleFileChange = (field, fileList) => {
+    // Convert FileList to array
+    const files = Array.from(fileList);
+    setImages(prev => ({ ...prev, [field]: files }));
   };
 
   const getFieldConfig = (name) => {
@@ -175,20 +177,23 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     // Append files or original paths if enabled
     const appendFile = (configName, uploadKey, fieldName) => {
       if (configsMap[configName].isEnabled) {
-        if (images[uploadKey]) formData.append(`${fieldName}_img`, images[uploadKey]);
-        else if (existingPaths[uploadKey]) {
+        if (images[uploadKey] && images[uploadKey].length > 0) {
+          images[uploadKey].forEach(file => {
+            formData.append(fieldName, file);
+          });
+        } else if (existingPaths[uploadKey]) {
           const pathVal = Array.isArray(existingPaths[uploadKey]) ? existingPaths[uploadKey] : [existingPaths[uploadKey]];
-          pathVal.forEach(p => formData.append(`${fieldName}_img_path`, p));
+          pathVal.forEach(p => formData.append(`${fieldName}_path`, p));
         }
       }
     };
 
-    appendFile('meter_ac_size', 'meter', 'meter_ac');
-    appendFile('cable_status', 'cable', 'cable');
-    appendFile('change_over_switch', 'changeOver', 'change_over');
-    appendFile('surge_protection', 'surge', 'surge');
-    appendFile('mdb_temp', 'mdb', 'mdb_temp');
-    appendFile('ground_resistance', 'ground', 'ground');
+    appendFile('meter_ac_size', 'meter', 'meter_ac_img');
+    appendFile('cable_status', 'cable', 'cable_img');
+    appendFile('change_over_switch', 'changeOver', 'change_over_img');
+    appendFile('surge_protection', 'surge', 'surge_img');
+    appendFile('mdb_temp', 'mdb', 'mdb_temp_img');
+    appendFile('ground_resistance', 'ground', 'ground_img');
 
     try {
       const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
@@ -376,56 +381,56 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 {configsMap.meter_ac_size.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      1. ภาพหน้าปัดมิเตอร์ (meter_ac_img) {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('meter', e.target.files[0])} />
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          1. ภาพหน้าปัดมิเตอร์ (meter_ac_img) {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('meter', e.target.files)} />
+                      </div>
+                    )}
+                    {configsMap.cable_status.isEnabled && (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          2. ภาพสายไฟเมน (cable_img) {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('cable', e.target.files)} />
+                      </div>
+                    )}
+                    {configsMap.change_over_switch.isEnabled && (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          3. ภาพสวิตช์ Change Over (change_over_img) {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('changeOver', e.target.files)} />
+                      </div>
+                    )}
                   </div>
-                )}
-                {configsMap.cable_status.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      2. ภาพสายไฟเมน (cable_img) {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('cable', e.target.files[0])} />
+                  <div className="space-y-4">
+                    {configsMap.surge_protection.isEnabled && (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          4. ภาพอุปกรณ์กันไฟกระชาก (surge_img) {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surge', e.target.files)} />
+                      </div>
+                    )}
+                    {configsMap.mdb_temp.isEnabled && (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          5. ภาพเทอร์โมสแกน/อุณหภูมิตู้ MDB (mdb_temp_img) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('mdb', e.target.files)} />
+                      </div>
+                    )}
+                    {configsMap.ground_resistance.isEnabled && (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">
+                          6. ภาพการวัดค่ากราวด์ (ground_img) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
+                        </label>
+                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('ground', e.target.files)} />
+                      </div>
+                    )}
                   </div>
-                )}
-                {configsMap.change_over_switch.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      3. ภาพสวิตช์ Change Over (change_over_img) {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('changeOver', e.target.files[0])} />
-                  </div>
-                )}
-              </div>
-              <div className="space-y-4">
-                {configsMap.surge_protection.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      4. ภาพอุปกรณ์กันไฟกระชาก (surge_img) {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surge', e.target.files[0])} />
-                  </div>
-                )}
-                {configsMap.mdb_temp.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      5. ภาพเทอร์โมสแกน/อุณหภูมิตู้ MDB (mdb_temp_img) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('mdb', e.target.files[0])} />
-                  </div>
-                )}
-                {configsMap.ground_resistance.isEnabled && (
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      6. ภาพการวัดค่ากราวด์ (ground_img) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
-                    </label>
-                    <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('ground', e.target.files[0])} />
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </fieldset>

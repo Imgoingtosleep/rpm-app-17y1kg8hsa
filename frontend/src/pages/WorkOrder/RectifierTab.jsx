@@ -11,9 +11,9 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [outputCurrentDc, setOutputCurrentDc] = useState(0.0);
   const [surgeStatus, setSurgeStatus] = useState('ปกติ');
 
-  const [breakerImg, setBreakerImg] = useState(null);
-  const [pdbTempImg, setPdbTempImg] = useState(null);
-  const [surgeRectImg, setSurgeRectImg] = useState(null);
+  const [breakerImg, setBreakerImg] = useState([]);
+  const [pdbTempImg, setPdbTempImg] = useState([]);
+  const [surgeRectImg, setSurgeRectImg] = useState([]);
   const [fieldConfigs, setFieldConfigs] = useState([]);
 
   const [existingPaths, setExistingPaths] = useState({
@@ -87,9 +87,9 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       });
     }
     // Clear newly selected files
-    setBreakerImg(null);
-    setPdbTempImg(null);
-    setSurgeRectImg(null);
+    setBreakerImg([]);
+    setPdbTempImg([]);
+    setSurgeRectImg([]);
   }, [rectNo, rectifiers]);
 
   const getFieldConfig = (name) => {
@@ -140,7 +140,8 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     const checkFile = (configName, uploadKey, originalName) => {
       const cfg = configsMap[configName];
       if (cfg.isEnabled && cfg.isRequired) {
-        if (!imagesMap[uploadKey] && !existingPaths[uploadKey]) {
+        const hasUpload = imagesMap[uploadKey] && imagesMap[uploadKey].length > 0;
+        if (!hasUpload && !existingPaths[uploadKey]) {
           alert(`กรุณาอัปโหลดรูปภาพประกอบสำหรับ ${originalName}`);
           return false;
         }
@@ -170,22 +171,31 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     formData.append('surge_status', configsMap.surge_status.isEnabled ? surgeStatus : '');
 
     if (configsMap.breaker_size.isEnabled) {
-      if (breakerImg) formData.append('breaker_img', breakerImg);
-      else if (existingPaths.breaker) {
+      if (breakerImg && breakerImg.length > 0) {
+        breakerImg.forEach(file => {
+          formData.append('breaker_img', file);
+        });
+      } else if (existingPaths.breaker) {
         const pathVal = Array.isArray(existingPaths.breaker) ? existingPaths.breaker : [existingPaths.breaker];
         pathVal.forEach(p => formData.append('breaker_img_path', p));
       }
     }
     if (configsMap.model.isEnabled) {
-      if (pdbTempImg) formData.append('pdb_temp_img', pdbTempImg);
-      else if (existingPaths.pdbTemp) {
+      if (pdbTempImg && pdbTempImg.length > 0) {
+        pdbTempImg.forEach(file => {
+          formData.append('pdb_temp_img', file);
+        });
+      } else if (existingPaths.pdbTemp) {
         const pathVal = Array.isArray(existingPaths.pdbTemp) ? existingPaths.pdbTemp : [existingPaths.pdbTemp];
         pathVal.forEach(p => formData.append('pdb_temp_img_path', p));
       }
     }
     if (configsMap.surge_status.isEnabled) {
-      if (surgeRectImg) formData.append('surge_rect_img', surgeRectImg);
-      else if (existingPaths.surgeRect) {
+      if (surgeRectImg && surgeRectImg.length > 0) {
+        surgeRectImg.forEach(file => {
+          formData.append('surge_rect_img', file);
+        });
+      } else if (existingPaths.surgeRect) {
         const pathVal = Array.isArray(existingPaths.surgeRect) ? existingPaths.surgeRect : [existingPaths.surgeRect];
         pathVal.forEach(p => formData.append('surge_rect_img_path', p));
       }
@@ -332,7 +342,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเบรกเกอร์ (breaker_img) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(e.target.files[0])} />
+                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(Array.from(e.target.files))} />
                 </div>
               )}
               {configsMap.model.isEnabled && (
@@ -340,7 +350,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img) {configsMap.model.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(e.target.files[0])} />
+                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(Array.from(e.target.files))} />
                 </div>
               )}
               {configsMap.surge_status.isEnabled && (
@@ -348,7 +358,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img) {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(e.target.files[0])} />
+                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(Array.from(e.target.files))} />
                 </div>
               )}
             </div>
