@@ -176,7 +176,10 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
     const appendFile = (configName, uploadKey, fieldName) => {
       if (configsMap[configName].isEnabled) {
         if (images[uploadKey]) formData.append(`${fieldName}_img`, images[uploadKey]);
-        else if (existingPaths[uploadKey]) formData.append(`${fieldName}_img_path`, existingPaths[uploadKey]);
+        else if (existingPaths[uploadKey]) {
+          const pathVal = Array.isArray(existingPaths[uploadKey]) ? existingPaths[uploadKey] : [existingPaths[uploadKey]];
+          pathVal.forEach(p => formData.append(`${fieldName}_img_path`, p));
+        }
       }
     };
 
@@ -188,7 +191,7 @@ export default function AcMainTab({ site, rpmId, onComplete, isReadOnly }) {
     appendFile('ground_resistance', 'ground', 'ground');
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/ac?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });

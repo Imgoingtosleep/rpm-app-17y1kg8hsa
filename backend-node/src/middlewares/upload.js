@@ -52,8 +52,8 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'fac');
     }
 
-    // Resolves to: storage/db_img/[site_code]/[rpm_id]/[targetSubpath]
-    const targetDir = path.join(__dirname, '../../../storage/db_img', site_code, String(rpm_id), targetSubpath);
+    // Resolves to: /app/storage/db_img/[site_code]/[rpm_id]/[targetSubpath]
+    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(rpm_id), targetSubpath);
     
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
@@ -98,7 +98,7 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'fac');
     }
 
-    const targetDir = path.join(__dirname, '../../../storage/db_img', site_code, String(rpm_id), targetSubpath);
+    const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(rpm_id), targetSubpath);
 
     // Map exact filenames according to storage files layout
     let filePrefix = file.fieldname;

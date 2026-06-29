@@ -147,12 +147,13 @@ export default function BatteryTab({ site, rpmId, onComplete, isReadOnly }) {
       if (cell.file) {
         formData.append('battery_img', cell.file);
       } else if (cell.existingPath) {
-        formData.append('battery_img_path', cell.existingPath);
+        const pathVal = Array.isArray(cell.existingPath) ? cell.existingPath : [cell.existingPath];
+        pathVal.forEach(p => formData.append('battery_img_path', p));
       }
     }
 
     try {
-      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}`, {
+      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}`, {
         method: 'POST',
         body: formData
       });

@@ -171,19 +171,28 @@ export default function RectifierTab({ site, rpmId, onComplete, isReadOnly }) {
 
     if (configsMap.breaker_size.isEnabled) {
       if (breakerImg) formData.append('breaker_img', breakerImg);
-      else if (existingPaths.breaker) formData.append('breaker_img_path', existingPaths.breaker);
+      else if (existingPaths.breaker) {
+        const pathVal = Array.isArray(existingPaths.breaker) ? existingPaths.breaker : [existingPaths.breaker];
+        pathVal.forEach(p => formData.append('breaker_img_path', p));
+      }
     }
     if (configsMap.model.isEnabled) {
       if (pdbTempImg) formData.append('pdb_temp_img', pdbTempImg);
-      else if (existingPaths.pdbTemp) formData.append('pdb_temp_img_path', existingPaths.pdbTemp);
+      else if (existingPaths.pdbTemp) {
+        const pathVal = Array.isArray(existingPaths.pdbTemp) ? existingPaths.pdbTemp : [existingPaths.pdbTemp];
+        pathVal.forEach(p => formData.append('pdb_temp_img_path', p));
+      }
     }
     if (configsMap.surge_status.isEnabled) {
       if (surgeRectImg) formData.append('surge_rect_img', surgeRectImg);
-      else if (existingPaths.surgeRect) formData.append('surge_rect_img_path', existingPaths.surgeRect);
+      else if (existingPaths.surgeRect) {
+        const pathVal = Array.isArray(existingPaths.surgeRect) ? existingPaths.surgeRect : [existingPaths.surgeRect];
+        pathVal.forEach(p => formData.append('surge_rect_img_path', p));
+      }
     }
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/rectifier?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/rectifier?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });

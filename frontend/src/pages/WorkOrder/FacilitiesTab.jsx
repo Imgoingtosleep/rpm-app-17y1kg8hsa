@@ -133,12 +133,13 @@ export default function FacilitiesTab({ site, rpmId, onComplete, isReadOnly }) {
       if (item.file) {
         formData.append(`${key}_img`, item.file);
       } else if (existingPaths[key]) {
-        formData.append(`${key}_img_path`, existingPaths[key]);
+        const pathVal = Array.isArray(existingPaths[key]) ? existingPaths[key] : [existingPaths[key]];
+        pathVal.forEach(p => formData.append(`${key}_img_path`, p));
       }
     });
 
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/facilities?site_code=${encodeURIComponent(site.site_code)}&rpm_id=${rpmId}`, {
+      const res = await fetch(`/api/workorder/${rpmId}/facilities?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}`, {
         method: 'POST',
         body: formData
       });
