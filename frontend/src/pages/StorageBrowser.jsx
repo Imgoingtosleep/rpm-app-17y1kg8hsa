@@ -12,6 +12,9 @@ export default function StorageBrowser() {
   
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  // Selection states
+  const [selectedItems, setSelectedItems] = useState([]);
 
   const fetchFolder = (path) => {
     setLoading(true);
@@ -24,12 +27,60 @@ export default function StorageBrowser() {
       .then(data => {
         setItems(data.items || []);
         setCurrentPath(data.currentPath || '');
+        setSelectedItems([]); // Clear selection when navigating folders
         setLoading(false);
       })
       .catch(err => {
         setError(err.message);
         setLoading(false);
       });
+  };
+
+  const handleToggleSelect = (relPath) => {
+    setSelectedItems(prev => 
+      prev.includes(relPath) 
+        ? prev.filter(p => p !== relPath) 
+        : [...prev, relPath]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const allPaths = filteredItems.map(item => item.relPath);
+    const allSelected = allPaths.length > 0 && allPaths.every(p => selectedItems.includes(p));
+    
+    if (allSelected) {
+      setSelectedItems(prev => prev.filter(p => !allPaths.includes(p)));
+    } else {
+      setSelectedItems(prev => {
+        const union = new Set([...prev, ...allPaths]);
+        return Array.from(union);
+      });
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedItems.length === 0) return;
+    try {
+      const response = await fetch('/api/storage/download-selected', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paths: selectedItems })
+      });
+      if (!response.ok) throw new Error('ดาวน์โหลดล้มเหลว');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'selected_files.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ที่เลือก: ' + err.message);
+    }
   };
 
   useEffect(() => {
@@ -189,18 +240,55 @@ export default function StorageBrowser() {
             ))}
           </div>
 
-          {/* Search bar */}
-          <div className="relative w-full md:w-80">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </span>
-            <input 
-              type="text"
-              placeholder="ค้นหาไฟล์หรือโฟลเดอร์..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 focus:border-indigo-500 outline-none transition-colors"
-            />
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {filteredItems.length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className="px-3 py-2 bg-dark-bg border border-dark-border text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+              >
+                <input 
+                  type="checkbox"
+                  checked={filteredItems.length > 0 && filteredItems.every(item => selectedItems.includes(item.relPath))}
+                  onChange={() => {}} // Controlled by button click
+                  className="rounded border-gray-600 bg-dark-bg text-indigo-600 focus:ring-indigo-500 focus:ring-offset-dark-bg cursor-pointer"
+                />
+                เลือกทั้งหมด
+              </button>
+            )}
+
+            {selectedItems.length > 0 && (
+              <button 
+                onClick={handleDownloadSelected}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                ดาวน์โหลดที่เลือก ({selectedItems.length}) (.zip)
+              </button>
+            )}
+
+            <a 
+              href={`/api/storage/download-folder?path=${encodeURIComponent(currentPath)}`}
+              download
+              className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              ดาวน์โหลดทั้งโฟลเดอร์ (.zip)
+            </a>
+
+            {/* Search bar */}
+            <div className="relative w-full md:w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </span>
+              <input 
+                type="text"
+                placeholder="ค้นหาไฟล์หรือโฟลเดอร์..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+              />
+            </div>
           </div>
         </div>
 
@@ -230,8 +318,17 @@ export default function StorageBrowser() {
             {filteredItems.map((item, idx) => (
               <div 
                 key={idx}
-                className="bg-dark-card border border-dark-border/80 hover:border-indigo-500/80 rounded-xl p-4 flex flex-col items-center justify-between text-center transition-all hover:-translate-y-0.5 group shadow-md"
+                className="bg-dark-card border border-dark-border/80 hover:border-indigo-500/80 rounded-xl p-4 flex flex-col items-center justify-between text-center transition-all hover:-translate-y-0.5 group shadow-md relative"
               >
+                {/* Select checkbox */}
+                <div className="absolute top-2 left-2 z-10">
+                  <input 
+                    type="checkbox"
+                    checked={selectedItems.includes(item.relPath)}
+                    onChange={() => handleToggleSelect(item.relPath)}
+                    className="w-4 h-4 rounded border-gray-600 bg-dark-bg text-indigo-600 focus:ring-indigo-500 focus:ring-offset-dark-bg cursor-pointer"
+                  />
+                </div>
                 {/* File/Folder Icon / Image Preview */}
                 <div 
                   onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`/storage/${item.relPath}`) : null}
@@ -240,11 +337,9 @@ export default function StorageBrowser() {
                   {item.isDir ? (
                     <svg className="w-12 h-12 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /></svg>
                   ) : isImageFile(item.name) ? (
-                    <img 
-                      src={`/storage/${item.relPath}`} 
-                      alt={item.name} 
-                      className="w-full h-full object-cover rounded shadow border border-dark-border/40 group-hover:scale-105 transition-transform"
-                    />
+                    <svg className="w-12 h-12 text-indigo-400 group-hover:scale-105 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
                   ) : isPdfFile(item.name) ? (
                     <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
                   ) : (
@@ -289,6 +384,14 @@ export default function StorageBrowser() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-dark-bg/60 border-b border-dark-border text-xs font-bold text-gray-400">
+                  <th className="p-4 w-12 text-center">
+                    <input 
+                      type="checkbox"
+                      checked={filteredItems.length > 0 && filteredItems.every(item => selectedItems.includes(item.relPath))}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-600 bg-dark-bg text-indigo-600 focus:ring-indigo-500 focus:ring-offset-dark-bg cursor-pointer"
+                    />
+                  </th>
                   <th className="p-4">ชื่อ</th>
                   <th className="p-4">ประเภท/ขนาด</th>
                   <th className="p-4 hidden sm:table-cell">วันที่แก้ไขล่าสุด</th>
@@ -298,6 +401,14 @@ export default function StorageBrowser() {
               <tbody className="divide-y divide-dark-border/40 text-xs">
                 {filteredItems.map((item, idx) => (
                   <tr key={idx} className="hover:bg-dark-bg/30 transition-colors">
+                    <td className="p-4 w-12 text-center">
+                      <input 
+                        type="checkbox"
+                        checked={selectedItems.includes(item.relPath)}
+                        onChange={() => handleToggleSelect(item.relPath)}
+                        className="rounded border-gray-600 bg-dark-bg text-indigo-600 focus:ring-indigo-500 focus:ring-offset-dark-bg cursor-pointer"
+                      />
+                    </td>
                     <td className="p-4">
                       <div 
                         onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`/storage/${item.relPath}`) : null}

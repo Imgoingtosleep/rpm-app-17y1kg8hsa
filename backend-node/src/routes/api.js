@@ -697,4 +697,101 @@ router.get('/storage/browse', async (req, res) => {
   }
 });
 
+// 12. Storage Download Folder as ZIP API
+router.get('/storage/download-folder', async (req, res) => {
+  const relPath = req.query.path || '';
+  const storageRoot = path.resolve(__dirname, '../../storage');
+  const targetPath = path.resolve(storageRoot, relPath);
+  
+  if (!targetPath.startsWith(storageRoot)) {
+    return res.status(403).json({ error: 'Access Denied: Path is outside storage root.' });
+  }
+  
+  if (!fs.existsSync(targetPath)) {
+    return res.status(404).json({ error: 'Folder not found.' });
+  }
+  
+  try {
+    const stats = fs.statSync(targetPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'Path is not a directory.' });
+    }
+    
+    const folderName = path.basename(targetPath) || 'storage';
+    
+    // Set response headers for zip file download
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(folderName)}.zip"`);
+    
+    const archiver = require('archiver');
+    const archive = archiver('zip', {
+      zlib: { level: 9 }
+    });
+    
+    archive.on('error', (err) => {
+      throw err;
+    });
+    
+    // Pipe the archive data directly to the client
+    archive.pipe(res);
+    
+    // Add all files from targetPath (recursively) to the ZIP
+    archive.directory(targetPath, false);
+    
+    await archive.finalize();
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// 13. Storage Download Selected Files as ZIP API
+router.post('/storage/download-selected', async (req, res) => {
+  const { paths } = req.body;
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: 'No files selected for download.' });
+  }
+  
+  const storageRoot = path.resolve(__dirname, '../../storage');
+  
+  try {
+    // Set response headers for zip file download
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="selected_files.zip"');
+    
+    const archiver = require('archiver');
+    const archive = archiver('zip', {
+      zlib: { level: 9 }
+    });
+    
+    archive.on('error', (err) => {
+      throw err;
+    });
+    
+    // Pipe the archive data directly to the client
+    archive.pipe(res);
+    
+    for (const relPath of paths) {
+      const targetPath = path.resolve(storageRoot, relPath);
+      // Safety check to prevent directory traversal
+      if (targetPath.startsWith(storageRoot) && fs.existsSync(targetPath)) {
+        const fileStats = fs.statSync(targetPath);
+        if (fileStats.isFile()) {
+          archive.file(targetPath, { name: path.basename(targetPath) });
+        } else if (fileStats.isDirectory()) {
+          // Append directory recursively with its own folder name inside the zip
+          archive.directory(targetPath, path.basename(targetPath));
+        }
+      }
+    }
+    
+    await archive.finalize();
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 module.exports = router;
