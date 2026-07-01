@@ -9,6 +9,9 @@ export default function StorageBrowser() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [previewImage, setPreviewImage] = useState(null);
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const fetchFolder = (path) => {
     setLoading(true);
@@ -30,7 +33,20 @@ export default function StorageBrowser() {
   };
 
   useEffect(() => {
-    fetchFolder('');
+    try {
+      const stored = localStorage.getItem('user');
+      const user = stored ? JSON.parse(stored) : null;
+      if (user && user.role === 'Admin') {
+        setIsAdmin(true);
+        fetchFolder('');
+      } else {
+        setIsAdmin(false);
+      }
+    } catch (e) {
+      setIsAdmin(false);
+    } finally {
+      setCheckingAuth(false);
+    }
   }, []);
 
   const handleFolderClick = (relPath) => {
@@ -90,6 +106,32 @@ export default function StorageBrowser() {
   const filteredItems = items.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (checkingAuth) {
+    return (
+      <MainLayout currentStep="storage-browser" currentSite={null} onNavigateBack={() => window.history.back()}>
+        <div className="text-center py-16 text-gray-500">กำลังตรวจสอบสิทธิ์...</div>
+      </MainLayout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <MainLayout currentStep="storage-browser" currentSite={null} onNavigateBack={() => window.history.back()}>
+        <div className="max-w-md mx-auto my-16 p-8 bg-red-950/15 border border-red-900/30 rounded-2xl text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">⚠️</div>
+          <h3 className="text-xl font-bold text-white">เข้าถึงข้อมูลไม่ได้ (Access Denied)</h3>
+          <p className="text-gray-400 text-sm">ขออภัย เฉพาะผู้ใช้งานที่มีสิทธิ์ Admin เท่านั้นที่สามารถเรียกดูหรือดาวน์โหลดข้อมูลในระบบจัดเก็บได้</p>
+          <button 
+            onClick={() => window.history.back()}
+            className="px-6 py-2 bg-dark-accent border border-dark-border text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+          >
+            ย้อนกลับ
+          </button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   const breadcrumbs = currentPath.split('/').filter(Boolean);
 

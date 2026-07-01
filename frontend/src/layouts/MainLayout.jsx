@@ -77,22 +77,24 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
               Site Selector
             </button>
 
-            <button 
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                currentStep === 'storage-browser' 
-                  ? 'bg-indigo-600/10 text-indigo-400 border-l-2 border-indigo-500 font-semibold' 
-                  : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
-              }`}
-              onClick={() => {
-                navigate('/storage');
-                setIsSidebarOpen(false);
-              }}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              Storage Browser
-            </button>
+            {user?.role === 'Admin' && (
+              <button 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  currentStep === 'storage-browser' 
+                    ? 'bg-indigo-600/10 text-indigo-400 border-l-2 border-indigo-500 font-semibold' 
+                    : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
+                }`}
+                onClick={() => {
+                  navigate('/storage');
+                  setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Storage Browser
+              </button>
+            )}
 
             {currentSite && (
               <div className="pt-4 px-2">
