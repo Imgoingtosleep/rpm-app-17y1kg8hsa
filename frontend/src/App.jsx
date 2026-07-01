@@ -13,6 +13,7 @@ import FacilitiesTab from './pages/WorkOrder/FacilitiesTab';
 import FieldSettings from './pages/FieldSettings';
 
 import CreateSite from './pages/CreateSite';
+import StorageBrowser from './pages/StorageBrowser';
 
 function WorkOrderPanel() {
   const { site_code, tab } = useParams();
@@ -320,6 +321,7 @@ export default function App() {
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
         <Route path="/admin/fields" element={<FieldSettings />} />
+        <Route path="/storage" element={<StorageBrowser />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

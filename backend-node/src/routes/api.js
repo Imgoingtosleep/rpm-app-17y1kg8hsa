@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const db = require('../config/db');
 const upload = require('../middlewares/upload');
 
@@ -635,6 +637,61 @@ router.post('/field-configs/update', async (req, res) => {
       [tab_name, field_name, is_required, is_enabled]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 11. Storage File Browser API
+router.get('/storage/browse', async (req, res) => {
+  const relPath = req.query.path || '';
+  // The storage folder is at the workspace root level
+  const storageRoot = path.resolve(__dirname, '../../storage');
+  
+  // Safely resolve target path
+  const targetPath = path.resolve(storageRoot, relPath);
+  
+  // Prevent directory traversal attacks
+  if (!targetPath.startsWith(storageRoot)) {
+    return res.status(403).json({ error: 'Access Denied: Path is outside storage root.' });
+  }
+  
+  try {
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ error: 'Folder not found.' });
+    }
+    
+    const stats = fs.statSync(targetPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'Path is not a directory.' });
+    }
+    
+    const files = fs.readdirSync(targetPath);
+    const items = files.map(file => {
+      const filePath = path.join(targetPath, file);
+      const fileStats = fs.statSync(filePath);
+      const isDir = fileStats.isDirectory();
+      
+      return {
+        name: file,
+        isDir,
+        size: isDir ? null : fileStats.size,
+        updatedAt: fileStats.mtime,
+        relPath: path.relative(storageRoot, filePath)
+      };
+    });
+    
+    // Sort: directories first, then files alphabetically
+    items.sort((a, b) => {
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    res.json({
+      currentPath: relPath,
+      items
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

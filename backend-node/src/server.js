@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -9,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static storage for site photos
-app.use('/storage', express.static('../storage'));
+app.use('/storage', express.static(path.join(__dirname, '../storage')));
 
 // API router integration
 const apiRouter = require('./routes/api');
