@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 
 export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Input fields state
-  const [meterSize, setMeterSize] = useState('');
-  const [cableStatus, setCableStatus] = useState('');
-  const [changeOverSwitch, setChangeOverSwitch] = useState('');
-  const [phaseQty, setPhaseQty] = useState('');
-  const [surgeProtection, setSurgeProtection] = useState('');
-  const [mdbTemp, setMdbTemp] = useState(25.0);
+  const [meterSize, setMeterSize] = useState('1 phase 5/15');
+  const [cableStatus, setCableStatus] = useState('ปกติ สภาพปลอดภัย');
+  const [changeOverSwitch, setChangeOverSwitch] = useState('มี/พร้อมใช้งาน');
+  const [phaseQty, setPhaseQty] = useState('3 Phase');
+  const [surgeProtection, setSurgeProtection] = useState('มี ปกติ');
+  const [mdbTemp, setMdbTemp] = useState('<25');
+  const [siteTemp, setSiteTemp] = useState('<25');
   
   const [v1, setV1] = useState(220);
   const [v2, setV2] = useState(220);
@@ -15,7 +16,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
   const [cur1, setCur1] = useState(0.0);
   const [cur2, setCur2] = useState(0.0);
   const [cur3, setCur3] = useState(0.0);
-  const [groundResistance, setGroundResistance] = useState(0.0);
+  const [groundResistance, setGroundResistance] = useState('<5');
   const [fieldConfigs, setFieldConfigs] = useState([]);
 
   // Existing image paths from server
@@ -54,19 +55,20 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
       .then(res => res.json())
       .then(data => {
         if (data) {
-          setMeterSize(data.meter_ac_size || '');
-          setCableStatus(data.cable_status || '');
-          setChangeOverSwitch(data.change_over_switch || '');
-          setPhaseQty(data.ac_phase_qty || '');
-          setSurgeProtection(data.surge_protection || '');
-          setMdbTemp(data.mdb_temp ? parseFloat(data.mdb_temp) : 25.0);
+          setMeterSize(data.meter_ac_size || '1 phase 5/15');
+          setCableStatus(data.cable_status || 'ปกติ สภาพปลอดภัย');
+          setChangeOverSwitch(data.change_over_switch || 'มี/พร้อมใช้งาน');
+          setPhaseQty(data.ac_phase_qty || '3 Phase');
+          setSurgeProtection(data.surge_protection || 'มี ปกติ');
+          setMdbTemp(data.mdb_temp || '<25');
+          setSiteTemp(data.site_temp || '<25');
           setV1(data.voltage_p1 || 220);
           setV2(data.voltage_p2 || 220);
           setV3(data.voltage_p3 || 220);
           setCur1(data.current_p1 ? parseFloat(data.current_p1) : 0.0);
           setCur2(data.current_p2 ? parseFloat(data.current_p2) : 0.0);
           setCur3(data.current_p3 ? parseFloat(data.current_p3) : 0.0);
-          setGroundResistance(data.ground_resistance ? parseFloat(data.ground_resistance) : 0.0);
+          setGroundResistance(data.ground_resistance || '<5');
 
           setExistingPaths({
             meter: data.meter_ac_img || null,
@@ -82,7 +84,6 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
   }, [rpmId]);
 
   const handleFileChange = (field, fileList) => {
-    // Convert FileList to array
     const files = Array.from(fileList);
     setImages(prev => ({ ...prev, [field]: files }));
   };
@@ -119,23 +120,23 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     }
 
     // Dynamic checks
-    if (configsMap.meter_ac_size.isEnabled && configsMap.meter_ac_size.isRequired && !meterSize.trim()) {
+    if (configsMap.meter_ac_size.isEnabled && configsMap.meter_ac_size.isRequired && !meterSize) {
       alert('กรุณากรอก Meter AC Size');
       return;
     }
-    if (configsMap.cable_status.isEnabled && configsMap.cable_status.isRequired && !cableStatus.trim()) {
+    if (configsMap.cable_status.isEnabled && configsMap.cable_status.isRequired && !cableStatus) {
       alert('กรุณากรอก Cable Status');
       return;
     }
-    if (configsMap.change_over_switch.isEnabled && configsMap.change_over_switch.isRequired && !changeOverSwitch.trim()) {
+    if (configsMap.change_over_switch.isEnabled && configsMap.change_over_switch.isRequired && !changeOverSwitch) {
       alert('กรุณากรอก Change Over Switch');
       return;
     }
-    if (configsMap.ac_phase_qty.isEnabled && configsMap.ac_phase_qty.isRequired && !phaseQty.trim()) {
+    if (configsMap.ac_phase_qty.isEnabled && configsMap.ac_phase_qty.isRequired && !phaseQty) {
       alert('กรุณากรอก AC Phase Qty');
       return;
     }
-    if (configsMap.surge_protection.isEnabled && configsMap.surge_protection.isRequired && !surgeProtection.trim()) {
+    if (configsMap.surge_protection.isEnabled && configsMap.surge_protection.isRequired && !surgeProtection) {
       alert('กรุณากรอก Surge Protection');
       return;
     }
@@ -165,14 +166,15 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     formData.append('change_over_switch', configsMap.change_over_switch.isEnabled ? changeOverSwitch : '');
     formData.append('ac_phase_qty', configsMap.ac_phase_qty.isEnabled ? phaseQty : '');
     formData.append('surge_protection', configsMap.surge_protection.isEnabled ? surgeProtection : '');
-    formData.append('mdb_temp', configsMap.mdb_temp.isEnabled ? mdbTemp : 0.0);
+    formData.append('mdb_temp', configsMap.mdb_temp.isEnabled ? mdbTemp : '');
+    formData.append('site_temp', siteTemp);
     formData.append('voltage_p1', configsMap.voltage_p1.isEnabled ? v1 : 0);
     formData.append('voltage_p2', configsMap.voltage_p2.isEnabled ? v2 : 0);
     formData.append('voltage_p3', configsMap.voltage_p3.isEnabled ? v3 : 0);
     formData.append('current_p1', configsMap.current_p1.isEnabled ? cur1 : 0.0);
     formData.append('current_p2', configsMap.current_p2.isEnabled ? cur2 : 0.0);
     formData.append('current_p3', configsMap.current_p3.isEnabled ? cur3 : 0.0);
-    formData.append('ground_resistance', configsMap.ground_resistance.isEnabled ? groundResistance : 0.0);
+    formData.append('ground_resistance', configsMap.ground_resistance.isEnabled ? groundResistance : '');
 
     // Append files or original paths if enabled
     const appendFile = (configName, uploadKey, fieldName) => {
@@ -225,12 +227,71 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Col 1 */}
             <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                  2. อุณหภูมิ ภายใน Site (°C)
+                </label>
+                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={siteTemp} onChange={(e) => setSiteTemp(e.target.value)}>
+                  <option value="<25">&lt;25</option>
+                  <option value="25-30">25-30</option>
+                  <option value="30-35">30-35</option>
+                  <option value="35-40">35-40</option>
+                  <option value=">40">&gt;40</option>
+                </select>
+              </div>
+
+              {configsMap.mdb_temp.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    3. อุณหภูมิ จุดต่อสายภายในตู้ AC MDB และ DC PDB (°C)
+                  </label>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={mdbTemp} onChange={(e) => setMdbTemp(e.target.value)}>
+                    <option value="<25">&lt;25</option>
+                    <option value="25-30">25-30</option>
+                    <option value="30-35">30-35</option>
+                    <option value="35-40">35-40</option>
+                    <option value=">40">&gt;40</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">อุณหภูมิตู้ MDB (Disabled)</div>
+              )}
+
+              {configsMap.ground_resistance.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    4. Ground Site วัดค่าความต้านทาน (Ω)
+                  </label>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={groundResistance} onChange={(e) => setGroundResistance(e.target.value)}>
+                    <option value="<5">&lt;5</option>
+                    <option value="5-10">5-10</option>
+                    <option value=">10-20">&gt;10-20</option>
+                    <option value=">20-30">&gt;20-30</option>
+                    <option value=">30-40">&gt;30-40</option>
+                    <option value=">40-50">&gt;40-50</option>
+                    <option value=">50-60">&gt;50-60</option>
+                    <option value=">60">&gt;60</option>
+                    <option value="วัดค่าไม่ได้">วัดค่าไม่ได้</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Ground Resistance (Disabled)</div>
+              )}
+
               {configsMap.meter_ac_size.isEnabled ? (
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    Meter AC Size {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
+                    5. ขนาด AC KWHrs Meter
                   </label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={meterSize} onChange={(e) => setMeterSize(e.target.value)} required={configsMap.meter_ac_size.isRequired} />
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={meterSize} onChange={(e) => setMeterSize(e.target.value)}>
+                    <option value="1 phase 5/15">1 phase 5/15</option>
+                    <option value="1 phase 15/45">1 phase 15/45</option>
+                    <option value="1 phase 5/100">1 phase 5/100</option>
+                    <option value="3 phase 5/15">3 phase 5/15</option>
+                    <option value="3 phase 15/45">3 phase 15/45</option>
+                    <option value="DTAC site">DTAC site</option>
+                    <option value="LL">LL</option>
+                  </select>
                 </div>
               ) : (
                 <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Meter AC Size (Disabled)</div>
@@ -239,9 +300,14 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
               {configsMap.cable_status.isEnabled ? (
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    Cable Status {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
+                    6. สภาพสายไฟ Main AC Line
                   </label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cableStatus} onChange={(e) => setCableStatus(e.target.value)} required={configsMap.cable_status.isRequired} />
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cableStatus} onChange={(e) => setCableStatus(e.target.value)}>
+                    <option value="ปกติ สภาพปลอดภัย">ปกติ สภาพปลอดภัย</option>
+                    <option value="Dtact site">Dtact site</option>
+                    <option value="หย่อน ชำรุด">หย่อน ชำรุด</option>
+                    <option value="รก ไม่สะอาด ต้องปรับปรุง">รก ไม่สะอาด ต้องปรับปรุง</option>
+                  </select>
                 </div>
               ) : (
                 <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Cable Status (Disabled)</div>
@@ -250,55 +316,53 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
               {configsMap.change_over_switch.isEnabled ? (
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    Change Over Switch {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
+                    23. สภาพ Change Over Switch
                   </label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={changeOverSwitch} onChange={(e) => setChangeOverSwitch(e.target.value)} required={configsMap.change_over_switch.isRequired} />
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={changeOverSwitch} onChange={(e) => setChangeOverSwitch(e.target.value)}>
+                    <option value="มี/พร้อมใช้งาน">มี/พร้อมใช้งาน</option>
+                    <option value="มี/ไม่พร้อมใช้งาน">มี/ไม่พร้อมใช้งาน</option>
+                    <option value="มี/ชำรุดบางจุดต้องแก้ไข">มี/ชำรุดบางจุดต้องแก้ไข</option>
+                    <option value="ไม่มี">ไม่มี</option>
+                  </select>
                 </div>
               ) : (
                 <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Change Over Switch (Disabled)</div>
               )}
 
-              {configsMap.ac_phase_qty.isEnabled ? (
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    AC Phase Qty {configsMap.ac_phase_qty.isRequired && <span className="text-red-400">*</span>}
-                  </label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={phaseQty} onChange={(e) => setPhaseQty(e.target.value)} required={configsMap.ac_phase_qty.isRequired} />
-                </div>
-              ) : (
-                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">AC Phase Qty (Disabled)</div>
-              )}
-
               {configsMap.surge_protection.isEnabled ? (
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    Surge Protection {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
+                    24. Surge Protection ตู้ไฟ Main AC
                   </label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeProtection} onChange={(e) => setSurgeProtection(e.target.value)} required={configsMap.surge_protection.isRequired} />
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeProtection} onChange={(e) => setSurgeProtection(e.target.value)}>
+                    <option value="มี ปกติ">มี ปกติ</option>
+                    <option value="มี ไม่ปกติ">มี ไม่ปกติ</option>
+                    <option value="ไม่มี">ไม่มี</option>
+                  </select>
                 </div>
               ) : (
                 <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Surge Protection (Disabled)</div>
-              )}
-
-              {configsMap.mdb_temp.isEnabled ? (
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    MDB Temp (°C) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
-                  </label>
-                  <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={mdbTemp} onChange={(e) => setMdbTemp(parseFloat(e.target.value))} required={configsMap.mdb_temp.isRequired} />
-                </div>
-              ) : (
-                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">MDB Temp (Disabled)</div>
               )}
             </div>
 
             {/* Col 2 */}
             <div className="space-y-4">
+              {configsMap.ac_phase_qty.isEnabled ? (
+                <div>
+                  {/* <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    AC Phase Qty
+                  </label>
+                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={phaseQty} onChange={(e) => setPhaseQty(e.target.value)} required={configsMap.ac_phase_qty.isRequired} /> */}
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">AC Phase Qty (Disabled)</div>
+              )}
+
               <div className="grid grid-cols-3 gap-4">
                 {configsMap.voltage_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Voltage P1 {configsMap.voltage_p1.isRequired && <span className="text-red-400">*</span>}
+                      Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v1} onChange={(e) => setV1(parseInt(e.target.value))} required={configsMap.voltage_p1.isRequired} />
                   </div>
@@ -308,7 +372,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p2.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Voltage P2 {configsMap.voltage_p2.isRequired && <span className="text-red-400">*</span>}
+                      Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v2} onChange={(e) => setV2(parseInt(e.target.value))} required={configsMap.voltage_p2.isRequired} />
                   </div>
@@ -318,7 +382,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p3.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Voltage P3 {configsMap.voltage_p3.isRequired && <span className="text-red-400">*</span>}
+                      Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v3} onChange={(e) => setV3(parseInt(e.target.value))} required={configsMap.voltage_p3.isRequired} />
                   </div>
@@ -331,7 +395,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Current P1 {configsMap.current_p1.isRequired && <span className="text-red-400">*</span>}
+                      Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur1} onChange={(e) => setCur1(parseFloat(e.target.value))} required={configsMap.current_p1.isRequired} />
                   </div>
@@ -341,7 +405,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p2.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Current P2 {configsMap.current_p2.isRequired && <span className="text-red-400">*</span>}
+                      Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur2} onChange={(e) => setCur2(parseFloat(e.target.value))} required={configsMap.current_p2.isRequired} />
                   </div>
@@ -351,7 +415,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p3.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Current P3 {configsMap.current_p3.isRequired && <span className="text-red-400">*</span>}
+                      Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur3} onChange={(e) => setCur3(parseFloat(e.target.value))} required={configsMap.current_p3.isRequired} />
                   </div>
@@ -359,17 +423,6 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P3 Disabled</div>
                 )}
               </div>
-
-              {configsMap.ground_resistance.isEnabled ? (
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                    Ground Resistance (Ω) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
-                  </label>
-                  <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={groundResistance} onChange={(e) => setGroundResistance(parseFloat(e.target.value))} required={configsMap.ground_resistance.isRequired} />
-                </div>
-              ) : (
-                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">Ground Resistance (Disabled)</div>
-              )}
             </div>
           </div>
 
@@ -381,56 +434,62 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 {configsMap.meter_ac_size.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          1. ภาพหน้าปัดมิเตอร์ (meter_ac_img) {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('meter', e.target.files)} />
-                      </div>
-                    )}
-                    {configsMap.cable_status.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          2. ภาพสายไฟเมน (cable_img) {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('cable', e.target.files)} />
-                      </div>
-                    )}
-                    {configsMap.change_over_switch.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          3. ภาพสวิตช์ Change Over (change_over_img) {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('changeOver', e.target.files)} />
-                      </div>
-                    )}
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      1. ภาพหน้าปัดมิเตอร์ (meter_ac_img) {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('meter', e.target.files)} />
+                    {existingPaths.meter && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.meter) ? existingPaths.meter.join(', ') : existingPaths.meter}</p>}
                   </div>
-                  <div className="space-y-4">
-                    {configsMap.surge_protection.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          4. ภาพอุปกรณ์กันไฟกระชาก (surge_img) {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surge', e.target.files)} />
-                      </div>
-                    )}
-                    {configsMap.mdb_temp.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          5. ภาพเทอร์โมสแกน/อุณหภูมิตู้ MDB (mdb_temp_img) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('mdb', e.target.files)} />
-                      </div>
-                    )}
-                    {configsMap.ground_resistance.isEnabled && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                          6. ภาพการวัดค่ากราวด์ (ground_img) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
-                        </label>
-                        <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('ground', e.target.files)} />
-                      </div>
-                    )}
+                )}
+                {configsMap.cable_status.isEnabled && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      2. ภาพสายไฟเมน (cable_img) {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('cable', e.target.files)} />
+                    {existingPaths.cable && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.cable) ? existingPaths.cable.join(', ') : existingPaths.cable}</p>}
                   </div>
+                )}
+                {configsMap.change_over_switch.isEnabled && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      3. ภาพสวิตช์ Change Over (change_over_img) {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('changeOver', e.target.files)} />
+                    {existingPaths.changeOver && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.changeOver) ? existingPaths.changeOver.join(', ') : existingPaths.changeOver}</p>}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                {configsMap.surge_protection.isEnabled && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      4. ภาพอุปกรณ์กันไฟกระชาก (surge_img) {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surge', e.target.files)} />
+                    {existingPaths.surge && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.surge) ? existingPaths.surge.join(', ') : existingPaths.surge}</p>}
+                  </div>
+                )}
+                {configsMap.mdb_temp.isEnabled && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      5. ภาพเทอร์โมสแกน/อุณหภูมิตู้ MDB (mdb_temp_img) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('mdb', e.target.files)} />
+                    {existingPaths.mdb && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.mdb) ? existingPaths.mdb.join(', ') : existingPaths.mdb}</p>}
+                  </div>
+                )}
+                {configsMap.ground_resistance.isEnabled && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      6. ภาพการวัดค่ากราวด์ (ground_img) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
+                    </label>
+                    <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('ground', e.target.files)} />
+                    {existingPaths.ground && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.ground) ? existingPaths.ground.join(', ') : existingPaths.ground}</p>}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </fieldset>

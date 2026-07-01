@@ -36,7 +36,7 @@ router.post('/sites', async (req, res) => {
 
 // 2. Load or Start Work Order
 router.post('/workorder/start', async (req, res) => {
-  const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time } = req.body;
+  const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time, rectifier_qty_uih } = req.body;
   try {
     // Check if master record exists
     const existing = await db.query(
@@ -50,8 +50,8 @@ router.post('/workorder/start', async (req, res) => {
 
     // Create a new master record
     const newRecord = await db.query(
-      'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time) VALUES ($1, $2, $3, $4, $5) RETURNING *;',
-      [site_code, job_number_sl6 || `SL6-${site_code}-${Date.now()}`, sap_number || `SAP-${site_code}-${Date.now()}`, rpm_cycle || null, inspection_date_time || null]
+      'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date_time, rectifier_qty_uih) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;',
+      [site_code, job_number_sl6 || `SL6-${site_code}-${Date.now()}`, sap_number || `SAP-${site_code}-${Date.now()}`, rpm_cycle || null, inspection_date_time || null, rectifier_qty_uih || null]
     );
 
     res.status(201).json({ message: 'Started new work order', data: newRecord.rows[0], isNew: true });
@@ -61,13 +61,26 @@ router.post('/workorder/start', async (req, res) => {
 });
 
 // 3. Update Master Record Info
+router.get('/workorder/:rpm_id/master', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query('SELECT * FROM rpm_records_master WHERE rpm_id = $1;', [rpm_id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.put('/workorder/:rpm_id/master', async (req, res) => {
   const { rpm_id } = req.params;
-  const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time } = req.body;
+  const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time, rectifier_qty_uih } = req.body;
   try {
     const result = await db.query(
-      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date_time = $5 WHERE rpm_id = $6 RETURNING *;',
-      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time || null, rpm_id]
+      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date_time = $5, rectifier_qty_uih = $6 WHERE rpm_id = $7 RETURNING *;',
+      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date_time || null, rectifier_qty_uih || null, rpm_id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -98,7 +111,7 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
   const {
     meter_ac_size, cable_status, change_over_switch, ac_phase_qty,
     surge_protection, mdb_temp, voltage_p1, voltage_p2, voltage_p3,
-    current_p1, current_p2, current_p3, ground_resistance
+    current_p1, current_p2, current_p3, ground_resistance, site_temp
   } = req.body;
 
   // Retrieve file paths from multer
@@ -162,14 +175,14 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
           meter_ac_size = $1, meter_ac_img = $2, cable_status = $3, cable_img = $4,
           change_over_switch = $5, change_over_img = $6, ac_phase_qty = $7, surge_protection = $8,
           surge_img = $9, mdb_temp = $10, mdb_temp_img = $11, voltage_p1 = $12, voltage_p2 = $13,
-          voltage_p3 = $14, current_p1 = $15, current_p2 = $16, current_p3 = $17, ground_resistance = $18, ground_img = $19
+          voltage_p3 = $14, current_p1 = $15, current_p2 = $16, current_p3 = $17, ground_resistance = $18, ground_img = $19, site_temp = $21
         WHERE rpm_id = $20 RETURNING *;`,
         [
           meter_ac_size, meter_ac_img, cable_status, cable_img,
           change_over_switch, change_over_img, ac_phase_qty, surge_protection,
           surge_img, mdb_temp || null, mdb_temp_img, voltage_p1 || null, voltage_p2 || null,
           voltage_p3 || null, current_p1 || null, current_p2 || null, current_p3 || null, ground_resistance || null, ground_img,
-          rpm_id
+          rpm_id, site_temp
         ]
       );
     } else {
@@ -178,13 +191,13 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
           rpm_id, meter_ac_size, meter_ac_img, cable_status, cable_img,
           change_over_switch, change_over_img, ac_phase_qty, surge_protection,
           surge_img, mdb_temp, mdb_temp_img, voltage_p1, voltage_p2,
-          voltage_p3, current_p1, current_p2, current_p3, ground_resistance, ground_img
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING *;`,
+          voltage_p3, current_p1, current_p2, current_p3, ground_resistance, ground_img, site_temp
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *;`,
         [
           rpm_id, meter_ac_size, meter_ac_img, cable_status, cable_img,
           change_over_switch, change_over_img, ac_phase_qty, surge_protection,
           surge_img, mdb_temp || null, mdb_temp_img, voltage_p1 || null, voltage_p2 || null,
-          voltage_p3 || null, current_p1 || null, current_p2 || null, current_p3 || null, ground_resistance || null, ground_img
+          voltage_p3 || null, current_p1 || null, current_p2 || null, current_p3 || null, ground_resistance || null, ground_img, site_temp
         ]
       );
     }
@@ -213,7 +226,10 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
   const { rpm_id } = req.params;
   const {
     rect_no, model, ac_cable_size, breaker_size, modules_all, modules_fail,
-    input_current_ac, output_current_dc, surge_status
+    input_current_ac, output_current_dc, surge_status,
+    breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
+    lithium_capacity, battery_run, battery_soh, battery_soc,
+    battery_capacity_percent, battery_alarm, battery_qty_bank
   } = req.body;
 
   const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
@@ -279,17 +295,36 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
         `UPDATE power_rectifier SET 
           model = $1, ac_cable_size = $2, breaker_size = $3, breaker_img = $4,
           modules_all = $5, modules_fail = $6, input_current_ac = $7, output_current_dc = $8,
-          pdb_temp_img = $9, surge_status = $10, surge_rect_img = $11
-        WHERE rect_id = $12 RETURNING *;`,
-        [model, ac_cable_size, breaker_size, breaker_img, modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img, existing.rows[0].rect_id]
+          pdb_temp_img = $9, surge_status = $10, surge_rect_img = $11,
+          breaker_phase1 = $12, breaker_phase2 = $13, breaker_phase3 = $14, battery_type = $15,
+          lithium_capacity = $16, battery_run = $17, battery_soh = $18, battery_soc = $19,
+          battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22
+        WHERE rect_id = $23 RETURNING *;`,
+        [
+          model, ac_cable_size, breaker_size, breaker_img, modules_all, modules_fail, 
+          input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
+          breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
+          lithium_capacity, battery_run, battery_soh, battery_soc,
+          battery_capacity_percent, battery_alarm, battery_qty_bank || null,
+          existing.rows[0].rect_id
+        ]
       );
     } else {
       result = await db.query(
         `INSERT INTO power_rectifier (
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img,
-          modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`,
-        [rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img]
+          modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
+          breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
+          lithium_capacity, battery_run, battery_soh, battery_soc,
+          battery_capacity_percent, battery_alarm, battery_qty_bank
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *;`,
+        [
+          rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
+          modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
+          breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
+          lithium_capacity, battery_run, battery_soh, battery_soc,
+          battery_capacity_percent, battery_alarm, battery_qty_bank || null
+        ]
       );
     }
     res.json(result.rows[0]);
@@ -318,7 +353,7 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
 
 router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), async (req, res) => {
   const { rect_id } = req.params;
-  const { bank_name, cell_no, voltage, internal_resistance, status } = req.body;
+  const { bank_name, cell_no, voltage, internal_resistance, status, brand, capacity, installed_date, warrantee_date } = req.body;
   let rpm_id = req.query.rpm_id || 'UNKNOWN';
   let site_code = req.query.site_code || req.body.site_code || 'UNKNOWN';
 
@@ -372,10 +407,14 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
     let bank_id;
     if (bankResult.rows.length > 0) {
       bank_id = bankResult.rows[0].bank_id;
+      await db.query(
+        'UPDATE rectifier_banks SET brand = $1, capacity = $2, installed_date = $3, warrantee_date = $4 WHERE bank_id = $5;',
+        [brand || null, capacity || null, installed_date || null, warrantee_date || null, bank_id]
+      );
     } else {
       const newBank = await db.query(
-        'INSERT INTO rectifier_banks (rect_id, bank_name) VALUES ($1, $2) RETURNING bank_id;',
-        [rect_id, bank_name || 'Bank 1']
+        'INSERT INTO rectifier_banks (rect_id, bank_name, brand, capacity, installed_date, warrantee_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING bank_id;',
+        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, installed_date || null, warrantee_date || null]
       );
       bank_id = newBank.rows[0].bank_id;
     }
@@ -454,6 +493,8 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
       if (f.fieldname.startsWith('alarm')) sub = 'alarm';
       else if (f.fieldname.startsWith('vent')) sub = 'vent';
       else if (f.fieldname.startsWith('fac')) sub = 'fac';
+      else if (f.fieldname.startsWith('air')) sub = 'vent';
+      else if (f.fieldname.startsWith('control')) sub = 'vent';
       filesMap[f.fieldname] = `/storage/db_img/${getSiteCode()}/${getCycleDir()}/system_and_facilities/${sub}/${f.filename}`;
     });
   }
@@ -461,7 +502,8 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
   const fields = [
     'alarm_door', 'alarm_ac_fail', 'alarm_low_bat', 'alarm_high_temp', 'alarm_smoke', 'alarm_air_fail',
     'vent_ac_fan', 'vent_ac_fan_hood', 'vent_dc_fan', 'vent_dc_fan_hood', 'vent_air_cond', 'vent_filters',
-    'fac_site_sign', 'fac_outdoor_clean', 'fac_indoor_clean', 'fac_lighting', 'fac_grass_cut'
+    'fac_site_sign', 'fac_outdoor_clean', 'fac_indoor_clean', 'fac_lighting', 'fac_grass_cut',
+    'vent_filter_door', 'vent_filter_window', 'vent_equip_fan', 'vent_filter_equip', 'air_owner', 'control_air_type', 'control_air_status'
   ];
 
   try {

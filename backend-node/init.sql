@@ -143,6 +143,65 @@ INSERT INTO users (email, name, role) VALUES
 ('viewer@rpm.com', 'Jane Viewer', 'Viewer')
 ON CONFLICT (email) DO NOTHING;
 
+-- Seed field configs for Master Site Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('master', 'job_number_sl6', true, true),
+('master', 'sap_number', true, true),
+('master', 'summary_issue', false, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;
+
+-- Seed field configs for AC Main Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('acmain', 'meter_ac_size', true, true),
+('acmain', 'cable_status', true, true),
+('acmain', 'change_over_switch', true, true),
+('acmain', 'ac_phase_qty', true, true),
+('acmain', 'surge_protection', true, true),
+('acmain', 'mdb_temp', true, true),
+('acmain', 'site_temp', true, true),
+('acmain', 'voltage_p1', true, true),
+('acmain', 'voltage_p2', true, true),
+('acmain', 'voltage_p3', true, true),
+('acmain', 'current_p1', true, true),
+('acmain', 'current_p2', true, true),
+('acmain', 'current_p3', true, true),
+('acmain', 'ground_resistance', true, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;
+
+-- Seed field configs for Rectifier Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('rectifier', 'model', true, true),
+('rectifier', 'ac_cable_size', true, true),
+('rectifier', 'breaker_size', true, true),
+('rectifier', 'modules_all', true, true),
+('rectifier', 'modules_fail', true, true),
+('rectifier', 'input_current_ac', true, true),
+('rectifier', 'output_current_dc', true, true),
+('rectifier', 'surge_status', true, true),
+('rectifier', 'breaker_phase1', true, true),
+('rectifier', 'breaker_phase2', true, true),
+('rectifier', 'breaker_phase3', true, true),
+('rectifier', 'battery_type', true, true),
+('rectifier', 'lithium_capacity', true, true),
+('rectifier', 'battery_run', true, true),
+('rectifier', 'battery_soh', true, true),
+('rectifier', 'battery_soc', true, true),
+('rectifier', 'battery_capacity_percent', true, true),
+('rectifier', 'battery_alarm', true, true),
+('rectifier', 'battery_qty_bank', true, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;
+
+-- Seed field configs for Battery Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('battery', 'voltage', true, true),
+('battery', 'internal_resistance', true, true),
+('battery', 'status', true, true),
+('battery', 'brand', true, true),
+('battery', 'capacity', true, true),
+('battery', 'installed_date', true, true),
+('battery', 'warrantee_date', true, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;
+
 -- Seed field configs for Facilities Tab
 INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('facilities', 'alarm_door', true, true),
@@ -157,6 +216,13 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('facilities', 'vent_dc_fan_hood', true, true),
 ('facilities', 'vent_air_cond', true, true),
 ('facilities', 'vent_filters', true, true),
+('facilities', 'vent_filter_door', true, true),
+('facilities', 'vent_filter_window', true, true),
+('facilities', 'vent_equip_fan', true, true),
+('facilities', 'vent_filter_equip', true, true),
+('facilities', 'air_owner', true, true),
+('facilities', 'control_air_type', true, true),
+('facilities', 'control_air_status', true, true),
 ('facilities', 'fac_site_sign', true, true),
 ('facilities', 'fac_outdoor_clean', true, true),
 ('facilities', 'fac_indoor_clean', true, true),

@@ -3,25 +3,33 @@ import React, { useState, useEffect } from 'react';
 export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Facility parameters config
   const [params, setParams] = useState({
-    alarm_door: { status: 'ปกติ', file: null },
-    alarm_ac_fail: { status: 'ปกติ', file: null },
-    alarm_low_bat: { status: 'ปกติ', file: null },
-    alarm_high_temp: { status: 'ปกติ', file: null },
-    alarm_smoke: { status: 'ปกติ', file: null },
-    alarm_air_fail: { status: 'ปกติ', file: null },
+    alarm_door: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
+    alarm_ac_fail: { status: 'ทดสอบการส่ง Alarm ได้', file: null },
+    alarm_low_bat: { status: 'ทดสอบการส่ง Alarm ได้', file: null },
+    alarm_high_temp: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
+    alarm_smoke: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
+    alarm_air_fail: { status: 'ทดสอบ Alarm ได้', file: null },
 
-    vent_ac_fan: { status: 'ปกติ', file: null },
-    vent_ac_fan_hood: { status: 'ปกติ', file: null },
-    vent_dc_fan: { status: 'ปกติ', file: null },
-    vent_dc_fan_hood: { status: 'ปกติ', file: null },
-    vent_air_cond: { status: 'ปกติ', file: null },
-    vent_filters: { status: 'ปกติ', file: null },
+    vent_ac_fan: { status: 'มี ปกติ', file: null },
+    vent_ac_fan_hood: { status: 'มี สภาพดี', file: null },
+    vent_dc_fan: { status: 'มี ปกติ', file: null },
+    vent_dc_fan_hood: { status: 'มี สภาพดี', file: null },
+    vent_air_cond: { status: 'มี ทำงานปกติ', file: null },
+    vent_filters: { status: 'ปกติ', file: null }, // placeholder
 
-    fac_site_sign: { status: 'ปกติ', file: null },
-    fac_outdoor_clean: { status: 'ปกติ', file: null },
-    fac_indoor_clean: { status: 'ปกติ', file: null },
-    fac_lighting: { status: 'ปกติ', file: null },
-    fac_grass_cut: { status: 'ปกติ', file: null },
+    vent_filter_door: { status: 'ทำความสะอาดเรียบร้อย', file: null },
+    vent_filter_window: { status: 'ทำความสะอาดเรียบร้อย', file: null },
+    vent_equip_fan: { status: 'ทำความสะอาดเรียบร้อย', file: null },
+    vent_filter_equip: { status: 'ทำความสะอาดเรียบร้อย', file: null },
+    air_owner: { status: 'ไม่มีแอร์', file: null },
+    control_air_type: { status: 'ไม่มี', file: null },
+    control_air_status: { status: 'ไม่มี', file: null },
+
+    fac_site_sign: { status: 'แข็งแรง มีป้าย', file: null },
+    fac_outdoor_clean: { status: 'สะอาดเรียบร้อย ไม่มีขยะ หรือ ชำรุดเสียหาย', file: null },
+    fac_indoor_clean: { status: 'ห้องสะอาดเรียบร้อย', file: null },
+    fac_lighting: { status: 'Good หลอดไฟติดสว่างทุกดวง', file: null },
+    fac_grass_cut: { status: 'ห้องเช่า ไม่มีวัชพืช', file: null },
   });
 
   const [existingPaths, setExistingPaths] = useState({});
@@ -88,17 +96,94 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     alarm_high_temp: 'High Temperature Alarm',
     alarm_smoke: 'Smoke & Fire Detector Alarm',
     alarm_air_fail: 'Air Conditioner Failure Alarm',
+
     vent_ac_fan: 'Ventilation AC Fan Status',
     vent_ac_fan_hood: 'Ventilation AC Fan Hood',
     vent_dc_fan: 'Ventilation DC Fan Status',
     vent_dc_fan_hood: 'Ventilation DC Fan Hood',
     vent_air_cond: 'Air Conditioner System Test',
     vent_filters: 'Air Filters Condition',
-    fac_site_sign: 'ป้ายชื่อสถานี (Site Sign)',
-    fac_outdoor_clean: 'ความสะอาดภายนอกห้องเครื่อง',
-    fac_indoor_clean: 'ความสะอาดภายในห้องเครื่อง',
-    fac_lighting: 'ระบบไฟส่องสว่างสถานี (Lighting)',
-    fac_grass_cut: 'การตัดหญ้า/ถางวัชพืช'
+
+    vent_filter_door: 'ความสะอาด Filter Door',
+    vent_filter_window: 'ความสะอาด Filter Window',
+    vent_equip_fan: 'ทำความสะอาด Equipment Fan',
+    vent_filter_equip: 'ความสะอาด Filter Equipment',
+    air_owner: 'เจ้าของแอร์',
+    control_air_type: 'Control Air (Intronic or Timer)',
+    control_air_status: 'Control Air Status',
+
+    fac_site_sign: 'ประตู ป้าย Site',
+    fac_outdoor_clean: 'ความสะอาดภายนอกห้อง และรอบบริเวณอาคาร',
+    fac_indoor_clean: 'ความสะอาดภายใน Site',
+    fac_lighting: 'ระบบไฟฟ้าแสงสว่าง',
+    fac_grass_cut: 'ความสะอาดภายนอก site วัชพืชรอบๆ Site'
+  };
+
+  const dropdownOptions = {
+    alarm_door: [
+      'มี Sensor ทดสอบ Alarm ได้',
+      'มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ',
+      'มี Sensor ไม่ได้ Wiring เอาใว้',
+      'ไม่มี sensor'
+    ],
+    alarm_ac_fail: [
+      'ทดสอบการส่ง Alarm ได้',
+      'ทดสอบไม่ได้ Battery Fail',
+      'ทดสอบไม่ได้ Monitor ระบบไม่ได้',
+      'ไม่ได้ติดตั้งไว้/ไม่ได้ Wiring ไว้',
+      'ทดสอบผ่านระบบ RMS ได้',
+      'ใช้ไฟ DTAC'
+    ],
+    alarm_low_bat: [
+      'ทดสอบการส่ง Alarm ได้',
+      'ทดสอบไม่ได้ Battery Fail',
+      'ทดสอบไม่ได้ Monitor ระบบไม่ได้',
+      'ไม่ได้ติดตั้งไว้/ไม่ได้ Wiring ไว้',
+      'ทดสอบผ่านระบบ RMS ได้',
+      'ใช้ไฟ DTAC'
+    ],
+    alarm_smoke: [
+      'มี Sensor ทดสอบ Alarm ได้',
+      'มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ',
+      'มี Sensor ไม่ได้ Wiring เอาไว้',
+      'ไม่มี sensor',
+      'ไม่สามารถทดสอบได้'
+    ],
+    alarm_high_temp: [
+      'มี Sensor ทดสอบ Alarm ได้',
+      'มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ',
+      'มี Sensor ไม่ได้ Wiring เอาไว้',
+      'ไม่มี sensor',
+      'ไม่สามารถทดสอบได้'
+    ],
+    alarm_air_fail: [
+      'ทดสอบ Alarm ได้',
+      'ทดสอบ Alarm ไม่ได้(ไม่มีการติดตั้งไว้)',
+      'DTAC Site',
+      'LL Site',
+      'ทดสอบ Alarm ไม่ได้(Magnetic Fail)',
+      'ทดสอบ Alarm ไม่ได้(Intronic Fail)'
+    ],
+
+    vent_ac_fan: ['มี ปกติ', 'มี ทำงานไม่ปกติ เสีย', 'ไม่มี'],
+    vent_ac_fan_hood: ['มี สภาพดี', 'มี ชำรุด ตะแกรงผุขาด', 'ไม่มี'],
+    vent_dc_fan: ['มี ปกติ', 'มี ทำงานไม่ปกติ เสีย', 'ไม่มี'],
+    vent_dc_fan_hood: ['มี สภาพดี', 'มี ชำรุด ตะแกรงผุขาด', 'ไม่มี'],
+    vent_air_cond: ['ไม่มี', 'มี ทำงานปกติ', 'มี ทำงานไม่ปกติ/เสีย'],
+
+    vent_filter_door: ['เปลี่ยนใหม่ 2 แผ่น', 'DTAC site', 'ทำความสะอาดเรียบร้อย', 'เปลี่ยนใหม่ 1 แผ่น', 'ไม่มีฟิลเตอร์'],
+    vent_filter_window: ['เปลี่ยนใหม่ 2 แผ่น', 'DTAC site', 'ทำความสะอาดเรียบร้อย', 'เปลี่ยนใหม่ 1 แผ่น', 'ไม่มีฟิลเตอร์'],
+    vent_equip_fan: ['ทำความสะอาดเรียบร้อย', 'ไม่สามารถทำความสะอาดได้', 'อุปกรณ์ไม่มีพัดลม'],
+    vent_filter_equip: ['ทำความสะอาดเรียบร้อย', 'ไม่สามารถทำความสะอาดได้', 'อุปกรณ์ไม่มีพัดลม'],
+    air_owner: ['ไม่มีแอร์', 'UIH', 'DTAC', 'LL'],
+    control_air_type: ['ไม่มี', 'มี ปกติ', 'มี ทำงานไม่ปกติ เสีย'],
+    control_air_status: ['ไม่มี', 'มี ปกติ', 'มี ไม่ปกติ', 'DTAC Site', 'LL'],
+
+    fac_site_sign: ['แข็งแรง มีป้าย', 'แข็งแรง ไม่มีป้าย', 'ไม่แข็งแรง มีป้าย', 'ไม่แข็งแรง ไม่มีป้าย'],
+    fac_outdoor_clean: ['สะอาดเรียบร้อย ไม่มีขยะ หรือ ชำรุดเสียหาย', 'สกปรก รก ต้องปรับปรุง'],
+    fac_indoor_clean: ['ห้องสะอาดเรียบร้อย', 'สกปรก รก ต้องปรับปรุง'],
+    fac_lighting: ['Good หลอดไฟติดสว่างทุกดวง', 'หลอดขาด ไม่ติดบางหลอด', 'UIH Outdoor ไม่มีติดตั้ง', 'UIH Outdoor มีติดตั้ง', 'DTAC site', 'หลอดไฟของ LL'],
+    fac_grass_cut: ['อาคารเช่า ตัดวัชพืชรอบอาคารแล้ว', 'ห้องเช่า ไม่มีวัชพืช', 'container/cabinet/pole ไม่มีวัชพืช', 'container/cabinet/pole ตัดวัชพืชรอบๆแล้ว']
   };
 
   const handleSaveAll = async (e) => {
@@ -110,24 +195,21 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
       const isEnabled = cfg ? cfg.is_enabled : true;
       const isRequired = cfg ? cfg.is_required : true;
 
-      // Skip validation if the field is disabled by Admin
       if (!isEnabled) continue;
 
       const hasImg = (item.file && item.file.length > 0) || existingPaths[key];
-      // Only require image if Admin has "isRequired" set to true and state is not 'ไม่มีระบบนี้'
-      if (isRequired && item.status !== 'ไม่มีระบบนี้' && !hasImg) {
+      if (isRequired && !hasImg) {
         const friendlyName = labelMap[key] || key;
-        alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" หรือเลือกสถานะเป็น "ไม่มีระบบนี้" ก่อนทำการบันทึก!`);
+        alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" ก่อนทำการบันทึก!`);
         return;
       }
     }
 
     const formData = new FormData();
     Object.entries(params).forEach(([key, item]) => {
-      // Check if disabled by admin
       const cfg = fieldConfigs.find(c => c.field_name === key);
       const isEnabled = cfg ? cfg.is_enabled : true;
-      if (!isEnabled) return; // skip sending disabled fields
+      if (!isEnabled) return;
 
       formData.append(key, item.status);
       if (item.file && item.file.length > 0) {
@@ -162,7 +244,6 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     const isEnabled = cfg ? cfg.is_enabled : true;
     const isRequired = cfg ? cfg.is_required : true;
 
-    // Do not show field if disabled by Admin
     if (!isEnabled) {
       return (
         <div key={key} className="py-3 border-b border-dark-border/20 opacity-40 bg-dark-bg/10 px-2 flex justify-between items-center">
@@ -173,6 +254,8 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     }
 
     const item = params[key];
+    const options = dropdownOptions[key] || ['ปกติ', 'ผิดปกติ', 'ไม่มีระบบนี้'];
+
     return (
       <div key={key} className="py-4 border-b border-dark-border/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="md:w-1/3">
@@ -184,29 +267,16 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
         </div>
 
         <div className="flex flex-wrap items-center gap-6 md:w-2/3">
-          {/* Status Radio Buttons */}
-          <div className="flex items-center gap-2 bg-dark-bg/60 p-1 rounded-lg border border-dark-border">
-            {['ปกติ', 'ผิดปกติ', 'ไม่มีระบบนี้'].map((statusOption) => (
-              <button
-                key={statusOption}
-                type="button"
-                disabled={isReadOnly}
-                onClick={() => handleStatusChange(key, statusOption)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  isReadOnly ? 'opacity-60 cursor-not-allowed' : ''
-                } ${
-                  item.status === statusOption
-                    ? statusOption === 'ปกติ'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : statusOption === 'ผิดปกติ'
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                    : 'text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                {statusOption}
-              </button>
-            ))}
+          {/* Status Dropdown */}
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <select
+              disabled={isReadOnly}
+              value={item.status}
+              onChange={(e) => handleStatusChange(key, e.target.value)}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
+            >
+              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
           </div>
 
           {/* Image Uploader */}
@@ -279,7 +349,13 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
               {renderRow('vent_dc_fan', 'Ventilation DC Fan Status')}
               {renderRow('vent_dc_fan_hood', 'Ventilation DC Fan Hood')}
               {renderRow('vent_air_cond', 'Air Conditioner System Test')}
-              {renderRow('vent_filters', 'Air Filters Condition')}
+              {renderRow('vent_filter_door', 'ความสะอาด Filter Door')}
+              {renderRow('vent_filter_window', 'ความสะอาด Filter Window')}
+              {renderRow('vent_equip_fan', 'ทำความสะอาด Equipment Fan')}
+              {renderRow('vent_filter_equip', 'ความสะอาด Filter Equipment')}
+              {renderRow('air_owner', 'เจ้าของแอร์')}
+              {renderRow('control_air_type', 'Control Air (Intronic or Timer)')}
+              {renderRow('control_air_status', 'Control Air Status')}
             </div>
           </div>
 
@@ -287,11 +363,11 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
           <div className="bg-dark-bg/25 border border-dark-border rounded-xl p-6">
             <h4 className="font-bold text-indigo-400 border-b border-dark-border pb-2 mb-4">3. หมวดความสะอาดและสิ่งอำนวยความสะดวกสถานี (Site Facility)</h4>
             <div className="divide-y divide-dark-border/20">
-              {renderRow('fac_site_sign', 'ป้ายชื่อสถานี (Site Sign)')}
-              {renderRow('fac_outdoor_clean', 'ความสะอาดภายนอกห้องเครื่อง')}
-              {renderRow('fac_indoor_clean', 'ความสะอาดภายในห้องเครื่อง')}
-              {renderRow('fac_lighting', 'ระบบไฟส่องสว่างสถานี (Lighting)')}
-              {renderRow('fac_grass_cut', 'การตัดหญ้า/ถางวัชพืช')}
+              {renderRow('fac_site_sign', 'ประตู ป้าย Site')}
+              {renderRow('fac_outdoor_clean', 'ความสะอาดภายนอกห้อง')}
+              {renderRow('fac_indoor_clean', 'ความสะอาดภายใน Site')}
+              {renderRow('fac_lighting', 'ระบบไฟฟ้าแสงสว่าง')}
+              {renderRow('fac_grass_cut', 'ความสะอาดภายนอก site (วัชพืช)')}
             </div>
           </div>
         </fieldset>

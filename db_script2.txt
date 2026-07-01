@@ -1,5 +1,5 @@
 -- 1. ตารางสิทธิ์ผู้ใช้งาน (Users & Roles)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE users (
 );
 
 -- 2. ตารางข้อมูลหลักสถานี (Sites Master)
-CREATE TABLE sites (
+CREATE TABLE IF NOT EXISTS sites (
     site_id SERIAL PRIMARY KEY,
     site_code VARCHAR(50) UNIQUE NOT NULL, -- ใช้เป็น Unique สำหรับอ้างอิงภายนอก
     site_name VARCHAR(255) NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE sites (
 );
 
 -- 2. ตารางบันทึกประวัติใบงานหลัก (RPM Records Master)
-CREATE TABLE rpm_records_master (
+CREATE TABLE IF NOT EXISTS rpm_records_master (
     rpm_id SERIAL PRIMARY KEY,
     site_code VARCHAR(50) NOT NULL REFERENCES sites(site_code) ON UPDATE CASCADE ON DELETE RESTRICT,
     job_number_sl6 VARCHAR(100) UNIQUE NOT NULL, -- SL6 No.
@@ -30,7 +30,7 @@ CREATE TABLE rpm_records_master (
 );
 
 -- 3. ตารางระบบไฟฟ้าเมนหลัก (Power Main AC) [1-to-1 กับใบงาน]
-CREATE TABLE power_main_ac (
+CREATE TABLE IF NOT EXISTS power_main_ac (
     main_ac_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE, -- 1 ใบงานมีได้ 1 บันทึก AC
     meter_ac_size VARCHAR(100),
@@ -55,7 +55,7 @@ CREATE TABLE power_main_ac (
 );
 
 -- 4. ตารางระบบตู้ Rectifier (Power Rectifier) - สัมพันธ์แบบ 1 ใบงาน มีได้หลายตู้ (1-to-Many)
-CREATE TABLE power_rectifier (
+CREATE TABLE IF NOT EXISTS power_rectifier (
     rect_id SERIAL PRIMARY KEY,
     rpm_id INT NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
     rect_no VARCHAR(50) NOT NULL, -- เช่น ตู้ที่ 1, ตู้ที่ 2
@@ -73,7 +73,7 @@ CREATE TABLE power_rectifier (
 );
 
 -- 5. ตารางชั้น Bank (Rectifier Banks) [1 ตู้ มีหลาย Bank]
-CREATE TABLE rectifier_banks (
+CREATE TABLE IF NOT EXISTS rectifier_banks (
     bank_id SERIAL PRIMARY KEY,
     rect_id INT NOT NULL REFERENCES power_rectifier(rect_id) ON DELETE CASCADE,
     bank_name VARCHAR(50) NOT NULL, -- เช่น 'Bank 1', 'Bank 2'
@@ -81,7 +81,7 @@ CREATE TABLE rectifier_banks (
 );
 
 -- 6. ตารางตรวจสอบแบตเตอรี่รายลูก (Battery Tests) [1 Bank มี 4 ลูก]
-CREATE TABLE battery_tests (
+CREATE TABLE IF NOT EXISTS battery_tests (
     bat_id SERIAL PRIMARY KEY,
     bank_id INT NOT NULL REFERENCES rectifier_banks(bank_id) ON DELETE CASCADE, -- อ้างอิง Bank แทน Rectifier
     cell_no INT NOT NULL,          -- ลูกที่ 1, 2, 3, 4
@@ -94,7 +94,7 @@ CREATE TABLE battery_tests (
 );
 
 -- 7. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) [1-to-1 กับใบงาน]
-CREATE TABLE systems_and_facilities (
+CREATE TABLE IF NOT EXISTS systems_and_facilities (
     facility_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
     -- หมวด Alarms
@@ -119,12 +119,12 @@ CREATE TABLE systems_and_facilities (
     fac_grass_cut VARCHAR(100), fac_grass_cut_img VARCHAR(500)
 );
 
--- สร้าง Index เพื่อให้คิวรี่ข้อมูลประวัติงานและสถานีได้รวดเร็วขึ้นเมื่อข้อมูลมีปริมาณมาก
-CREATE INDEX idx_rpm_site ON rpm_records_master(site_code);
-CREATE INDEX idx_rect_rpm ON power_rectifier(rpm_id);
-CREATE INDEX idx_bank_rect ON rectifier_banks(rect_id);
-CREATE INDEX idx_bat_bank ON battery_tests(bank_id);
-CREATE INDEX idx_user_email ON users(email);
+-- สร้าง Index
+CREATE INDEX IF NOT EXISTS idx_rpm_site ON rpm_records_master(site_code);
+CREATE INDEX IF NOT EXISTS idx_rect_rpm ON power_rectifier(rpm_id);
+CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
+CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
 
 -- Table for Admin field management
 CREATE TABLE IF NOT EXISTS field_configs (
@@ -158,6 +158,7 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('acmain', 'ac_phase_qty', true, true),
 ('acmain', 'surge_protection', true, true),
 ('acmain', 'mdb_temp', true, true),
+('acmain', 'site_temp', true, true),
 ('acmain', 'voltage_p1', true, true),
 ('acmain', 'voltage_p2', true, true),
 ('acmain', 'voltage_p3', true, true),
@@ -176,14 +177,29 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('rectifier', 'modules_fail', true, true),
 ('rectifier', 'input_current_ac', true, true),
 ('rectifier', 'output_current_dc', true, true),
-('rectifier', 'surge_status', true, true)
+('rectifier', 'surge_status', true, true),
+('rectifier', 'breaker_phase1', true, true),
+('rectifier', 'breaker_phase2', true, true),
+('rectifier', 'breaker_phase3', true, true),
+('rectifier', 'battery_type', true, true),
+('rectifier', 'lithium_capacity', true, true),
+('rectifier', 'battery_run', true, true),
+('rectifier', 'battery_soh', true, true),
+('rectifier', 'battery_soc', true, true),
+('rectifier', 'battery_capacity_percent', true, true),
+('rectifier', 'battery_alarm', true, true),
+('rectifier', 'battery_qty_bank', true, true)
 ON CONFLICT (tab_name, field_name) DO NOTHING;
 
 -- Seed field configs for Battery Tab
 INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('battery', 'voltage', true, true),
 ('battery', 'internal_resistance', true, true),
-('battery', 'status', true, true)
+('battery', 'status', true, true),
+('battery', 'brand', true, true),
+('battery', 'capacity', true, true),
+('battery', 'installed_date', true, true),
+('battery', 'warrantee_date', true, true)
 ON CONFLICT (tab_name, field_name) DO NOTHING;
 
 -- Seed field configs for Facilities Tab
@@ -200,6 +216,13 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('facilities', 'vent_dc_fan_hood', true, true),
 ('facilities', 'vent_air_cond', true, true),
 ('facilities', 'vent_filters', true, true),
+('facilities', 'vent_filter_door', true, true),
+('facilities', 'vent_filter_window', true, true),
+('facilities', 'vent_equip_fan', true, true),
+('facilities', 'vent_filter_equip', true, true),
+('facilities', 'air_owner', true, true),
+('facilities', 'control_air_type', true, true),
+('facilities', 'control_air_status', true, true),
 ('facilities', 'fac_site_sign', true, true),
 ('facilities', 'fac_outdoor_clean', true, true),
 ('facilities', 'fac_indoor_clean', true, true),

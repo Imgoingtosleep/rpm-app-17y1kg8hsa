@@ -1,0 +1,98 @@
+ประทับเวลา,30/6/2026
+ที่อยู่อีเมล,anuwat.donlakkham@gmail.com
+JobID,2693448
+SapID,760604156
+Site Code,ATG-5001-UR
+Site Name,ปท.อ่างทอง_UIH Room
+
+จำนวน Rectifier UIH,1,2,3,4,5,6
+
+1. RPM DATE,30/6/2026
+2. อุณหภูมิ ภายใน Site (°C),<25,25-30,30-35,35-40,>40
+3. อุณหภูมิ จุดต่อสายภายในตู้ AC MDB และ DC PDB (°C),<25,25-30,30-35,35-40,>40
+4. Ground Site วัดค่าความต้านทาน (Ω),<5,5-10,>10-20,>20-30,>30-40,>40-50,>50-60,>60,วัดค่าไม่ได้
+5. ขนาด AC KWHrs Meter,1 phase 5/15,1 phase 15/45, 1 phase 5/100, 3 phase 5/15, 3 phase 15/45, DTAC site, LL
+6. สภาพสายไฟ Main AC Line,ปกติ สภาพปลอดภัย, Dtac site, หย่อน ชำรุด, รก ไม่สะอาด ต้องปรับปรุง
+7. ความสะอาดภายใน Site,ห้องสะอาดเรียบร้อย, สกปรก รก ต้องปรับปรุง
+7.1 ความสะอาดภายนอกห้อง และรอบบริเวณอาคาร,สะอาดเรียบร้อย ไม่มีขยะ หรือ ชำรุดเสียหาย, สกปรก รก ต้องปรับปรุง
+8. ความสะอาด Filter Door,เปลี่ยนใหม่ 2 แผ่น, DTAC site, ทำความสะอาดเรียบร้อย, เปลี่ยนใหม่ 1 แผ่น, ไม่มีฟิลเตอร์
+9. ความสะอาด Filter Window,เปลี่ยนใหม่ 2 แผ่น, DTAC site, ทำความสะอาดเรียบร้อย, เปลี่ยนใหม่ 1 แผ่น, ไม่มีฟิลเตอร์
+10. ทำความสะอาด Equipment Fan,ทำความสะอาดเรียบร้อย, ไม่สามารถทำความสะอาดได้, อุปกรณ์ไม่มีพัดลม
+11. ความสะอาด Filter Equipment,ทำความสะอาดเรียบร้อย, ไม่สามารถทำความสะอาดได้, อุปกรณ์ไม่มีพัดลม
+12. ระบบไฟฟ้าแสงสว่าง,Good หลอดไฟติดสว่างทุกดวง, หลอดขาด ไม่ติดบางหลอด, UIH Outdoor ไม่มีติดตั้ง, UIH Outdoor มีติดตั้ง, DTAC site, หลอดไฟของ LL
+13. ระบบระบายอากาศ Air Condition,ไม่มี, มี ทำงานปกติ, มี ทำงานไม่ปกติ/เสีย, ไม่มี
+14. เจ้าของแอร์,ไม่มีแอร์, UIH, DTAC, LL
+15. ระบบระบายอากาศ AC FAN,มี ปกติ, มี ทำงานไม่ปกติ เสีย, ไม่มี
+16. ระบบระบายอากาศDC FAN,มี ปกติ, มี ทำงานไม่ปกติ เสีย, ไม่มี
+17. Control Air (Intronic or Timer),ไม่มี, มี ปกติ, มี ทำงานไม่ปกติ เสีย
+18. Control Air,ไม่มี ,มี ปกติ, มี ไม่ปกติ, DTAC Site, LL
+19. สภาพ Hood AC FAN,มี สภาพดี, มี ชำรุด ตะแกรงผุขาด, ไม่มี
+20. สภาพ Hood DC FAN,มี สภาพดี, มี ชำรุด ตะแกรงผุขาด, ไม่มี
+21. ความสะอาดภายนอก site วัชพืชรอบๆ Site,อาคารเช่า ตัดวัชพืชรอบอาคารแล้ว, ห้องเช่า ไม่มีวัชพืช, container/cabinet/pole ไม่มีวัชพืช, container/cabinet/pole ตัดวัชพืชรอบๆแล้ว
+22. สภาพประตู ป้าย Site,แข็งแรง มีป้าย, แข็งแรง ไม่มีป้าย, ไม่แข็งแรง มีป้าย, ไม่แข็งแรง ไม่มีป้าย
+23. สภาพ Change Over Switch,มี/พร้อมใช้งาน, มี/ไม่พร้อมใช้งาน, มี/ชำรุดบางจุดต้องแก้ไข, ไม่มี
+24. Surge Protection ตู้ไฟ Main AC,มี ปกติ, มี ไม่ปกติ, ไม่มี
+25. Surge Protection ที่ Rectifier,มี ปกติ, มี ไม่ปกติ, ไม่มี
+26. Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier ถ้าเป็น SiteDtac, input value
+27. Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier ถ้าเป็น SiteDtac, input value
+28. Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier ถ้าเป็น SiteDtac, input value
+29. Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier ถ้าเป็น SiteDtac, input value
+30. Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier ถ้าเป็น SiteDtac, input value
+31. Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier ถ้าเป็น SiteDtac, input value
+32. External Alarm-Door Alarm,มี Sensor ทดสอบ Alarm ได้, มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ, มี Sensor ไม่ได้ Wiring เอาใว้, ไม่มี sensor
+33. External Alarm-AC Fail,ทดสอบการส่ง Alarm ได้, ทดสอบไม่ได้ Battery Fail, ทดสอบไม่ได้ Monitor ระบบไม่ได้, ไม่ได้ติดตั้งไว้/ไม่ได้ Wiring ไว้, ทดสอบผ่านระบบ RMS ได้, ใช้ไฟ DTAC
+34. External Alarm-Low Batt,ทดสอบการส่ง Alarm ได้, ทดสอบไม่ได้ Battery Fail, ทดสอบไม่ได้ Monitor ระบบไม่ได้, ไม่ได้ติดตั้งไว้/ไม่ได้ Wiring ไว้, ทดสอบผ่านระบบ RMS ได้, ใช้ไฟ DTAC
+35. External Alarm-Air Fail,ทดสอบ Alarm ไม่ได้(ไม่มีการติดตั้งไว้), DTAC Site, LL Site, ทดสอบ Alarm ได้, ทดสอบ Alarm ไม่ได้(Magnetic Fail), ทดสอบ Alarm ไม่ได้(Intronic Fail)
+36. External Alarm-Smoke Alarm,มี Sensor ทดสอบ Alarm ได้, มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ, มี Sensor ไม่ได้ Wiring เอาไว้, ไม่มี sensor, ไม่สามารถทดสอบได้
+37. External Alarm High Temp,มี Sensor ทดสอบ Alarm ได้, มี Sensor ทดสอบ Alarm ไม่ได้อุปกรณ์ไม่รองรับ, มี Sensor ไม่ได้ Wiring เอาไว้, ไม่มี sensor, ไม่สามารถทดสอบได้
+39 #Rectifier1 จำนวน Bank Batt, input value
+40 #Rectifier1 ยี่ห้อ Rectifier No.1, model
+41 #Rectifier1 Rate Breaker AC (Amp.) RectifierPhase#1,10,15,16,20,25,30,32,35,40,50,63,100
+42 #Rectifier1 Rate Breaker AC (Amp.) RectifierPhase#2,10,15,16,20,25,30,32,35,40,50,63,100
+43 #Rectifier1 Rate Breaker AC (Amp.) RectifierPhase#3,10,15,16,20,25,30,32,35,40,50,63,100
+44 #Rectifier1 จำนวน Module(EA)-ทั้งหมดที่มีอยู่, input value
+45 #Rectifier1 จำนวน Module(EA)-Fail 1, input value
+46 #Rectifier1 ใช้เครื่องมือวัดกระแส(Amp) AC Input current, input value
+47 #Rectifier1 ใช้เครื่องมือวัดกระแส(Amp) DC output Current(A),input value
+48 #Rectifier1 ขนาดสายไฟ AC input Rectifier 1,1 Sqmm,1.5 Sqmm,2.5 Sqmm,4 Sqmm,6 Sqmm,10 Sqmm,16 Sqmm
+49 #Rectifier1 ชนิดแบตเตอรี่,VRLA AGM,Lithium
+50 #Rectifier1 Battery Lithium Capacity,100AH,40AH
+51 #Rectifier1 Battery RUN,ON (เขียว), OFF (ดับ)
+52 #Rectifier1 Battery % SOH (State of Health), input value
+53 #Rectifier1 Battery SOC (State of Charge), input value
+54 #Rectifier1 Battery เปอร์เซ็น Capacity, input value
+55 #Rectifier1 Battery Alarm, Alarm LED (สีแดง) ติด, Alarm LED (สีแดง) ดับ
+56 #Rectifier1 VRLA Battery Bank No.1 of Rect. No. ?, input Rectifier(1-6)
+57 #Rectifier1 Battery Bank No.1 ยี่ห้อ Bank No.1, model
+58 #Rectifier1 Battery Bank No.1 Capacity ?,100AH,12AH,40AH,150AH
+59 #Rectifier1 Battery Bank No.1 วันที่ติดตั้ง Battery, input date
+60 #Rectifier1 Battery Bank No.1 วันหมดประกัน สติ๊กเกอร์ขาว, input date
+62 #Rectifier1 Bank ที่ 1 / ลูก ที่ 1 Volt.,input value
+63 #Rectifier1 Bank ที่ 1 / ลูก ที่ 1 IR,input value
+64 #Rectifier1 Bank ที่ 1 / ลูก ที่ 1 Status,Good,Fail
+65 #Rectifier1 Bank ที่ 1 / ลูก ที่ 2 Volt.,input value
+66 #Rectifier1 Bank ที่ 1 / ลูก ที่ 2 IR,input value
+67 #Rectifier1 Bank ที่ 1 / ลูก ที่ 2 Status,Good,Fail
+68 #Rectifier1 Bank ที่ 1 / ลูก ที่ 3 Volt.,input value
+69 #Rectifier1 Bank ที่ 1 / ลูก ที่ 3 IR,input value
+70 #Rectifier1 Bank ที่ 1 / ลูก ที่ 3 Status,Good,Fail
+71 #Rectifier1 Bank ที่ 1 / ลูก ที่ 4 Volt.,input value
+72 #Rectifier1 Bank ที่ 1 / ลูก ที่ 4 IR,input value
+73 #Rectifier1 Bank ที่ 1 / ลูก ที่ 4 Status,Good,Fail
+74 #Rectifier1 Battery Bank No.2 of Rect. No. ?,
+75 #Rectifier1 Battery Bank No.2 ยี่ห้อ Bank No.2,
+76 #Rectifier1 Battery Bank No.2 Capacity ?,
+77 #Rectifier1 Battery Bank No.2 วันที่ติดตั้ง Battery,
+78 #Rectifier1 Battery Bank No.2 วันหมดประกัน สติ๊กเกอร์ขาว,
+80 #Rectifier1 Bank ที่ 2 / ลูก ที่ 1 Volt.,
+81 #Rectifier1 Bank ที่ 2 / ลูก ที่ 1 IR,
+82 #Rectifier1 Bank ที่ 2 / ลูก ที่ 1 Status,
+83 #Rectifier1 Bank ที่ 2 / ลูก ที่ 2 Volt.,
+84 #Rectifier1 Bank ที่ 2 / ลูก ที่ 2 IR,
+85 #Rectifier1 Bank ที่ 2 / ลูก ที่ 2 Status,
+86 #Rectifier1 Bank ที่ 2 / ลูก ที่ 3 Volt.,
+87 #Rectifier1 Bank ที่ 2 / ลูก ที่ 3 IR,
+88 #Rectifier1 Bank ที่ 2 / ลูก ที่ 3 Status,
+89 #Rectifier1 Bank ที่ 2 / ลูก ที่ 4 Volt.,
+90 #Rectifier1 Bank ที่ 2 / ลูก ที่ 4 IR,
+91 #Rectifier1 Bank ที่ 2 / ลูก ที่ 4 Status,

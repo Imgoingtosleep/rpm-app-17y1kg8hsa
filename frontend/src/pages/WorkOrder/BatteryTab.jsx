@@ -8,6 +8,12 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   const [batteries, setBatteries] = useState([]);
   const [fieldConfigs, setFieldConfigs] = useState([]);
 
+  // VRLA Bank Metadata fields
+  const [brand, setBrand] = useState('');
+  const [capacity, setCapacity] = useState('100AH');
+  const [installedDate, setInstalledDate] = useState('');
+  const [warranteeDate, setWarranteeDate] = useState('');
+
   // State for cells 1 to 4
   const [cells, setCells] = useState({
     1: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
@@ -88,6 +94,28 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     });
 
     setCells(updatedCells);
+
+    const formatDateForInput = (dateStr) => {
+      if (!dateStr) return '';
+      if (dateStr.length >= 10) {
+        return dateStr.substring(0, 10);
+      }
+      return dateStr;
+    };
+
+    // Get metadata from any cell of this bank
+    const matchedBank = batteries.find(b => b.bank_name === bankNo);
+    if (matchedBank) {
+      setBrand(matchedBank.brand || '');
+      setCapacity(matchedBank.capacity || '100AH');
+      setInstalledDate(formatDateForInput(matchedBank.installed_date));
+      setWarranteeDate(formatDateForInput(matchedBank.warrantee_date));
+    } else {
+      setBrand('');
+      setCapacity('100AH');
+      setInstalledDate('');
+      setWarranteeDate('');
+    }
   }, [bankNo, batteries]);
 
   const handleCellChange = (num, field, value) => {
@@ -101,7 +129,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   };
 
   const evaluateStatus = (voltage, ir) => {
-    return (ir > 10.0 || voltage < 12.0) ? 'เสื่อม' : 'ปกติ';
+    return (ir > 10.0 || voltage < 12.0) ? 'Fail' : 'Good';
   };
 
   const getFieldConfig = (name) => {
@@ -135,13 +163,19 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       }
     }
 
-    const status = evaluateStatus(cell.voltage, cell.ir);
+    const status = cell.status || 'Good';
     const formData = new FormData();
     formData.append('bank_name', bankNo);
     formData.append('cell_no', num);
     formData.append('voltage', configsMap.voltage.isEnabled ? cell.voltage : 0.0);
     formData.append('internal_resistance', configsMap.internal_resistance.isEnabled ? cell.ir : 0.0);
-    formData.append('status', configsMap.status.isEnabled ? status : 'ปกติ');
+    formData.append('status', configsMap.status.isEnabled ? status : 'Good');
+
+    // Add VRLA bank metadata
+    formData.append('brand', brand);
+    formData.append('capacity', capacity);
+    formData.append('installed_date', installedDate);
+    formData.append('warrantee_date', warranteeDate);
 
     if (configsMap.status.isEnabled) {
       if (cell.file && cell.file.length > 0) {
@@ -160,7 +194,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         body: formData
       });
       if (res.ok) {
-        alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) เรียบร้อยแล้ว!`);
+        alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) และข้อมูล Bank เรียบร้อยแล้ว!`);
         fetchBatteries(); // Reload batteries list
         if (onComplete) onComplete();
       } else {
@@ -220,6 +254,58 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         </div>
       </div>
 
+      {/* Battery Bank metadata */}
+      <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-4">
+        <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <label className="block text-[10px] uppercase text-gray-400 mb-2">ยี่ห้อ Bank</label>
+            <input type="text" className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" value={brand} onChange={(e) => setBrand(e.target.value)} disabled={isReadOnly} />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase text-gray-400 mb-2">Capacity</label>
+            <select className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" value={capacity} onChange={(e) => setCapacity(e.target.value)} disabled={isReadOnly}>
+              <option value="12AH">12AH</option>
+              <option value="40AH">40AH</option>
+              <option value="100AH">100AH</option>
+              <option value="150AH">150AH</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase text-gray-400 mb-2">วันที่ติดตั้ง</label>
+            <input 
+              type="date" 
+              style={{ colorScheme: 'dark' }}
+              onClick={(e) => {
+                try {
+                  e.target.showPicker();
+                } catch (err) {}
+              }}
+              className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
+              value={installedDate} 
+              onChange={(e) => setInstalledDate(e.target.value)} 
+              disabled={isReadOnly} 
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase text-gray-400 mb-2">วันหมดประกัน สติ๊กเกอร์ขาว</label>
+            <input 
+              type="date" 
+              style={{ colorScheme: 'dark' }}
+              onClick={(e) => {
+                try {
+                  e.target.showPicker();
+                } catch (err) {}
+              }}
+              className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
+              value={warranteeDate} 
+              onChange={(e) => setWarranteeDate(e.target.value)} 
+              disabled={isReadOnly} 
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-6 pt-4">
         <div className="flex justify-between items-center border-b border-dark-border pb-2">
           <h4 className="font-bold text-white text-md">บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
@@ -227,7 +313,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         
         {[1, 2, 3, 4].map((num) => {
           const cell = cells[num];
-          const status = evaluateStatus(cell.voltage, cell.ir);
+          const status = cell.status || 'Good';
 
           return (
             <div key={num} className="p-5 rounded-xl border border-dark-border bg-dark-bg/25 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -283,12 +369,18 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                 {configsMap.status.isEnabled ? (
                   <>
                     <div>
-                      <label className="block text-[10px] uppercase text-gray-500 mb-1">ผลประเมิน</label>
-                      <span className={`inline-block w-full text-center py-2 rounded text-xs font-bold ${
-                        status === 'ปกติ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                      }`}>
-                        {status}
-                      </span>
+                      <label className="block text-[10px] uppercase text-gray-500 mb-1">ผลประเมิน (Status)</label>
+                      <select
+                        disabled={isReadOnly}
+                        value={status}
+                        onChange={(e) => handleCellChange(num, 'status', e.target.value)}
+                        className={`w-full bg-dark-bg border border-dark-border rounded p-2 text-xs font-bold outline-none ${
+                          status === 'Good' ? 'text-emerald-400 focus:border-emerald-500' : 'text-red-400 focus:border-red-500'
+                        }`}
+                      >
+                        <option value="Good" className="text-emerald-400 bg-dark-bg">Good</option>
+                        <option value="Fail" className="text-red-400 bg-dark-bg">Fail</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase text-gray-500 mb-1">

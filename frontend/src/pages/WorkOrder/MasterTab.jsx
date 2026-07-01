@@ -4,6 +4,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
+  const [rectifierQtyUih, setRectifierQtyUih] = useState('1');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldConfigs, setFieldConfigs] = useState([]);
 
@@ -36,6 +37,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           setSl6Number(resData.data.job_number_sl6 || `SL6-TEMP-${site.code}`);
           setSapNumber(resData.data.sap_number || `SAP-TEMP-${site.code}`);
           setSummaryIssue(resData.data.summary_issue || '');
+          setRectifierQtyUih(String(resData.data.rectifier_qty_uih || '1'));
           if (resData.data.rpm_id && setRpmId) {
             setRpmId(resData.data.rpm_id);
           }
@@ -80,6 +82,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           job_number_sl6: (sl6Cfg?.is_enabled ?? true) ? sl6Number : '',
           sap_number: (sapCfg?.is_enabled ?? true) ? sapNumber : '',
           summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : '',
+          rectifier_qty_uih: parseInt(rectifierQtyUih, 10),
           rpm_cycle: rpmCycle || '',
           inspection_date_time: inspectionDateTime || null
         })
@@ -157,7 +160,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {sl6Config.isEnabled ? (
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
@@ -197,6 +200,25 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               SAP Number (ถูกปิดใช้งานโดย Admin)
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+              จำนวน Rectifier UIH
+            </label>
+            <select
+              disabled={isReadOnly}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+              value={rectifierQtyUih}
+              onChange={(e) => setRectifierQtyUih(e.target.value)}
+            >
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
         </div>
 
         {issueConfig.isEnabled ? (
