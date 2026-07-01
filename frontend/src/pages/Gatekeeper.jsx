@@ -10,16 +10,9 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
     return localStorage.getItem('inspectorName') || '';
   });
   const [rpmCycle, setRpmCycle] = useState('2026-R1');
-  const [inspectionDateTime, setInspectionDateTime] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // Format current local time: YYYY-MM-DDTHH:MM
-    const now = new Date();
-    const tzOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
-    setInspectionDateTime(localISOTime);
-
     fetch('/api/sites')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch sites from database');
@@ -50,8 +43,19 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedSite || !inspectorName.trim() || !rpmCycle || !inspectionDateTime) return;
-    onOpenWorkOrder(selectedSite, inspectorName, rpmCycle, inspectionDateTime);
+    if (!selectedSite || !inspectorName.trim() || !rpmCycle) return;
+    
+    // Auto-capture actual real date and time at this moment
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const actualDate = `${year}-${month}-${day}`;
+    const actualTime = `${hours}:${minutes}`;
+
+    onOpenWorkOrder(selectedSite, inspectorName, rpmCycle, actualDate, actualTime);
   };
 
   const navigate = useNavigate();
@@ -186,20 +190,9 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 />
               </div>
 
-              {/* <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">วันเวลาที่ตรวจสอบ (Inspection Date & Time)</label>
-                <input 
-                  type="datetime-local" 
-                  required
-                  className="w-full bg-dark-accent/50 border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
-                  value={inspectionDateTime}
-                  onChange={(e) => setInspectionDateTime(e.target.value)}
-                />
-              </div> */}
-
               <button 
                 type="submit"
-                disabled={!selectedSite || !inspectorName.trim() || !rpmCycle || !inspectionDateTime}
+                disabled={!selectedSite || !inspectorName.trim() || !rpmCycle}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg text-sm transition-all shadow-lg hover:shadow-indigo-600/20"
               >
                 Open Work Order &rarr;

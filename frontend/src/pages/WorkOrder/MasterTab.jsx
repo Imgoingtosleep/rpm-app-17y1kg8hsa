@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDateTime, onComplete, isReadOnly }) {
+export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
   const [rectifierQtyUih, setRectifierQtyUih] = useState('1');
+  const [localDate, setLocalDate] = useState(inspectionDate || '');
+  const [localTime, setLocalTime] = useState(inspectionTime || '');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldConfigs, setFieldConfigs] = useState([]);
+
+  // Synchronize local states when parent props load asynchronously
+  useEffect(() => {
+    if (inspectionDate) {
+      setLocalDate(inspectionDate);
+    }
+  }, [inspectionDate]);
+
+  useEffect(() => {
+    if (inspectionTime) {
+      setLocalTime(inspectionTime);
+    }
+  }, [inspectionTime]);
 
   // Load existing data and configs
   useEffect(() => {
@@ -38,6 +53,12 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           setSapNumber(resData.data.sap_number || `SAP-TEMP-${site.code}`);
           setSummaryIssue(resData.data.summary_issue || '');
           setRectifierQtyUih(String(resData.data.rectifier_qty_uih || '1'));
+          if (resData.data.inspection_date) {
+            setLocalDate(resData.data.inspection_date.split('T')[0]);
+          }
+          if (resData.data.inspection_time) {
+            setLocalTime(resData.data.inspection_time);
+          }
           if (resData.data.rpm_id && setRpmId) {
             setRpmId(resData.data.rpm_id);
           }
@@ -84,7 +105,8 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : '',
           rectifier_qty_uih: parseInt(rectifierQtyUih, 10),
           rpm_cycle: rpmCycle || '',
-          inspection_date_time: inspectionDateTime || null
+          inspection_date: localDate || null,
+          inspection_time: localTime || null
         })
       });
       if (res.ok) {
@@ -101,22 +123,30 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
     }
   };
 
-  // Helper to format date-time
-  const formatDateTime = (dtStr) => {
-    if (!dtStr) return 'ไม่ได้ระบุ';
+  // Helper to format date
+  const formatDateTh = (dStr) => {
+    if (!dStr) return 'ไม่ได้ระบุ';
     try {
-      const date = new Date(dtStr);
-      return date.toLocaleString('th-TH', {
+      const date = new Date(dStr);
+      return date.toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }) + ' น.';
+        day: 'numeric'
+      });
     } catch (e) {
-      return dtStr;
+      return dStr;
     }
+  };
+
+  // Helper to format time
+  const formatTimeTh = (tStr) => {
+    if (!tStr) return 'ไม่ได้ระบุ';
+    // Remove seconds if present (e.g. 14:30:00 -> 14:30)
+    const parts = tStr.split(':');
+    if (parts.length >= 2) {
+      return `${parts[0]}:${parts[1]} น.`;
+    }
+    return tStr;
   };
 
   const getFieldConfig = (name) => {
@@ -139,7 +169,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       </div>
 
       <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">รอบการตรวจ (RPM Cycle)</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-indigo-400 font-semibold">
@@ -153,9 +183,15 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">วันเวลาที่ตรวจสอบ</label>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">วันที่ตรวจสอบ (Date)</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold">
-              {formatDateTime(inspectionDateTime)}
+              {formatDateTh(localDate)}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เวลาที่ตรวจสอบ (Time)</label>
+            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold">
+              {formatTimeTh(localTime)}
             </div>
           </div>
         </div>

@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS rpm_records_master (
     rpm_cycle VARCHAR(50),                       -- รอบการตรวจ เช่น 2026-R1
     rpm_date DATE NOT NULL DEFAULT CURRENT_DATE,
     summary_issue TEXT,                          -- สรุปปัญหาหน้างาน
+    inspection_date DATE,                        -- วันที่เข้าตรวจสอบ
+    inspection_time TIME,                        -- เวลาที่เข้าตรวจสอบ
+    rectifier_qty_uih INT,                       -- จำนวนตู้ Rectifier
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -23,7 +23,8 @@ function WorkOrderPanel() {
   const [selectedSite, setSelectedSite] = useState(null);
   const [inspector, setInspector] = useState('');
   const [rpmCycle, setRpmCycle] = useState('');
-  const [inspectionDateTime, setInspectionDateTime] = useState('');
+  const [inspectionDate, setInspectionDate] = useState('');
+  const [inspectionTime, setInspectionTime] = useState('');
   const [rpmId, setRpmId] = useState(null);
   const [userRole, setUserRole] = useState('Viewer');
 
@@ -52,11 +53,11 @@ function WorkOrderPanel() {
       return;
     }
 
-    // Resolve site dynamically from database via API
-    fetch('/api/sites')
+    // Fetch site detail
+    fetch(`/api/sites`)
       .then(res => res.json())
       .then(data => {
-        const dbSite = data.find(s => s.site_code.toLowerCase() === site_code?.toLowerCase());
+        const dbSite = data.find(s => s.site_code === site_code);
         if (dbSite) {
           setSelectedSite({
             id: dbSite.site_id,
@@ -73,13 +74,15 @@ function WorkOrderPanel() {
         setSelectedSite({ code: site_code, name: `Station ${site_code}` });
       });
 
-    // Retrieve inspector name, cycle, and datetime
+    // Retrieve inspector name, cycle, date and time
     const storedInspector = localStorage.getItem('inspectorName') || 'Inspector';
     const storedCycle = localStorage.getItem('rpmCycle') || '';
-    const storedDateTime = localStorage.getItem('inspectionDateTime') || '';
+    const storedDate = localStorage.getItem('inspectionDate') || '';
+    const storedTime = localStorage.getItem('inspectionTime') || '';
     setInspector(storedInspector);
     setRpmCycle(storedCycle);
-    setInspectionDateTime(storedDateTime);
+    setInspectionDate(storedDate);
+    setInspectionTime(storedTime);
 
     // Start or load work order from backend
     fetch('/api/workorder/start', {
@@ -90,7 +93,8 @@ function WorkOrderPanel() {
       body: JSON.stringify({ 
         site_code: site_code,
         rpm_cycle: storedCycle || '',
-        inspection_date_time: storedDateTime || null
+        inspection_date: storedDate || null,
+        inspection_time: storedTime || null
       })
     })
       .then(res => res.json())
@@ -100,6 +104,15 @@ function WorkOrderPanel() {
           if (resData.data.rpm_cycle) {
             setRpmCycle(resData.data.rpm_cycle);
             localStorage.setItem('rpmCycle', resData.data.rpm_cycle);
+          }
+          if (resData.data.inspection_date) {
+            const dateStr = resData.data.inspection_date.split('T')[0];
+            setInspectionDate(dateStr);
+            localStorage.setItem('inspectionDate', dateStr);
+          }
+          if (resData.data.inspection_time) {
+            setInspectionTime(resData.data.inspection_time);
+            localStorage.setItem('inspectionTime', resData.data.inspection_time);
           }
         }
       })
@@ -134,7 +147,7 @@ function WorkOrderPanel() {
     const isReadOnly = userRole === 'Viewer';
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
       case 'acmain':
         return <AcMainTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
       case 'rectifier':
@@ -144,7 +157,7 @@ function WorkOrderPanel() {
       case 'facilities':
         return <FacilitiesTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
       default:
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDateTime={inspectionDateTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
     }
   };
 
@@ -293,10 +306,11 @@ function GatekeeperWrapper() {
     }
   }, [navigate]);
 
-  const handleOpenWorkOrder = (site, inspectorName, rpmCycle, inspectionDateTime) => {
+  const handleOpenWorkOrder = (site, inspectorName, rpmCycle, inspectionDate, inspectionTime) => {
     localStorage.setItem('inspectorName', inspectorName);
     localStorage.setItem('rpmCycle', rpmCycle);
-    localStorage.setItem('inspectionDateTime', inspectionDateTime);
+    localStorage.setItem('inspectionDate', inspectionDate);
+    localStorage.setItem('inspectionTime', inspectionTime);
     navigate(`/workorder/${site.code}/master`);
   };
 
