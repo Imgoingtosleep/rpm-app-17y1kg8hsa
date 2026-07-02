@@ -980,4 +980,8 @@ router.delete('/storage/delete', async (req, res) => {
   }
 });
 
+router.get('/auth/version', (req, res) => {
+  res.json({ version: '1.0.2' });
+});
+
 module.exports = router;

@@ -360,6 +360,20 @@ function GatekeeperWrapper() {
 }
 
 export default function App() {
+  const CLIENT_VERSION = '1.0.2';
+
+  useEffect(() => {
+    fetch('/api/auth/version')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.version && data.version !== CLIENT_VERSION) {
+          console.log(`New version ${data.version} detected. Force reloading...`);
+          window.location.reload();
+        }
+      })
+      .catch(err => console.error("Error checking app version:", err));
+  }, []);
+
   return (
     <Router>
       <Routes>
