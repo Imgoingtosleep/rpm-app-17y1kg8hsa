@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS field_configs (
 
 -- Seed initial users
 INSERT INTO users (email, name, role) VALUES
-('anan.dev@rpm.com', 'Anan Developer', 'Admin'),
+('admin@rpm.com', 'Anan Admin', 'Admin'),
 ('inspector@rpm.com', 'John Inspector', 'Inspector'),
 ('viewer@rpm.com', 'Jane Viewer', 'Viewer')
 ON CONFLICT (email) DO NOTHING;
