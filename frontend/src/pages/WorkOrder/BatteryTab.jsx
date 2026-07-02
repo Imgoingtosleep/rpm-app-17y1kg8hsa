@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
 const BATTERY_MODELS = [
-  { brand: "Narada รุ่น AG12V100F(100AH)", capacity: "100AH" },
-  { brand: "Genesys รุ่น 12TD100F4(100AH)", capacity: "100AH" },
-  { brand: "ABT รุ่น EFTB12-100(100AH)", capacity: "100AH" },
-  { brand: "Sacred SUN รุ่น FTB12-100 II(100AH)", capacity: "100AH" },
-  { brand: "Transpower รุ่น FTB12-100 B(100AH)", capacity: "100AH" },
-  { brand: "Invent รุ่น IFT12-100 V0(100AH)", capacity: "100AH" },
-  { brand: "Outdo OT105-12FT(100AH)", capacity: "100AH" },
-  { brand: "HIPOW รุ่น HP 12-40(40AH)", capacity: "40AH" },
-  { brand: "CSB รุ่น DB 12-40(40AH)", capacity: "40AH" },
-  { brand: "Trasnpower รุ่น TDB 12-40(40AH)", capacity: "40AH" },
-  { brand: "Invent รุ่น IHB12-40 V0(40AH)", capacity: "40AH" },
-  { brand: "Outdo OT40-12(40AH)", capacity: "40AH" },
-  { brand: "TPP TPP40-12 (AGM)(40AH)", capacity: "40AH" },
-  { brand: "HIPOW รุ่น HP 12-12(12AH)", capacity: "12AH" },
-  { brand: "Transpowerรุ่น TGB 12-12(12AH)", capacity: "12AH" },
-  { brand: "Invent รุ่น IHB12-12 V0(12AH)", capacity: "12AH" },
-  { brand: "Outdo OT12-12(12AH)", capacity: "12AH" }
+  { brand: "Narada รุ่น AG12V100F(100AH)", capacity: "100AH", specIr: 6.36, abnormalIr: 13 },
+  { brand: "Genesys รุ่น 12TD100F4(100AH)", capacity: "100AH", specIr: 5.70, abnormalIr: 12 },
+  { brand: "ABT รุ่น EFTB12-100(100AH)", capacity: "100AH", specIr: 3.99, abnormalIr: 8 },
+  { brand: "Sacred SUN รุ่น FTB12-100 II(100AH)", capacity: "100AH", specIr: 4.50, abnormalIr: 9 },
+  { brand: "Transpower รุ่น FTB12-100 B(100AH)", capacity: "100AH", specIr: 5.50, abnormalIr: 11 },
+  { brand: "Invent รุ่น IFT12-100 V0(100AH)", capacity: "100AH", specIr: 5.50, abnormalIr: 11 },
+  { brand: "Outdo OT105-12FT(100AH)", capacity: "100AH", specIr: 5.50, abnormalIr: 11 },
+  { brand: "HIPOW รุ่น HP 12-40(40AH)", capacity: "40AH", specIr: 10.00, abnormalIr: 20 },
+  { brand: "CSB รุ่น DB 12-40(40AH)", capacity: "40AH", specIr: 9.50, abnormalIr: 19 },
+  { brand: "Trasnpower รุ่น TDB 12-40(40AH)", capacity: "40AH", specIr: 9.50, abnormalIr: 19 },
+  { brand: "Invent รุ่น IHB12-40 V0(40AH)", capacity: "40AH", specIr: 9.00, abnormalIr: 18 },
+  { brand: "Outdo OT40-12(40AH)", capacity: "40AH", specIr: 9.50, abnormalIr: 19 },
+  { brand: "TPP TPP40-12 (AGM)(40AH)", capacity: "40AH", specIr: 9.50, abnormalIr: 19 },
+  { brand: "HIPOW รุ่น HP 12-12(12AH)", capacity: "12AH", specIr: 13.00, abnormalIr: 26 },
+  { brand: "Transpowerรุ่น TGB 12-12(12AH)", capacity: "12AH", specIr: 19.00, abnormalIr: 38 },
+  { brand: "Invent รุ่น IHB12-12 V0(12AH)", capacity: "12AH", specIr: 17.00, abnormalIr: 34 },
+  { brand: "Outdo OT12-12(12AH)", capacity: "12AH", specIr: 11.00, abnormalIr: 22 }
 ];
 
 export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
@@ -142,17 +142,34 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   }, [bankNo, batteries]);
 
   const handleCellChange = (num, field, value) => {
-    setCells(prev => ({
-      ...prev,
-      [num]: {
+    setCells(prev => {
+      const updatedCell = {
         ...prev[num],
         [field]: value
-      }
-    }));
-  };
+      };
 
-  const evaluateStatus = (voltage, ir) => {
-    return (ir > 10.0 || voltage < 12.0) ? 'Fail' : 'Good';
+      // Automatically evaluate status if voltage or ir changes
+      if (field === 'ir' || field === 'voltage') {
+        const vVal = field === 'voltage' ? (value === '' ? NaN : parseFloat(value)) : (updatedCell.voltage === '' ? NaN : parseFloat(updatedCell.voltage));
+        const irVal = field === 'ir' ? (value === '' ? NaN : parseFloat(value)) : (updatedCell.ir === '' ? NaN : parseFloat(updatedCell.ir));
+        
+        // Find abnormal threshold for selected brand
+        const match = BATTERY_MODELS.find(m => m.brand === brand);
+        const limitIr = match ? match.abnormalIr : 10.0; // Fallback to 10.0 mΩ
+
+        // Evaluation logic: Fail if voltage < 12.0V or IR > threshold
+        if ((!isNaN(vVal) && vVal < 12.0) || (!isNaN(irVal) && irVal > limitIr)) {
+          updatedCell.status = 'Fail';
+        } else {
+          updatedCell.status = 'Good';
+        }
+      }
+
+      return {
+        ...prev,
+        [num]: updatedCell
+      };
+    });
   };
 
   const getFieldConfig = (name) => {
@@ -346,6 +363,18 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                 </button>
               </div>
             )}
+            {(() => {
+              const info = BATTERY_MODELS.find(m => m.brand === brand);
+              if (info) {
+                return (
+                  <div className="mt-2 text-[10px] bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg flex justify-between text-indigo-300">
+                    <span>🔋 <strong>Spec IR:</strong> {info.specIr} mΩ</span>
+                    <span>⚠️ <strong>ผิดปกติ (Fail) เมื่อ:</strong> &gt; {info.abnormalIr} mΩ</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
           <div>
             <label className="block text-[10px] uppercase text-gray-400 mb-2">Capacity</label>
@@ -441,11 +470,34 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                       type="number" 
                       step="0.01" 
                       disabled={isReadOnly}
-                      className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                      className={`w-full bg-dark-bg border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50 ${
+                        (() => {
+                          const match = BATTERY_MODELS.find(m => m.brand === brand);
+                          if (match && cell.ir !== '') {
+                            return parseFloat(cell.ir) > match.abnormalIr ? 'border-red-500/60 focus:border-red-500' : 'border-emerald-500/40 focus:border-emerald-500';
+                          }
+                          return 'border-dark-border focus:border-indigo-500';
+                        })()
+                      }`} 
                       value={cell.ir}
                       onChange={(e) => handleCellChange(num, 'ir', e.target.value === '' ? '' : parseFloat(e.target.value))}
                       required={configsMap.internal_resistance.isRequired}
                     />
+                    {(() => {
+                      const match = BATTERY_MODELS.find(m => m.brand === brand);
+                      if (match && cell.ir !== '') {
+                        const isAbnormal = parseFloat(cell.ir) > match.abnormalIr;
+                        return (
+                          <p className={`text-[9px] mt-1 font-semibold ${isAbnormal ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {isAbnormal 
+                              ? `⚠️ สูงเกินเกณฑ์ (> ${match.abnormalIr} mΩ)` 
+                              : `✓ ปกติ (≤ ${match.abnormalIr} mΩ)`
+                            }
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">IR (Disabled)</div>

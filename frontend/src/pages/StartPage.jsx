@@ -62,11 +62,12 @@ export default function StartPage() {
     }
   }, []);
 
-  const handleMockLogin = () => {
+  const handleMockLogin = (role) => {
     const mockUser = {
-      name: 'Anan Developer (Demo)',
-      email: 'anan.dev@rpm.com',
-      avatar: 'AD'
+      name: role === 'Admin' ? 'Admin Developer (Demo)' : 'Somchai Inspector (Demo)',
+      email: role === 'Admin' ? 'admin.dev@rpm.com' : 'somchai.ins@rpm.com',
+      avatar: role === 'Admin' ? 'AD' : 'SI',
+      role: role
     };
     localStorage.setItem('user', JSON.stringify(mockUser));
     localStorage.setItem('inspectorName', mockUser.name);
@@ -109,13 +110,22 @@ export default function StartPage() {
             <div id="google-signin-btn"></div>
           </div>
 
-          <div className="border-t border-dark-border/40 my-4 pt-4">
-            <button
-              onClick={handleMockLogin}
-              className="w-full py-2.5 px-4 bg-dark-accent hover:bg-dark-accent/80 border border-dark-border text-gray-300 font-semibold rounded-xl text-xs transition-all active:scale-[0.98]"
-            >
-              🚀 ใช้งานระบบจำลองแบบไม่มีล็อกอิน (Demo Mode)
-            </button>
+          <div className="border-t border-dark-border/40 my-4 pt-4 space-y-3">
+            <span className="block text-[10px] text-gray-500 font-semibold text-center uppercase tracking-wider">หรือ ทดสอบระบบจำลอง (Demo Mode)</span>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleMockLogin('Admin')}
+                className="py-2.5 px-4 bg-indigo-600/10 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98]"
+              >
+                📊 สิทธิ์ Admin
+              </button>
+              <button
+                onClick={() => handleMockLogin('Inspector')}
+                className="py-2.5 px-4 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98]"
+              >
+                📋 สิทธิ์ Inspector
+              </button>
+            </div>
           </div>
 
           <div className="text-center text-xs text-gray-500">
