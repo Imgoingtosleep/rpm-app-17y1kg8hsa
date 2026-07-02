@@ -32,28 +32,28 @@ const modelOptions = [
 
 export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   const [rectNo, setRectNo] = useState('ตู้ที่ 1');
-  const [selectedModel, setSelectedModel] = useState('AC Plug');
+  const [selectedModel, setSelectedModel] = useState('');
   const [customModel, setCustomModel] = useState('');
-  const [acCableSize, setAcCableSize] = useState('2.5 Sqmm');
-  const [breakerSize, setBreakerSize] = useState('16');
-  const [modulesAll, setModulesAll] = useState(4);
-  const [modulesFail, setModulesFail] = useState(0);
-  const [inputCurrentAc, setInputCurrentAc] = useState(0.0);
-  const [outputCurrentDc, setOutputCurrentDc] = useState(0.0);
-  const [surgeStatus, setSurgeStatus] = useState('มี ปกติ');
+  const [acCableSize, setAcCableSize] = useState('');
+  const [breakerSize, setBreakerSize] = useState('');
+  const [modulesAll, setModulesAll] = useState('');
+  const [modulesFail, setModulesFail] = useState('');
+  const [inputCurrentAc, setInputCurrentAc] = useState('');
+  const [outputCurrentDc, setOutputCurrentDc] = useState('');
+  const [surgeStatus, setSurgeStatus] = useState('');
 
   // New fields from Colunm_List.csv
-  const [breakerPhase1, setBreakerPhase1] = useState('16');
-  const [breakerPhase2, setBreakerPhase2] = useState('16');
-  const [breakerPhase3, setBreakerPhase3] = useState('16');
-  const [batteryType, setBatteryType] = useState('VRLA AGM');
-  const [lithiumCapacity, setLithiumCapacity] = useState('100AH');
-  const [batteryRun, setBatteryRun] = useState('ON (เขียว)');
-  const [batterySoh, setBatterySoh] = useState('100');
-  const [batterySoc, setBatterySoc] = useState('100');
-  const [batteryCapacityPercent, setBatteryCapacityPercent] = useState('100');
-  const [batteryAlarm, setBatteryAlarm] = useState('Alarm LED (สีแดง) ดับ');
-  const [batteryQtyBank, setBatteryQtyBank] = useState('1');
+  const [breakerPhase1, setBreakerPhase1] = useState('');
+  const [breakerPhase2, setBreakerPhase2] = useState('');
+  const [breakerPhase3, setBreakerPhase3] = useState('');
+  const [batteryType, setBatteryType] = useState('');
+  const [lithiumCapacity, setLithiumCapacity] = useState('');
+  const [batteryRun, setBatteryRun] = useState('');
+  const [batterySoh, setBatterySoh] = useState('');
+  const [batterySoc, setBatterySoc] = useState('');
+  const [batteryCapacityPercent, setBatteryCapacityPercent] = useState('');
+  const [batteryAlarm, setBatteryAlarm] = useState('');
+  const [batteryQtyBank, setBatteryQtyBank] = useState('');
   
   // Dynamic Rectifier Count based on master record
   const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
@@ -62,6 +62,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [pdbTempImg, setPdbTempImg] = useState([]);
   const [surgeRectImg, setSurgeRectImg] = useState([]);
   const [fieldConfigs, setFieldConfigs] = useState([]);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   const [existingPaths, setExistingPaths] = useState({
     breaker: null,
@@ -119,29 +120,29 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
         setSelectedModel(modelVal);
         setCustomModel('');
       } else {
-        setSelectedModel('อื่นๆ');
+        setSelectedModel(modelVal ? 'อื่นๆ' : '');
         setCustomModel(modelVal);
       }
 
-      setAcCableSize(found.ac_cable_size || '2.5 Sqmm');
-      setBreakerSize(found.breaker_size || '16');
-      setModulesAll(found.modules_all || 0);
-      setModulesFail(found.modules_fail || 0);
-      setInputCurrentAc(found.input_current_ac ? parseFloat(found.input_current_ac) : 0.0);
-      setOutputCurrentDc(found.output_current_dc ? parseFloat(found.output_current_dc) : 0.0);
-      setSurgeStatus(found.surge_status || 'มี ปกติ');
+      setAcCableSize(found.ac_cable_size || '');
+      setBreakerSize(found.breaker_size || '');
+      setModulesAll(found.modules_all !== null && found.modules_all !== undefined ? found.modules_all : '');
+      setModulesFail(found.modules_fail !== null && found.modules_fail !== undefined ? found.modules_fail : '');
+      setInputCurrentAc(found.input_current_ac !== null && found.input_current_ac !== undefined ? parseFloat(found.input_current_ac) : '');
+      setOutputCurrentDc(found.output_current_dc !== null && found.output_current_dc !== undefined ? parseFloat(found.output_current_dc) : '');
+      setSurgeStatus(found.surge_status || '');
 
-      setBreakerPhase1(found.breaker_phase1 || '16');
-      setBreakerPhase2(found.breaker_phase2 || '16');
-      setBreakerPhase3(found.breaker_phase3 || '16');
-      setBatteryType(found.battery_type || 'VRLA AGM');
-      setLithiumCapacity(found.lithium_capacity || '100AH');
-      setBatteryRun(found.battery_run || 'ON (เขียว)');
-      setBatterySoh(found.battery_soh || '100');
-      setBatterySoc(found.battery_soc || '100');
-      setBatteryCapacityPercent(found.battery_capacity_percent || '100');
-      setBatteryAlarm(found.battery_alarm || 'Alarm LED (สีแดง) ดับ');
-      setBatteryQtyBank(String(found.battery_qty_bank || '1'));
+      setBreakerPhase1(found.breaker_phase1 || '');
+      setBreakerPhase2(found.breaker_phase2 || '');
+      setBreakerPhase3(found.breaker_phase3 || '');
+      setBatteryType(found.battery_type || '');
+      setLithiumCapacity(found.lithium_capacity || '');
+      setBatteryRun(found.battery_run || '');
+      setBatterySoh(found.battery_soh !== null && found.battery_soh !== undefined ? found.battery_soh : '');
+      setBatterySoc(found.battery_soc !== null && found.battery_soc !== undefined ? found.battery_soc : '');
+      setBatteryCapacityPercent(found.battery_capacity_percent !== null && found.battery_capacity_percent !== undefined ? found.battery_capacity_percent : '');
+      setBatteryAlarm(found.battery_alarm || '');
+      setBatteryQtyBank(found.battery_qty_bank ? String(found.battery_qty_bank) : '');
       
       setExistingPaths({
         breaker: found.breaker_img || null,
@@ -149,27 +150,27 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
         surgeRect: found.surge_rect_img || null,
       });
     } else {
-      setSelectedModel('AC Plug');
+      setSelectedModel('');
       setCustomModel('');
-      setAcCableSize('2.5 Sqmm');
-      setBreakerSize('16');
-      setModulesAll(4);
-      setModulesFail(0);
-      setInputCurrentAc(0.0);
-      setOutputCurrentDc(0.0);
-      setSurgeStatus('มี ปกติ');
+      setAcCableSize('');
+      setBreakerSize('');
+      setModulesAll('');
+      setModulesFail('');
+      setInputCurrentAc('');
+      setOutputCurrentDc('');
+      setSurgeStatus('');
 
-      setBreakerPhase1('16');
-      setBreakerPhase2('16');
-      setBreakerPhase3('16');
-      setBatteryType('VRLA AGM');
-      setLithiumCapacity('100AH');
-      setBatteryRun('ON (เขียว)');
-      setBatterySoh('100');
-      setBatterySoc('100');
-      setBatteryCapacityPercent('100');
-      setBatteryAlarm('Alarm LED (สีแดง) ดับ');
-      setBatteryQtyBank('1');
+      setBreakerPhase1('');
+      setBreakerPhase2('');
+      setBreakerPhase3('');
+      setBatteryType('');
+      setLithiumCapacity('');
+      setBatteryRun('');
+      setBatterySoh('');
+      setBatterySoc('');
+      setBatteryCapacityPercent('');
+      setBatteryAlarm('');
+      setBatteryQtyBank('');
       
       setExistingPaths({
         breaker: null,
@@ -199,6 +200,17 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     input_current_ac: getFieldConfig('input_current_ac'),
     output_current_dc: getFieldConfig('output_current_dc'),
     surge_status: getFieldConfig('surge_status'),
+    breaker_phase1: getFieldConfig('breaker_phase1'),
+    breaker_phase2: getFieldConfig('breaker_phase2'),
+    breaker_phase3: getFieldConfig('breaker_phase3'),
+    battery_type: getFieldConfig('battery_type'),
+    lithium_capacity: getFieldConfig('lithium_capacity'),
+    battery_run: getFieldConfig('battery_run'),
+    battery_soh: getFieldConfig('battery_soh'),
+    battery_soc: getFieldConfig('battery_soc'),
+    battery_capacity_percent: getFieldConfig('battery_capacity_percent'),
+    battery_alarm: getFieldConfig('battery_alarm'),
+    battery_qty_bank: getFieldConfig('battery_qty_bank'),
   };
 
   const handleSave = async (e) => {
@@ -210,7 +222,80 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
 
     const finalModel = selectedModel === 'อื่นๆ' ? customModel : selectedModel;
     if (configsMap.model.isEnabled && configsMap.model.isRequired && !finalModel.trim()) {
-      alert('กรุณากรอก Model/ยี่ห้อ');
+      alert('กรุณากรอก/เลือก Model/ยี่ห้อ');
+      return;
+    }
+
+    if (configsMap.ac_cable_size.isEnabled && configsMap.ac_cable_size.isRequired && !acCableSize) {
+      alert('กรุณาเลือก AC Cable Size');
+      return;
+    }
+    if (configsMap.breaker_size.isEnabled && configsMap.breaker_size.isRequired && !breakerSize) {
+      alert('กรุณาเลือก Breaker Size');
+      return;
+    }
+    if (configsMap.modules_all.isEnabled && configsMap.modules_all.isRequired && (modulesAll === '' || modulesAll === null || modulesAll === undefined)) {
+      alert('กรุณากรอก All Rectifier Modules Qty');
+      return;
+    }
+    if (configsMap.modules_fail.isEnabled && configsMap.modules_fail.isRequired && (modulesFail === '' || modulesFail === null || modulesFail === undefined)) {
+      alert('กรุณากรอก Failed Modules Qty');
+      return;
+    }
+    if (configsMap.input_current_ac.isEnabled && configsMap.input_current_ac.isRequired && (inputCurrentAc === '' || inputCurrentAc === null || inputCurrentAc === undefined)) {
+      alert('กรุณากรอก Total Input Current AC');
+      return;
+    }
+    if (configsMap.output_current_dc.isEnabled && configsMap.output_current_dc.isRequired && (outputCurrentDc === '' || outputCurrentDc === null || outputCurrentDc === undefined)) {
+      alert('กรุณากรอก Total Output Current DC');
+      return;
+    }
+    if (configsMap.surge_status.isEnabled && configsMap.surge_status.isRequired && !surgeStatus) {
+      alert('กรุณาเลือก Rectifier Surge Status');
+      return;
+    }
+    if (configsMap.breaker_phase1.isEnabled && configsMap.breaker_phase1.isRequired && !breakerPhase1) {
+      alert('กรุณากรอก/เลือก Rate Breaker AC Phase 1');
+      return;
+    }
+    if (configsMap.breaker_phase2.isEnabled && configsMap.breaker_phase2.isRequired && !breakerPhase2) {
+      alert('กรุณากรอก/เลือก Rate Breaker AC Phase 2');
+      return;
+    }
+    if (configsMap.breaker_phase3.isEnabled && configsMap.breaker_phase3.isRequired && !breakerPhase3) {
+      alert('กรุณากรอก/เลือก Rate Breaker AC Phase 3');
+      return;
+    }
+    if (configsMap.battery_type.isEnabled && configsMap.battery_type.isRequired && !batteryType) {
+      alert('กรุณาเลือก ชนิดแบตเตอรี่ (Battery Type)');
+      return;
+    }
+    if (configsMap.lithium_capacity.isEnabled && configsMap.lithium_capacity.isRequired && !lithiumCapacity) {
+      alert('กรุณาเลือก Lithium Capacity');
+      return;
+    }
+    if (configsMap.battery_run.isEnabled && configsMap.battery_run.isRequired && !batteryRun) {
+      alert('กรุณาเลือก Battery RUN');
+      return;
+    }
+    if (configsMap.battery_soh.isEnabled && configsMap.battery_soh.isRequired && (batterySoh === '' || batterySoh === null || batterySoh === undefined)) {
+      alert('กรุณากรอก Battery % SOH');
+      return;
+    }
+    if (configsMap.battery_soc.isEnabled && configsMap.battery_soc.isRequired && (batterySoc === '' || batterySoc === null || batterySoc === undefined)) {
+      alert('กรุณากรอก Battery % SOC');
+      return;
+    }
+    if (configsMap.battery_capacity_percent.isEnabled && configsMap.battery_capacity_percent.isRequired && (batteryCapacityPercent === '' || batteryCapacityPercent === null || batteryCapacityPercent === undefined)) {
+      alert('กรุณากรอก Battery เปอร์เซ็น Capacity');
+      return;
+    }
+    if (configsMap.battery_alarm.isEnabled && configsMap.battery_alarm.isRequired && !batteryAlarm) {
+      alert('กรุณาเลือก Battery Alarm Status');
+      return;
+    }
+    if (configsMap.battery_qty_bank.isEnabled && configsMap.battery_qty_bank.isRequired && !batteryQtyBank) {
+      alert('กรุณาเลือก จำนวน Bank Batt');
       return;
     }
 
@@ -241,10 +326,10 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     formData.append('model', configsMap.model.isEnabled ? finalModel : '');
     formData.append('ac_cable_size', configsMap.ac_cable_size.isEnabled ? acCableSize : '');
     formData.append('breaker_size', configsMap.breaker_size.isEnabled ? breakerSize : '');
-    formData.append('modules_all', configsMap.modules_all.isEnabled ? modulesAll : 0);
-    formData.append('modules_fail', configsMap.modules_fail.isEnabled ? modulesFail : 0);
-    formData.append('input_current_ac', configsMap.input_current_ac.isEnabled ? inputCurrentAc : 0.0);
-    formData.append('output_current_dc', configsMap.output_current_dc.isEnabled ? outputCurrentDc : 0.0);
+    formData.append('modules_all', configsMap.modules_all.isEnabled ? modulesAll : '');
+    formData.append('modules_fail', configsMap.modules_fail.isEnabled ? modulesFail : '');
+    formData.append('input_current_ac', configsMap.input_current_ac.isEnabled ? inputCurrentAc : '');
+    formData.append('output_current_dc', configsMap.output_current_dc.isEnabled ? outputCurrentDc : '');
     formData.append('surge_status', configsMap.surge_status.isEnabled ? surgeStatus : '');
 
     formData.append('breaker_phase1', breakerPhase1);
@@ -297,6 +382,10 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       });
       if (res.ok) {
         alert(`บันทึกข้อมูล ${rectNo} สำเร็จ!`);
+        setBreakerImg([]);
+        setPdbTempImg([]);
+        setSurgeRectImg([]);
+        setFileInputKey(Date.now());
         fetchRectifiers();
         if (onComplete) onComplete();
       } else {
@@ -343,6 +432,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                 >
+                  <option value="">-- เลือก --</option>
                   {modelOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
                 {selectedModel === 'อื่นๆ' && (
@@ -368,6 +458,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   ขนาดสายไฟ AC input
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={acCableSize} onChange={(e) => setAcCableSize(e.target.value)}>
+                  <option value="">-- เลือก --</option>
                   {cableOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
@@ -380,6 +471,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   ขนาดเมนเบรกเกอร์ (Breaker Size)
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerSize} onChange={(e) => setBreakerSize(e.target.value)}>
+                  <option value="">-- เลือก --</option>
                   {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
                 </select>
               </div>
@@ -392,6 +484,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   Surge Protection ที่ Rectifier
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeStatus} onChange={(e) => setSurgeStatus(e.target.value)}>
+                  <option value="">-- เลือก --</option>
                   <option value="มี ปกติ">มี ปกติ</option>
                   <option value="มี ไม่ปกติ">มี ไม่ปกติ</option>
                   <option value="ไม่มี">ไม่มี</option>
@@ -407,18 +500,21 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 1 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase1} onChange={(e) => setBreakerPhase1(e.target.value)}>
+                <option value="">-- เลือก --</option>
                 {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 2 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase2} onChange={(e) => setBreakerPhase2(e.target.value)}>
+                <option value="">-- เลือก --</option>
                 {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 3 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase3} onChange={(e) => setBreakerPhase3(e.target.value)}>
+                <option value="">-- เลือก --</option>
                 {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
               </select>
             </div>
@@ -428,7 +524,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.modules_all.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules All</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(parseInt(e.target.value))} required={configsMap.modules_all.isRequired} />
+                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_all.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules All (Disabled)</div>
@@ -436,7 +532,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.modules_fail.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules Fail</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(parseInt(e.target.value))} required={configsMap.modules_fail.isRequired} />
+                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_fail.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules Fail (Disabled)</div>
@@ -444,7 +540,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.input_current_ac.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (A)</label>
-                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
+                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Input Current (Disabled)</div>
@@ -452,36 +548,36 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.output_current_dc.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (A)</label>
-                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
+                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Output Current (Disabled)</div>
             )}
           </div>
 
-          {/* Battery specifications configuration */}
           <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-6">
             <h4 className="font-bold text-white text-md border-b border-dark-border/60 pb-2">🔋 ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่</label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
+                  <option value="">-- เลือก --</option>
                   <option value="VRLA AGM">VRLA AGM</option>
                   <option value="Lithium">Lithium</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryQtyBank} onChange={(e) => setBatteryQtyBank(e.target.value)} />
+                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryQtyBank} onChange={(e) => setBatteryQtyBank(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
               </div>
             </div>
 
-            {/* Lithium Conditional Fields */}
             {batteryType === 'Lithium' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 bg-dark-bg/60 p-4 rounded-xl border border-dark-border/40">
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Lithium Capacity</label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={lithiumCapacity} onChange={(e) => setLithiumCapacity(e.target.value)}>
+                    <option value="">-- เลือก --</option>
                     <option value="12AH">12AH</option>
                     <option value="40AH">40AH</option>
                     <option value="100AH">100AH</option>
@@ -491,6 +587,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery RUN</label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryRun} onChange={(e) => setBatteryRun(e.target.value)}>
+                    <option value="">-- เลือก --</option>
                     <option value="ON (เขียว)">ON (เขียว)</option>
                     <option value="OFF (ดับ)">OFF (ดับ)</option>
                   </select>
@@ -498,17 +595,18 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery Alarm Status</label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryAlarm} onChange={(e) => setBatteryAlarm(e.target.value)}>
+                    <option value="">-- เลือก --</option>
                     <option value="Alarm LED (สีแดง) ดับ">Alarm LED (สีแดง) ดับ</option>
                     <option value="Alarm LED (สีแดง) ติด">Alarm LED (สีแดง) ติด</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOH (State of Health)</label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value)} />
+                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOC (State of Charge)</label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value)} />
+                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery เปอร์เซ็น Capacity</label>
@@ -528,7 +626,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเบรกเกอร์ (breaker_img) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(Array.from(e.target.files))} />
+                  <input key={`breaker-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(Array.from(e.target.files))} />
                   {existingPaths.breaker && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.breaker) ? existingPaths.breaker.join(', ') : existingPaths.breaker}</p>}
                 </div>
               )}
@@ -537,7 +635,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img) {configsMap.model.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(Array.from(e.target.files))} />
+                  <input key={`pdbTemp-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(Array.from(e.target.files))} />
                   {existingPaths.pdbTemp && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.pdbTemp) ? existingPaths.pdbTemp.join(', ') : existingPaths.pdbTemp}</p>}
                 </div>
               )}
@@ -546,7 +644,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img) {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(Array.from(e.target.files))} />
+                  <input key={`surgeRect-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(Array.from(e.target.files))} />
                   {existingPaths.surgeRect && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.surgeRect) ? existingPaths.surgeRect.join(', ') : existingPaths.surgeRect}</p>}
                 </div>
               )}

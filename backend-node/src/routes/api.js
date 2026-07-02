@@ -40,10 +40,10 @@ router.post('/sites', async (req, res) => {
 router.post('/workorder/start', async (req, res) => {
   const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih } = req.body;
   try {
-    // Check if master record exists
+    // Check if master record exists for this specific site and cycle
     const existing = await db.query(
-      'SELECT * FROM rpm_records_master WHERE site_code = $1 ORDER BY created_at DESC LIMIT 1;',
-      [site_code]
+      'SELECT * FROM rpm_records_master WHERE site_code = $1 AND rpm_cycle = $2 ORDER BY created_at DESC LIMIT 1;',
+      [site_code, rpm_cycle]
     );
 
     if (existing.rows.length > 0) {
@@ -791,6 +791,20 @@ router.post('/storage/download-selected', async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: err.message });
     }
+  }
+});
+
+// Get active work orders (that have job_number_sl6 or sap_number)
+router.get('/workorders/active', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT site_code, job_number_sl6, sap_number, rpm_cycle FROM rpm_records_master 
+       WHERE (job_number_sl6 IS NOT NULL AND job_number_sl6 != '') 
+          OR (sap_number IS NOT NULL AND sap_number != '');`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

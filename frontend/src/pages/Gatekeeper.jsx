@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Gatekeeper({ onOpenWorkOrder }) {
   const [sites, setSites] = useState([]);
+  const [activeWorkOrders, setActiveWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSite, setSelectedSite] = useState(null);
@@ -11,8 +12,33 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   });
   const [rpmCycle, setRpmCycle] = useState('2026-R1');
   const [searchTerm, setSearchTerm] = useState('');
+  const [jobNo, setJobNo] = useState('');
+  const [sapNo, setSapNo] = useState('');
 
   useEffect(() => {
+    // Reset selected site when changing search or cycle
+    setSelectedSite(null);
+  }, [searchTerm, rpmCycle]);
+
+  useEffect(() => {
+    if (selectedSite && rpmCycle) {
+      const match = activeWorkOrders.find(wo => wo.site_code === selectedSite.code && wo.rpm_cycle === rpmCycle);
+      if (match) {
+        setJobNo(match.job_number_sl6 || '');
+        setSapNo(match.sap_number || '');
+      } else {
+        setJobNo('');
+        setSapNo('');
+      }
+    } else {
+      setJobNo('');
+      setSapNo('');
+    }
+  }, [selectedSite, rpmCycle, activeWorkOrders]);
+
+  useEffect(() => {
+    setLoading(true);
+    // Fetch sites
     fetch('/api/sites')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch sites from database');
@@ -27,38 +53,26 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
           status: 'Active'
         }));
         setSites(mapped);
-        setLoading(false);
       })
       .catch(err => {
         console.error(err);
         setError(err.message);
+      });
+
+    // Fetch active work orders (records with SL6 or SAP ID)
+    fetch('/api/workorders/active')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setActiveWorkOrders(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
         setLoading(false);
       });
   }, []);
-
-  const filteredSites = sites.filter(site =>
-    site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    site.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!selectedSite || !inspectorName.trim() || !rpmCycle) return;
-    
-    // Auto-capture actual real date and time at this moment
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const actualDate = `${year}-${month}-${day}`;
-    const actualTime = `${hours}:${minutes}`;
-
-    onOpenWorkOrder(selectedSite, inspectorName, rpmCycle, actualDate, actualTime);
-  };
-
-  const navigate = useNavigate();
 
   // Retrieve user role from localStorage
   const getUserRole = () => {
@@ -75,6 +89,44 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   };
 
   const isAdmin = getUserRole() === 'Admin';
+
+  const filteredSites = sites.filter(site => {
+    const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          site.code.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Admin can see all sites
+    if (isAdmin) return true;
+
+    // Inspector can only see sites that have an active work order in the selected cycle
+    return activeWorkOrders.some(wo => wo.site_code === site.code && wo.rpm_cycle === rpmCycle);
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedSite || !inspectorName.trim() || !rpmCycle) return;
+
+    if (isAdmin && (!jobNo.trim() || !sapNo.trim())) {
+      alert('กรุณากรอกข้อมูลเลข Job SL6 และ SAP ID สำหรับรอบการตรวจนี้');
+      return;
+    }
+    
+    // Auto-capture actual real date and time at this moment
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const actualDate = `${year}-${month}-${day}`;
+    const actualTime = `${hours}:${minutes}`;
+
+    onOpenWorkOrder(selectedSite, inspectorName, rpmCycle, actualDate, actualTime, jobNo, sapNo);
+  };
+
+  const navigate = useNavigate();
+
+
 
   return (
     <div className="space-y-6">
@@ -122,28 +174,37 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredSites.map((site) => (
-                <div 
-                  key={site.id}
-                  onClick={() => setSelectedSite(site)}
-                  className={`p-5 rounded-xl border cursor-pointer transition-all duration-300 ${
-                    selectedSite?.id === site.id 
-                      ? 'bg-indigo-600/10 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
-                      : 'bg-dark-card border-dark-border hover:border-gray-700'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-semibold px-2 py-1 rounded bg-dark-accent text-indigo-400 font-mono">
-                      {site.code}
-                    </span>
-                    <span className={`h-2 w-2 rounded-full ${site.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            {filteredSites.length === 0 ? (
+              <div className="bg-dark-bg border border-dark-border rounded-xl p-8 text-center text-gray-500 text-sm">
+                {isAdmin 
+                  ? "ไม่พบรหัสสถานี/ชื่อสถานีที่ค้นหา" 
+                  : `ไม่พบสถานีที่มี Job/SAP ID ในรอบการตรวจ ${rpmCycle} นี้`
+                }
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredSites.map((site) => (
+                  <div 
+                    key={site.id}
+                    onClick={() => setSelectedSite(site)}
+                    className={`p-5 rounded-xl border cursor-pointer transition-all duration-300 ${
+                      selectedSite?.id === site.id 
+                        ? 'bg-indigo-600/10 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
+                        : 'bg-dark-card border-dark-border hover:border-gray-700'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-dark-accent text-indigo-400 font-mono">
+                        {site.code}
+                      </span>
+                      <span className={`h-2 w-2 rounded-full ${site.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                    </div>
+                    <h4 className="font-bold text-white mt-3 text-sm truncate">{site.name}</h4>
+                    <p className="text-xs text-gray-500 mt-1">{site.location}</p>
                   </div>
-                  <h4 className="font-bold text-white mt-3 text-sm truncate">{site.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{site.location}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action Panel */}
@@ -189,6 +250,46 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                   onChange={(e) => setInspectorName(e.target.value)}
                 />
               </div>
+
+              {isAdmin ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลข Job SL6 (SL6 No.) <span className="text-red-400">*</span></label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="กรอกเลข Job SL6..."
+                      className="w-full bg-dark-accent/50 border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                      value={jobNo}
+                      onChange={(e) => setJobNo(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลข SAP ID (SAP No.) <span className="text-red-400">*</span></label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="กรอกเลข SAP ID..."
+                      className="w-full bg-dark-accent/50 border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                      value={sapNo}
+                      onChange={(e) => setSapNo(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : (
+                selectedSite && (
+                  <div className="bg-dark-accent/20 p-4 rounded-xl border border-dark-border space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-400">เลข Job SL6:</span>
+                      <span className="text-white font-bold">{jobNo || '-'}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-400">เลข SAP ID:</span>
+                      <span className="text-white font-bold">{sapNo || '-'}</span>
+                    </div>
+                  </div>
+                )
+              )}
 
               <button 
                 type="submit"

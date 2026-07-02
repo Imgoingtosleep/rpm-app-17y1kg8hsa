@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from 'react';
 
+const BATTERY_MODELS = [
+  { brand: "Narada รุ่น AG12V100F(100AH)", capacity: "100AH" },
+  { brand: "Genesys รุ่น 12TD100F4(100AH)", capacity: "100AH" },
+  { brand: "ABT รุ่น EFTB12-100(100AH)", capacity: "100AH" },
+  { brand: "Sacred SUN รุ่น FTB12-100 II(100AH)", capacity: "100AH" },
+  { brand: "Transpower รุ่น FTB12-100 B(100AH)", capacity: "100AH" },
+  { brand: "Invent รุ่น IFT12-100 V0(100AH)", capacity: "100AH" },
+  { brand: "Outdo OT105-12FT(100AH)", capacity: "100AH" },
+  { brand: "HIPOW รุ่น HP 12-40(40AH)", capacity: "40AH" },
+  { brand: "CSB รุ่น DB 12-40(40AH)", capacity: "40AH" },
+  { brand: "Trasnpower รุ่น TDB 12-40(40AH)", capacity: "40AH" },
+  { brand: "Invent รุ่น IHB12-40 V0(40AH)", capacity: "40AH" },
+  { brand: "Outdo OT40-12(40AH)", capacity: "40AH" },
+  { brand: "TPP TPP40-12 (AGM)(40AH)", capacity: "40AH" },
+  { brand: "HIPOW รุ่น HP 12-12(12AH)", capacity: "12AH" },
+  { brand: "Transpowerรุ่น TGB 12-12(12AH)", capacity: "12AH" },
+  { brand: "Invent รุ่น IHB12-12 V0(12AH)", capacity: "12AH" },
+  { brand: "Outdo OT12-12(12AH)", capacity: "12AH" }
+];
+
 export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
@@ -10,17 +30,20 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // VRLA Bank Metadata fields
   const [brand, setBrand] = useState('');
+  const [isCustomBrand, setIsCustomBrand] = useState(false);
   const [capacity, setCapacity] = useState('100AH');
   const [installedDate, setInstalledDate] = useState('');
   const [warranteeDate, setWarranteeDate] = useState('');
 
   // State for cells 1 to 4
   const [cells, setCells] = useState({
-    1: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-    2: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-    3: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-    4: { voltage: 13.2, ir: 4.5, file: null, existingPath: null }
+    1: { voltage: '', ir: '', file: null, existingPath: null },
+    2: { voltage: '', ir: '', file: null, existingPath: null },
+    3: { voltage: '', ir: '', file: null, existingPath: null },
+    4: { voltage: '', ir: '', file: null, existingPath: null }
   });
+
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   // 1. Fetch rectifiers for current workorder
   useEffect(() => {
@@ -76,10 +99,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   // 4. Update UI cells state when active batteries list or bank selection changes
   useEffect(() => {
     const updatedCells = {
-      1: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-      2: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-      3: { voltage: 13.2, ir: 4.5, file: null, existingPath: null },
-      4: { voltage: 13.2, ir: 4.5, file: null, existingPath: null }
+      1: { voltage: '', ir: '', file: null, existingPath: null },
+      2: { voltage: '', ir: '', file: null, existingPath: null },
+      3: { voltage: '', ir: '', file: null, existingPath: null },
+      4: { voltage: '', ir: '', file: null, existingPath: null }
     };
 
     // Filter batteries for selected bank
@@ -87,8 +110,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     bankBatteries.forEach(bat => {
       const cellNo = bat.cell_no;
       if (updatedCells[cellNo]) {
-        updatedCells[cellNo].voltage = bat.voltage ? parseFloat(bat.voltage) : 13.2;
-        updatedCells[cellNo].ir = bat.internal_resistance ? parseFloat(bat.internal_resistance) : 4.5;
+        updatedCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
+        updatedCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
         updatedCells[cellNo].existingPath = bat.battery_img || null;
       }
     });
@@ -154,6 +177,20 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
     const cell = cells[num];
 
+    // Validation: check if required fields are filled (not default/empty)
+    if (configsMap.voltage.isEnabled && configsMap.voltage.isRequired) {
+      if (cell.voltage === '' || cell.voltage === null || cell.voltage === undefined) {
+        alert(`กรุณากรอกค่า Volt สำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
+        return;
+      }
+    }
+    if (configsMap.internal_resistance.isEnabled && configsMap.internal_resistance.isRequired) {
+      if (cell.ir === '' || cell.ir === null || cell.ir === undefined) {
+        alert(`กรุณากรอกค่า IR สำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
+        return;
+      }
+    }
+
     // Check if image required
     if (configsMap.status.isEnabled && configsMap.status.isRequired) {
       const hasImg = (cell.file && cell.file.length > 0) || cell.existingPath;
@@ -195,6 +232,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       });
       if (res.ok) {
         alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) และข้อมูล Bank เรียบร้อยแล้ว!`);
+        setFileInputKey(Date.now());
         fetchBatteries(); // Reload batteries list
         if (onComplete) onComplete();
       } else {
@@ -260,7 +298,54 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <label className="block text-[10px] uppercase text-gray-400 mb-2">ยี่ห้อ Bank</label>
-            <input type="text" className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" value={brand} onChange={(e) => setBrand(e.target.value)} disabled={isReadOnly} />
+            {!isCustomBrand ? (
+              <select 
+                className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                value={brand} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'custom') {
+                    setIsCustomBrand(true);
+                    setBrand('');
+                  } else {
+                    setBrand(val);
+                    const matched = BATTERY_MODELS.find(m => m.brand === val);
+                    if (matched) {
+                      setCapacity(matched.capacity);
+                    }
+                  }
+                }} 
+                disabled={isReadOnly}
+              >
+                <option value="">-- เลือกยี่ห้อ Bank --</option>
+                {BATTERY_MODELS.map((model, idx) => (
+                  <option key={idx} value={model.brand}>{model.brand}</option>
+                ))}
+                <option value="custom">อื่น ๆ (ระบุเอง)</option>
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                  value={brand} 
+                  onChange={(e) => setBrand(e.target.value)} 
+                  placeholder="ระบุยี่ห้อ/รุ่นด้วยตัวเอง"
+                  disabled={isReadOnly} 
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomBrand(false);
+                    setBrand('');
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+                  disabled={isReadOnly}
+                >
+                  เลือกจากรายการ
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-[10px] uppercase text-gray-400 mb-2">Capacity</label>
@@ -339,7 +424,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                       disabled={isReadOnly}
                       className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                       value={cell.voltage}
-                      onChange={(e) => handleCellChange(num, 'voltage', parseFloat(e.target.value))}
+                      onChange={(e) => handleCellChange(num, 'voltage', e.target.value === '' ? '' : parseFloat(e.target.value))}
                       required={configsMap.voltage.isRequired}
                     />
                   </div>
@@ -358,7 +443,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                       disabled={isReadOnly}
                       className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                       value={cell.ir}
-                      onChange={(e) => handleCellChange(num, 'ir', parseFloat(e.target.value))}
+                      onChange={(e) => handleCellChange(num, 'ir', e.target.value === '' ? '' : parseFloat(e.target.value))}
                       required={configsMap.internal_resistance.isRequired}
                     />
                   </div>
@@ -387,6 +472,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         รูปถ่าย (battery_img) {configsMap.status.isRequired && <span className="text-red-400">*</span>}
                       </label>
                       <input 
+                        key={`${num}-${fileInputKey}`}
                         type="file" 
                         multiple
                         disabled={isReadOnly}

@@ -84,6 +84,9 @@ function WorkOrderPanel() {
     setInspectionDate(storedDate);
     setInspectionTime(storedTime);
 
+    const storedJob = localStorage.getItem('jobNo') || '';
+    const storedSap = localStorage.getItem('sapNo') || '';
+
     // Start or load work order from backend
     fetch('/api/workorder/start', {
       method: 'POST',
@@ -94,11 +97,16 @@ function WorkOrderPanel() {
         site_code: site_code,
         rpm_cycle: storedCycle || '',
         inspection_date: storedDate || null,
-        inspection_time: storedTime || null
+        inspection_time: storedTime || null,
+        job_number_sl6: storedJob || null,
+        sap_number: storedSap || null
       })
     })
       .then(res => res.json())
       .then(resData => {
+        // Clear temp localStorage values once sent
+        localStorage.removeItem('jobNo');
+        localStorage.removeItem('sapNo');
         if (resData.data && resData.data.rpm_id) {
           setRpmId(resData.data.rpm_id);
           if (resData.data.rpm_cycle) {
@@ -306,11 +314,13 @@ function GatekeeperWrapper() {
     }
   }, [navigate]);
 
-  const handleOpenWorkOrder = (site, inspectorName, rpmCycle, inspectionDate, inspectionTime) => {
+  const handleOpenWorkOrder = (site, inspectorName, rpmCycle, inspectionDate, inspectionTime, jobNo, sapNo) => {
     localStorage.setItem('inspectorName', inspectorName);
     localStorage.setItem('rpmCycle', rpmCycle);
     localStorage.setItem('inspectionDate', inspectionDate);
     localStorage.setItem('inspectionTime', inspectionTime);
+    if (jobNo) localStorage.setItem('jobNo', jobNo);
+    if (sapNo) localStorage.setItem('sapNo', sapNo);
     navigate(`/workorder/${site.code}/master`);
   };
 

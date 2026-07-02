@@ -4,11 +4,26 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [summaryIssue, setSummaryIssue] = useState('');
-  const [rectifierQtyUih, setRectifierQtyUih] = useState('1');
+  const [rectifierQtyUih, setRectifierQtyUih] = useState('');
   const [localDate, setLocalDate] = useState(inspectionDate || '');
   const [localTime, setLocalTime] = useState(inspectionTime || '');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldConfigs, setFieldConfigs] = useState([]);
+
+  const getUserRole = () => {
+    try {
+      const user = localStorage.getItem('user');
+      if (user) {
+        const parsed = JSON.parse(user);
+        return parsed.role || 'Viewer';
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return 'Viewer';
+  };
+
+  const isAdmin = getUserRole() === 'Admin';
 
   // Synchronize local states when parent props load asynchronously
   useEffect(() => {
@@ -49,10 +64,10 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       .then(res => res.json())
       .then(resData => {
         if (resData.data) {
-          setSl6Number(resData.data.job_number_sl6 || `SL6-TEMP-${site.code}`);
-          setSapNumber(resData.data.sap_number || `SAP-TEMP-${site.code}`);
+          setSl6Number(resData.data.job_number_sl6 || '');
+          setSapNumber(resData.data.sap_number || '');
           setSummaryIssue(resData.data.summary_issue || '');
-          setRectifierQtyUih(String(resData.data.rectifier_qty_uih || '1'));
+          setRectifierQtyUih(resData.data.rectifier_qty_uih ? String(resData.data.rectifier_qty_uih) : '');
           if (resData.data.inspection_date) {
             setLocalDate(resData.data.inspection_date.split('T')[0]);
           }
@@ -71,6 +86,11 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
     e.preventDefault();
     if (!rpmId) {
       alert('ไม่พบรหัสใบงานหลัก (rpmId) กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+
+    if (!rectifierQtyUih) {
+      alert('กรุณาเลือก จำนวน Rectifier UIH');
       return;
     }
 
@@ -205,7 +225,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               <input 
                 type="text" 
                 required={sl6Config.isRequired}
-                disabled={isReadOnly}
+                disabled={isReadOnly || !isAdmin}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
                 value={sl6Number}
                 onChange={(e) => setSl6Number(e.target.value)}
@@ -225,7 +245,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               <input 
                 type="text" 
                 required={sapConfig.isRequired}
-                disabled={isReadOnly}
+                disabled={isReadOnly || !isAdmin}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
                 value={sapNumber}
                 onChange={(e) => setSapNumber(e.target.value)}
@@ -247,6 +267,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               value={rectifierQtyUih}
               onChange={(e) => setRectifierQtyUih(e.target.value)}
             >
+              <option value="">-- เลือกจำนวน --</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>

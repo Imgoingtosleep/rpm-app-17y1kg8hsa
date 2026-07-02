@@ -3,37 +3,38 @@ import React, { useState, useEffect } from 'react';
 export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Facility parameters config
   const [params, setParams] = useState({
-    alarm_door: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
-    alarm_ac_fail: { status: 'ทดสอบการส่ง Alarm ได้', file: null },
-    alarm_low_bat: { status: 'ทดสอบการส่ง Alarm ได้', file: null },
-    alarm_high_temp: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
-    alarm_smoke: { status: 'มี Sensor ทดสอบ Alarm ได้', file: null },
-    alarm_air_fail: { status: 'ทดสอบ Alarm ได้', file: null },
+    alarm_door: { status: '', file: null },
+    alarm_ac_fail: { status: '', file: null },
+    alarm_low_bat: { status: '', file: null },
+    alarm_high_temp: { status: '', file: null },
+    alarm_smoke: { status: '', file: null },
+    alarm_air_fail: { status: '', file: null },
 
-    vent_ac_fan: { status: 'มี ปกติ', file: null },
-    vent_ac_fan_hood: { status: 'มี สภาพดี', file: null },
-    vent_dc_fan: { status: 'มี ปกติ', file: null },
-    vent_dc_fan_hood: { status: 'มี สภาพดี', file: null },
-    vent_air_cond: { status: 'มี ทำงานปกติ', file: null },
-    vent_filters: { status: 'ปกติ', file: null }, // placeholder
+    vent_ac_fan: { status: '', file: null },
+    vent_ac_fan_hood: { status: '', file: null },
+    vent_dc_fan: { status: '', file: null },
+    vent_dc_fan_hood: { status: '', file: null },
+    vent_air_cond: { status: '', file: null },
+    vent_filters: { status: '', file: null }, // placeholder
 
-    vent_filter_door: { status: 'ทำความสะอาดเรียบร้อย', file: null },
-    vent_filter_window: { status: 'ทำความสะอาดเรียบร้อย', file: null },
-    vent_equip_fan: { status: 'ทำความสะอาดเรียบร้อย', file: null },
-    vent_filter_equip: { status: 'ทำความสะอาดเรียบร้อย', file: null },
-    air_owner: { status: 'ไม่มีแอร์', file: null },
-    control_air_type: { status: 'ไม่มี', file: null },
-    control_air_status: { status: 'ไม่มี', file: null },
+    vent_filter_door: { status: '', file: null },
+    vent_filter_window: { status: '', file: null },
+    vent_equip_fan: { status: '', file: null },
+    vent_filter_equip: { status: '', file: null },
+    air_owner: { status: '', file: null },
+    control_air_type: { status: '', file: null },
+    control_air_status: { status: '', file: null },
 
-    fac_site_sign: { status: 'แข็งแรง มีป้าย', file: null },
-    fac_outdoor_clean: { status: 'สะอาดเรียบร้อย ไม่มีขยะ หรือ ชำรุดเสียหาย', file: null },
-    fac_indoor_clean: { status: 'ห้องสะอาดเรียบร้อย', file: null },
-    fac_lighting: { status: 'Good หลอดไฟติดสว่างทุกดวง', file: null },
-    fac_grass_cut: { status: 'ห้องเช่า ไม่มีวัชพืช', file: null },
+    fac_site_sign: { status: '', file: null },
+    fac_outdoor_clean: { status: '', file: null },
+    fac_indoor_clean: { status: '', file: null },
+    fac_lighting: { status: '', file: null },
+    fac_grass_cut: { status: '', file: null },
   });
 
   const [existingPaths, setExistingPaths] = useState({});
   const [fieldConfigs, setFieldConfigs] = useState([]);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   useEffect(() => {
     // Fetch field configs
@@ -197,9 +198,15 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
 
       if (!isEnabled) continue;
 
+      const friendlyName = labelMap[key] || key;
+
+      if (isRequired && (!item.status || item.status.trim() === '')) {
+        alert(`กรุณาเลือกสถานะสำหรับหัวข้อ "${friendlyName}" ก่อนทำการบันทึก!`);
+        return;
+      }
+
       const hasImg = (item.file && item.file.length > 0) || existingPaths[key];
       if (isRequired && !hasImg) {
-        const friendlyName = labelMap[key] || key;
         alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" ก่อนทำการบันทึก!`);
         return;
       }
@@ -229,6 +236,14 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
       });
       if (res.ok) {
         alert('บันทึกข้อมูลและอัปโหลดรูปภาพ Systems & Facilities ครบถ้วนเสร็จสมบูรณ์!');
+        setParams(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(k => {
+            updated[k].file = null;
+          });
+          return updated;
+        });
+        setFileInputKey(Date.now());
         if (onComplete) onComplete();
       } else {
         const errorData = await res.json();
@@ -275,6 +290,7 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
               onChange={(e) => handleStatusChange(key, e.target.value)}
               className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
             >
+              <option value="">-- เลือก --</option>
               {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
@@ -295,6 +311,7 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
             ) : (
               <div className="flex flex-col gap-1">
                 <input
+                  key={`${key}-${fileInputKey}`}
                   type="file"
                   multiple
                   className="w-full text-[10px] text-gray-500 file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
