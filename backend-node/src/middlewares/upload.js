@@ -149,28 +149,35 @@ const storage = multer.diskStorage({
       }
     }
 
-    // Determine highest index (1-10)
-    let nextIndex = 1;
-    if (fs.existsSync(targetDir)) {
-      const files = fs.readdirSync(targetDir);
-      const matched = files.filter(f => f.startsWith(filePrefix + '_'));
-      
+    // Determine highest index (1-10) with request-scoped caching to prevent race conditions during bulk uploads
+    if (!req.nextIndices) {
+      req.nextIndices = {};
+    }
+
+    if (req.nextIndices[filePrefix] !== undefined) {
+      req.nextIndices[filePrefix] += 1;
+    } else {
       let maxIdx = 0;
-      matched.forEach(name => {
-        // e.g. cable_img_1.jpg -> split by "_" and get last number before .ext
-        const base = path.basename(name, path.extname(name));
-        const parts = base.split('_');
-        if (parts.length >= 2) {
-          const idxVal = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(idxVal) && idxVal > maxIdx) {
-            maxIdx = idxVal;
+      if (fs.existsSync(targetDir)) {
+        const files = fs.readdirSync(targetDir);
+        const matched = files.filter(f => f.startsWith(filePrefix + '_'));
+        matched.forEach(name => {
+          const base = path.basename(name, path.extname(name));
+          const parts = base.split('_');
+          if (parts.length >= 2) {
+            const idxVal = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(idxVal) && idxVal > maxIdx) {
+              maxIdx = idxVal;
+            }
           }
-        }
-      });
-      nextIndex = maxIdx + 1;
-      if (nextIndex > 10) {
-        nextIndex = ((nextIndex - 1) % 10) + 1;
+        });
       }
+      req.nextIndices[filePrefix] = maxIdx + 1;
+    }
+
+    let nextIndex = req.nextIndices[filePrefix];
+    if (nextIndex > 10) {
+      nextIndex = ((nextIndex - 1) % 10) + 1;
     }
 
     // Format matches: [filePrefix]_[index].jpg
