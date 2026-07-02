@@ -36,6 +36,37 @@ router.post('/sites', async (req, res) => {
   }
 });
 
+// Bulk import sites
+router.post('/sites/bulk', async (req, res) => {
+  const { sites } = req.body;
+  if (!Array.isArray(sites) || sites.length === 0) {
+    return res.status(400).json({ error: 'ไม่พบรายการข้อมูลสถานีสำหรับนำเข้า' });
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const site of sites) {
+      const { site_code, site_name, site_grade, site_type } = site;
+      if (!site_code || !site_name) continue; // Skip invalid records
+      
+      await client.query(
+        `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (site_code) DO UPDATE SET site_name = EXCLUDED.site_name;`,
+        [site_code.toUpperCase().trim(), site_name.trim(), site_grade || 'A', site_type || 'Indoor']
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ message: `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${sites.length} สถานี` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // 2. Load or Start Work Order
 router.post('/workorder/start', async (req, res) => {
   const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih } = req.body;
