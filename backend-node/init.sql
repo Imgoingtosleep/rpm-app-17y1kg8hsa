@@ -38,24 +38,25 @@ CREATE TABLE IF NOT EXISTS power_main_ac (
     main_ac_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE, -- 1 ใบงานมีได้ 1 บันทึก AC
     meter_ac_size VARCHAR(100),
-    meter_ac_img VARCHAR(500), -- เก็บเป็น Path รูปภาพ เช่น '/BKK001/20260623/ac_meter.jpg'
+    meter_ac_img VARCHAR(500)[], -- เก็บเป็น Path รูปภาพ
     cable_status VARCHAR(100),
-    cable_img VARCHAR(500),
+    cable_img VARCHAR(500)[],
     change_over_switch VARCHAR(100),
-    change_over_img VARCHAR(500),
+    change_over_img VARCHAR(500)[],
     ac_phase_qty VARCHAR(50),
     surge_protection VARCHAR(100),
-    surge_img VARCHAR(500),
-    mdb_temp NUMERIC(5,2), -- รองรับทศนิยม เช่น 35.50
-    mdb_temp_img VARCHAR(500),
+    surge_img VARCHAR(500)[],
+    mdb_temp VARCHAR(100),
+    mdb_temp_img VARCHAR(500)[],
     voltage_p1 INT,
     voltage_p2 INT,
     voltage_p3 INT,
     current_p1 NUMERIC(5,2),
     current_p2 NUMERIC(5,2),
     current_p3 NUMERIC(5,2),
-    ground_resistance NUMERIC(5,2),
-    ground_img VARCHAR(500)
+    ground_resistance VARCHAR(100),
+    ground_img VARCHAR(500)[],
+    site_temp VARCHAR(50)
 );
 
 -- 4. ตารางระบบตู้ Rectifier (Power Rectifier) - สัมพันธ์แบบ 1 ใบงาน มีได้หลายตู้ (1-to-Many)
@@ -66,14 +67,25 @@ CREATE TABLE IF NOT EXISTS power_rectifier (
     model VARCHAR(100),
     ac_cable_size VARCHAR(50),
     breaker_size VARCHAR(50),
-    breaker_img VARCHAR(500),
+    breaker_img VARCHAR(500)[],
     modules_all INT DEFAULT 0,
     modules_fail INT DEFAULT 0,
     input_current_ac NUMERIC(5,2),
     output_current_dc NUMERIC(5,2),
-    pdb_temp_img VARCHAR(500),
+    pdb_temp_img VARCHAR(500)[],
     surge_status VARCHAR(100),
-    surge_rect_img VARCHAR(500)
+    surge_rect_img VARCHAR(500)[],
+    breaker_phase1 VARCHAR(50),
+    breaker_phase2 VARCHAR(50),
+    breaker_phase3 VARCHAR(50),
+    battery_type VARCHAR(50),
+    lithium_capacity VARCHAR(50),
+    battery_run VARCHAR(50),
+    battery_soh VARCHAR(50),
+    battery_soc VARCHAR(50),
+    battery_capacity_percent VARCHAR(50),
+    battery_alarm VARCHAR(50),
+    battery_qty_bank INT
 );
 
 -- 5. ตารางชั้น Bank (Rectifier Banks) [1 ตู้ มีหลาย Bank]
@@ -81,6 +93,10 @@ CREATE TABLE IF NOT EXISTS rectifier_banks (
     bank_id SERIAL PRIMARY KEY,
     rect_id INT NOT NULL REFERENCES power_rectifier(rect_id) ON DELETE CASCADE,
     bank_name VARCHAR(50) NOT NULL, -- เช่น 'Bank 1', 'Bank 2'
+    brand VARCHAR(100),
+    capacity VARCHAR(50),
+    installed_date VARCHAR(50),
+    warrantee_date VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -94,7 +110,7 @@ CREATE TABLE IF NOT EXISTS battery_tests (
     status VARCHAR(100),           -- ปกติ / เสื่อม
     installed_date DATE,
     warrantee_date DATE,
-    battery_img VARCHAR(500)
+    battery_img VARCHAR(500)[]
 );
 
 -- 7. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) [1-to-1 กับใบงาน]
@@ -102,25 +118,32 @@ CREATE TABLE IF NOT EXISTS systems_and_facilities (
     facility_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
     -- หมวด Alarms
-    alarm_door VARCHAR(100), alarm_door_img VARCHAR(500),
-    alarm_ac_fail VARCHAR(100), alarm_ac_fail_img VARCHAR(500),
-    alarm_low_bat VARCHAR(100), alarm_low_bat_img VARCHAR(500),
-    alarm_high_temp VARCHAR(100), alarm_high_temp_img VARCHAR(500),
-    alarm_smoke VARCHAR(100), alarm_smoke_img VARCHAR(500),
-    alarm_air_fail VARCHAR(100), alarm_air_fail_img VARCHAR(500),
+    alarm_door VARCHAR(100), alarm_door_img VARCHAR(500)[],
+    alarm_ac_fail VARCHAR(100), alarm_ac_fail_img VARCHAR(500)[],
+    alarm_low_bat VARCHAR(100), alarm_low_bat_img VARCHAR(500)[],
+    alarm_high_temp VARCHAR(100), alarm_high_temp_img VARCHAR(500)[],
+    alarm_smoke VARCHAR(100), alarm_smoke_img VARCHAR(500)[],
+    alarm_air_fail VARCHAR(100), alarm_air_fail_img VARCHAR(500)[],
     -- หมวด Ventilation Systems
-    vent_ac_fan VARCHAR(100), vent_ac_fan_img VARCHAR(500),
-    vent_ac_fan_hood VARCHAR(100), vent_ac_fan_hood_img VARCHAR(500),
-    vent_dc_fan VARCHAR(100), vent_dc_fan_img VARCHAR(500),
-    vent_dc_fan_hood VARCHAR(100), vent_dc_fan_hood_img VARCHAR(500),
-    vent_air_cond VARCHAR(100), vent_air_cond_img VARCHAR(500),
-    vent_filters VARCHAR(100), vent_filters_img VARCHAR(500),
+    vent_ac_fan VARCHAR(100), vent_ac_fan_img VARCHAR(500)[],
+    vent_ac_fan_hood VARCHAR(100), vent_ac_fan_hood_img VARCHAR(500)[],
+    vent_dc_fan VARCHAR(100), vent_dc_fan_img VARCHAR(500)[],
+    vent_dc_fan_hood VARCHAR(100), vent_dc_fan_hood_img VARCHAR(500)[],
+    vent_air_cond VARCHAR(100), vent_air_cond_img VARCHAR(500)[],
+    vent_filters VARCHAR(100), vent_filters_img VARCHAR(500)[],
     -- หมวด Site Facility
-    fac_site_sign VARCHAR(100), fac_site_sign_img VARCHAR(500),
-    fac_outdoor_clean VARCHAR(100), fac_outdoor_clean_img VARCHAR(500),
-    fac_indoor_clean VARCHAR(100), fac_indoor_clean_img VARCHAR(500),
-    fac_lighting VARCHAR(100), fac_lighting_img VARCHAR(500),
-    fac_grass_cut VARCHAR(100), fac_grass_cut_img VARCHAR(500)
+    fac_site_sign VARCHAR(100), fac_site_sign_img VARCHAR(500)[],
+    fac_outdoor_clean VARCHAR(100), fac_outdoor_clean_img VARCHAR(500)[],
+    fac_indoor_clean VARCHAR(100), fac_indoor_clean_img VARCHAR(500)[],
+    fac_lighting VARCHAR(100), fac_lighting_img VARCHAR(500)[],
+    fac_grass_cut VARCHAR(100), fac_grass_cut_img VARCHAR(500)[],
+    vent_filter_door VARCHAR(100), vent_filter_door_img VARCHAR(500)[],
+    vent_filter_window VARCHAR(100), vent_filter_window_img VARCHAR(500)[],
+    vent_equip_fan VARCHAR(100), vent_equip_fan_img VARCHAR(500)[],
+    vent_filter_equip VARCHAR(100), vent_filter_equip_img VARCHAR(500)[],
+    air_owner VARCHAR(100), air_owner_img VARCHAR(500)[],
+    control_air_type VARCHAR(100), control_air_type_img VARCHAR(500)[],
+    control_air_status VARCHAR(100), control_air_status_img VARCHAR(500)[]
 );
 
 -- สร้าง Index

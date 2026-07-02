@@ -83,6 +83,35 @@ export default function StorageBrowser() {
     }
   };
 
+  const handleDelete = async (pathsToDelete) => {
+    const paths = Array.isArray(pathsToDelete) ? pathsToDelete : [pathsToDelete];
+    if (paths.length === 0) return;
+    
+    const confirmMessage = paths.length === 1 
+      ? `คุณต้องการลบ "${paths[0].split('/').pop()}" ใช่หรือไม่?` 
+      : `คุณต้องการลบไฟล์/โฟลเดอร์ที่เลือกจำนวน ${paths.length} รายการใช่หรือไม่?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const response = await fetch('/api/storage/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paths })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'การลบล้มเหลว');
+      
+      // Refresh folder
+      fetchFolder(currentPath);
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('user');
@@ -258,13 +287,22 @@ export default function StorageBrowser() {
             )}
 
             {selectedItems.length > 0 && (
-              <button 
-                onClick={handleDownloadSelected}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                ดาวน์โหลดที่เลือก ({selectedItems.length}) (.zip)
-              </button>
+              <>
+                <button 
+                  onClick={handleDownloadSelected}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  ดาวน์โหลดที่เลือก ({selectedItems.length}) (.zip)
+                </button>
+                <button 
+                  onClick={() => handleDelete(selectedItems)}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  ลบที่เลือก ({selectedItems.length})
+                </button>
+              </>
             )}
 
             <a 
@@ -362,8 +400,8 @@ export default function StorageBrowser() {
                 </div>
 
                 {/* Action buttons */}
-                {!item.isDir && (
-                  <div className="mt-3 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-3 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-full">
+                  {!item.isDir && (
                     <a 
                       href={`/storage/${item.relPath}`} 
                       download={item.name}
@@ -373,8 +411,14 @@ export default function StorageBrowser() {
                     >
                       ดาวน์โหลด
                     </a>
-                  </div>
-                )}
+                  )}
+                  <button 
+                    onClick={() => handleDelete(item.relPath)}
+                    className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold shadow flex items-center gap-1"
+                  >
+                    ลบ
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -431,26 +475,37 @@ export default function StorageBrowser() {
                       {formatDate(item.updatedAt)}
                     </td>
                     <td className="p-4 text-center">
-                      {!item.isDir ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => setPreviewImage(`/storage/${item.relPath}`)}
-                            className="text-gray-400 hover:text-white transition-colors"
-                          >
-                            ดูรูปภาพ
-                          </button>
-                          <span className="text-gray-700">|</span>
-                          <a 
-                            href={`/storage/${item.relPath}`} 
-                            download={item.name}
-                            className="text-indigo-400 hover:text-indigo-300 font-semibold"
-                          >
-                            ดาวน์โหลด
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-gray-600">-</span>
-                      )}
+                      <div className="flex items-center justify-center gap-2">
+                        {!item.isDir && isImageFile(item.name) && (
+                          <>
+                            <button 
+                              onClick={() => setPreviewImage(`/storage/${item.relPath}`)}
+                              className="text-gray-400 hover:text-white transition-colors"
+                            >
+                              ดูรูปภาพ
+                            </button>
+                            <span className="text-gray-700">|</span>
+                          </>
+                        )}
+                        {!item.isDir && (
+                          <>
+                            <a 
+                              href={`/storage/${item.relPath}`} 
+                              download={item.name}
+                              className="text-indigo-400 hover:text-indigo-300 font-semibold"
+                            >
+                              ดาวน์โหลด
+                            </a>
+                            <span className="text-gray-700">|</span>
+                          </>
+                        )}
+                        <button 
+                          onClick={() => handleDelete(item.relPath)}
+                          className="text-rose-400 hover:text-rose-300 font-semibold"
+                        >
+                          ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

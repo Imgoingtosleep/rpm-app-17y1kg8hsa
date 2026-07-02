@@ -82,9 +82,11 @@ export default function CreateSite() {
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       const siteCodeIdx = headers.indexOf('site_code');
       const siteNameIdx = headers.indexOf('site_name');
+      const siteGradeIdx = headers.indexOf('site_grade');
+      const siteTypeIdx = headers.indexOf('site_type');
 
       if (siteCodeIdx === -1 || siteNameIdx === -1) {
-        alert('รูปแบบหัวข้อไฟล์ CSV ไม่ถูกต้อง (ต้องระบุคอลัมน์ site_code และ site_name)');
+        alert('รูปแบบหัวข้อไฟล์ CSV ไม่ถูกต้อง (ต้องระบุคอลัมน์ site_code และ site_name เป็นอย่างน้อย)');
         return;
       }
 
@@ -97,13 +99,19 @@ export default function CreateSite() {
         
         const site_code = columns[siteCodeIdx];
         const site_name = columns[siteNameIdx];
+        
+        const rawGrade = siteGradeIdx !== -1 && siteGradeIdx < columns.length && columns[siteGradeIdx] ? columns[siteGradeIdx].trim().toUpperCase() : 'A';
+        const site_grade = ['A', 'B', 'C'].includes(rawGrade) ? rawGrade : 'A';
+        
+        const rawType = siteTypeIdx !== -1 && siteTypeIdx < columns.length && columns[siteTypeIdx] ? columns[siteTypeIdx].trim() : 'Indoor';
+        const site_type = rawType.toLowerCase() === 'outdoor' ? 'Outdoor' : 'Indoor';
 
         if (site_code && site_name) {
           parsedSites.push({
             site_code: site_code.toUpperCase(),
             site_name,
-            site_grade: 'A',
-            site_type: 'Indoor'
+            site_grade,
+            site_type
           });
         }
       }
@@ -230,9 +238,9 @@ export default function CreateSite() {
 
           <div className="bg-dark-bg/40 border border-dashed border-dark-border p-6 rounded-lg text-center space-y-3">
             <div className="text-xs text-gray-400">
-              <p>ไฟล์ CSV จะต้องมีหัวข้อคอลัมน์แถวแรกเป็น:</p>
+              <p>ไฟล์ CSV จะต้องมีหัวข้อคอลัมน์แถวแรกเป็น (site_grade และ site_type เป็นฟิลด์ทางเลือก):</p>
               <code className="inline-block mt-2 bg-dark-accent/60 px-3 py-1.5 rounded font-mono text-indigo-400 font-semibold">
-                site_code,site_name
+                site_code,site_name,site_grade,site_type
               </code>
             </div>
             

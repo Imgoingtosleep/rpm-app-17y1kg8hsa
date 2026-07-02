@@ -213,6 +213,17 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     battery_qty_bank: getFieldConfig('battery_qty_bank'),
   };
 
+  const handleFileChange = (field, fileList, setter) => {
+    let files = Array.from(fileList);
+    const existing = existingPaths[field];
+    const existingCount = existing ? (Array.isArray(existing) ? existing.length : 1) : 0;
+    if (files.length + existingCount > 10) {
+      alert(`คุณสามารถอัปโหลดรูปภาพได้สูงสุด 10 รูปต่อหัวข้อเท่านั้น (มีรูปเดิมอยู่แล้ว ${existingCount} รูป เลือกเพิ่มได้อีกไม่เกิน ${10 - existingCount} รูป)`);
+      files = files.slice(0, 10 - existingCount);
+    }
+    setter(files);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!rpmId) {
@@ -626,7 +637,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเบรกเกอร์ (breaker_img) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`breaker-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setBreakerImg(Array.from(e.target.files))} />
+                  <input key={`breaker-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('breaker', e.target.files, setBreakerImg)} />
                   {existingPaths.breaker && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.breaker) ? existingPaths.breaker.join(', ') : existingPaths.breaker}</p>}
                 </div>
               )}
@@ -635,7 +646,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img) {configsMap.model.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`pdbTemp-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setPdbTempImg(Array.from(e.target.files))} />
+                  <input key={`pdbTemp-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('pdbTemp', e.target.files, setPdbTempImg)} />
                   {existingPaths.pdbTemp && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.pdbTemp) ? existingPaths.pdbTemp.join(', ') : existingPaths.pdbTemp}</p>}
                 </div>
               )}
@@ -644,7 +655,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   <label className="block text-xs text-gray-400 mb-2">
                     ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img) {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`surgeRect-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => setSurgeRectImg(Array.from(e.target.files))} />
+                  <input key={`surgeRect-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surgeRect', e.target.files, setSurgeRectImg)} />
                   {existingPaths.surgeRect && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.surgeRect) ? existingPaths.surgeRect.join(', ') : existingPaths.surgeRect}</p>}
                 </div>
               )}

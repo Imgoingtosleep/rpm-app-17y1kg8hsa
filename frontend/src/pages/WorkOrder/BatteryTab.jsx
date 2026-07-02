@@ -143,9 +143,20 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   const handleCellChange = (num, field, value) => {
     setCells(prev => {
+      let finalValue = value;
+      if (field === 'file') {
+        const files = Array.from(value);
+        const existing = prev[num].existingPath;
+        const existingCount = existing ? (Array.isArray(existing) ? existing.length : 1) : 0;
+        if (files.length + existingCount > 10) {
+          alert(`คุณสามารถอัปโหลดรูปภาพได้สูงสุด 10 รูปต่อหัวข้อเท่านั้น (มีรูปเดิมอยู่แล้ว ${existingCount} รูป เลือกเพิ่มได้อีกไม่เกิน ${10 - existingCount} รูป)`);
+          finalValue = files.slice(0, 10 - existingCount);
+        }
+      }
+
       const updatedCell = {
         ...prev[num],
-        [field]: value
+        [field]: finalValue
       };
 
       // Automatically evaluate status if voltage or ir changes

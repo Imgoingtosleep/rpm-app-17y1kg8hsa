@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
       return req.body.cell_no || req.query.cell_no || '1';
     };
 
-    let targetSubpath = 'misc';
+    let targetSubpath = path.join('system_and_facilities', 'misc');
     if (file.fieldname.startsWith('meter_ac') || file.fieldname.startsWith('cable') || 
         file.fieldname.startsWith('change_over') || file.fieldname.startsWith('surge') || 
         file.fieldname.startsWith('mdb_temp') || file.fieldname.startsWith('ground')) {
@@ -51,6 +51,8 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'vent');
     } else if (file.fieldname.startsWith('fac')) {
       targetSubpath = path.join('system_and_facilities', 'fac');
+    } else if (file.fieldname.startsWith('air') || file.fieldname.startsWith('control')) {
+      targetSubpath = path.join('system_and_facilities', 'air');
     }
 
     // Resolves to: /app/storage/db_img/[site_code]/[rpm_cycle]/[targetSubpath]
@@ -82,7 +84,7 @@ const storage = multer.diskStorage({
       return req.body.cell_no || req.query.cell_no || '1';
     };
 
-    let targetSubpath = 'misc';
+    let targetSubpath = path.join('system_and_facilities', 'misc');
     if (file.fieldname.startsWith('meter_ac') || file.fieldname.startsWith('cable') || 
         file.fieldname.startsWith('change_over') || file.fieldname.startsWith('surge') || 
         file.fieldname.startsWith('mdb_temp') || file.fieldname.startsWith('ground')) {
@@ -97,6 +99,8 @@ const storage = multer.diskStorage({
       targetSubpath = path.join('system_and_facilities', 'vent');
     } else if (file.fieldname.startsWith('fac')) {
       targetSubpath = path.join('system_and_facilities', 'fac');
+    } else if (file.fieldname.startsWith('air') || file.fieldname.startsWith('control')) {
+      targetSubpath = path.join('system_and_facilities', 'air');
     }
 
     const targetDir = path.join(__dirname, '../../storage/db_img', site_code, String(cycleDir), targetSubpath);
@@ -104,7 +108,12 @@ const storage = multer.diskStorage({
     // Map exact filenames according to storage files layout
     let filePrefix = file.fieldname;
     
-    if (file.fieldname === 'battery_img' || file.fieldname === 'battery') {
+    // Remove _img suffix if present to check clean names
+    if (filePrefix.endsWith('_img')) {
+      filePrefix = filePrefix.substring(0, filePrefix.length - 4);
+    }
+    
+    if (filePrefix === 'battery') {
       const cellNo = getCellNo();
       filePrefix = `battery${cellNo}_img`;
     } else if (filePrefix === 'meter_ac') {
@@ -112,9 +121,32 @@ const storage = multer.diskStorage({
     } else if (filePrefix === 'vent_air_cond') {
       filePrefix = 'vent_air_cloud'; // typo match from storage: "vent_air_cloud_1.jpg"
     } else if (filePrefix === 'vent_filters') {
-      filePrefix = 'veent_filters'; // typo match from storage: "veent_filters_1.jpg"
-    } else if (!filePrefix.endsWith('_img') && !filePrefix.startsWith('alarm_') && !filePrefix.startsWith('vent_') && !filePrefix.startsWith('fac_')) {
-      filePrefix = `${filePrefix}_img`;
+      filePrefix = 'vent_filters';
+    } else if (filePrefix === 'vent_filter_door') {
+      filePrefix = 'vent_filters_door';
+    } else if (filePrefix === 'vent_filter_window') {
+      filePrefix = 'vent_filters_window';
+    } else if (filePrefix === 'vent_filter_equip') {
+      filePrefix = 'vent_filters_equip';
+    } else if (filePrefix === 'fac_grass_cut') {
+      filePrefix = 'fac_glass_cut';
+    } else {
+      const isPowerOrBattery = file.fieldname.startsWith('meter_ac') || 
+                               file.fieldname.startsWith('cable') || 
+                               file.fieldname.startsWith('change_over') || 
+                               file.fieldname.startsWith('surge') || 
+                               file.fieldname.startsWith('mdb_temp') || 
+                               file.fieldname.startsWith('ground') ||
+                               file.fieldname.startsWith('breaker') ||
+                               file.fieldname.startsWith('pdb_temp') ||
+                               file.fieldname.startsWith('surge_rect') ||
+                               file.fieldname.startsWith('battery');
+                               
+      if (isPowerOrBattery) {
+        if (!filePrefix.endsWith('_img')) {
+          filePrefix = `${filePrefix}_img`;
+        }
+      }
     }
 
     // Determine highest index (1-10)

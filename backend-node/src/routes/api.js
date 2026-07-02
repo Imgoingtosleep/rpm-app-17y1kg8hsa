@@ -36,6 +36,38 @@ router.post('/sites', async (req, res) => {
   }
 });
 
+// Update a site (Admin only)
+router.put('/sites/:site_id', async (req, res) => {
+  const { site_id } = req.params;
+  const { site_name, site_grade, site_type } = req.body;
+  
+  if (!site_name || !site_grade || !site_type) {
+    return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+  }
+
+  const siteIdInt = parseInt(site_id, 10);
+  if (isNaN(siteIdInt)) {
+    return res.status(400).json({ error: 'รหัสสถานีไม่ถูกต้อง' });
+  }
+
+  try {
+    const result = await db.query(
+      `UPDATE sites 
+       SET site_name = $1, site_grade = $2, site_type = $3 
+       WHERE site_id = $4 RETURNING *;`,
+      [site_name, site_grade, site_type, siteIdInt]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบสถานีที่ต้องการแก้ไข' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Bulk import sites
 router.post('/sites/bulk', async (req, res) => {
   const { sites } = req.body;
@@ -514,21 +546,21 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
   const data = req.body;
 
   const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
-  // Retrieve files map
   const filesMap = {};
   if (req.files) {
-    if (req.files.length > 10) {
-      return res.status(400).json({ error: 'ไม่สามารถอัปโหลดรูปภาพได้เกิน 10 รูปต่อการบันทึก 1 ครั้ง' });
-    }
     const getCycleDir = () => req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
     req.files.forEach(f => {
       let sub = 'misc';
-      if (f.fieldname.startsWith('alarm')) sub = 'alarm';
+      if (f.fieldname.startsWith('air') || f.fieldname.startsWith('control')) sub = 'air';
+      else if (f.fieldname.startsWith('alarm')) sub = 'alarm';
       else if (f.fieldname.startsWith('vent')) sub = 'vent';
       else if (f.fieldname.startsWith('fac')) sub = 'fac';
-      else if (f.fieldname.startsWith('air')) sub = 'vent';
-      else if (f.fieldname.startsWith('control')) sub = 'vent';
-      filesMap[f.fieldname] = `/storage/db_img/${getSiteCode()}/${getCycleDir()}/system_and_facilities/${sub}/${f.filename}`;
+      
+      const filePath = `/storage/db_img/${getSiteCode()}/${getCycleDir()}/system_and_facilities/${sub}/${f.filename}`;
+      if (!filesMap[f.fieldname]) {
+        filesMap[f.fieldname] = [];
+      }
+      filesMap[f.fieldname].push(filePath);
     });
   }
 
@@ -560,13 +592,22 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
         arr = [existingRow[`${field}_img`]];
       }
 
-      const newFile = filesMap[`${field}_img`];
-      if (newFile) {
-        arr.push(newFile);
-      } else if (data[`${field}_img_path`]) {
+      const newFiles = filesMap[`${field}_img`];
+      if (Array.isArray(newFiles)) {
+        newFiles.forEach(nf => {
+          if (!arr.includes(nf)) arr.push(nf);
+        });
+      }
+
+      if (data[`${field}_img_path`]) {
         const pathVal = data[`${field}_img_path`];
-        if (Array.isArray(pathVal)) arr = pathVal;
-        else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
+        if (Array.isArray(pathVal)) {
+          pathVal.forEach(pv => {
+            if (!arr.includes(pv)) arr.push(pv);
+          });
+        } else if (typeof pathVal === 'string' && !arr.includes(pathVal)) {
+          arr.push(pathVal);
+        }
       }
       if (arr.length > 10) arr = arr.slice(-10);
 
@@ -883,6 +924,40 @@ router.post('/workorder/:rpm_id/unlock', async (req, res) => {
       return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
     }
     res.json({ message: 'Work order unlocked successfully', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14. Storage Delete Files/Folders API
+router.delete('/storage/delete', async (req, res) => {
+  const { paths } = req.body;
+  if (!paths) {
+    return res.status(400).json({ error: 'ไม่พบรายการไฟล์ที่ต้องการลบ' });
+  }
+
+  const pathList = Array.isArray(paths) ? paths : [paths];
+  const storageRoot = path.resolve(__dirname, '../../storage');
+
+  try {
+    for (const relPath of pathList) {
+      const targetPath = path.resolve(storageRoot, relPath);
+
+      // Security checks
+      if (!targetPath.startsWith(storageRoot) || targetPath === storageRoot) {
+        continue; // Skip invalid or dangerous paths
+      }
+
+      if (fs.existsSync(targetPath)) {
+        const stats = fs.statSync(targetPath);
+        if (stats.isDirectory()) {
+          fs.rmSync(targetPath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(targetPath);
+        }
+      }
+    }
+    res.json({ message: 'ลบข้อมูลสำเร็จแล้ว' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

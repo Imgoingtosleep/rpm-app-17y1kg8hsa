@@ -84,9 +84,16 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
 
   const handleFileChange = (key, fileList) => {
     if (isReadOnly) return;
+    let files = Array.from(fileList);
+    const existing = existingPaths[key];
+    const existingCount = existing ? (Array.isArray(existing) ? existing.length : 1) : 0;
+    if (files.length + existingCount > 10) {
+      alert(`คุณสามารถอัปโหลดรูปภาพได้สูงสุด 10 รูปต่อหัวข้อเท่านั้น (มีรูปเดิมอยู่แล้ว ${existingCount} รูป เลือกเพิ่มได้อีกไม่เกิน ${10 - existingCount} รูป)`);
+      files = files.slice(0, 10 - existingCount);
+    }
     setParams(prev => ({
       ...prev,
-      [key]: { ...prev[key], file: Array.from(fileList) }
+      [key]: { ...prev[key], file: files }
     }));
   };
 

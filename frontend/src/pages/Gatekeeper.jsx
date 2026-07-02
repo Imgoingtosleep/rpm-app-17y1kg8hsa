@@ -15,6 +15,79 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   const [jobNo, setJobNo] = useState('');
   const [sapNo, setSapNo] = useState('');
 
+  // Editing states for site_grade and site_type
+  const [isEditingSite, setIsEditingSite] = useState(false);
+  const [editSiteName, setEditSiteName] = useState('');
+  const [editSiteGrade, setEditSiteGrade] = useState('A');
+  const [editSiteType, setEditSiteType] = useState('Indoor');
+
+  const handleStartEdit = () => {
+    if (!selectedSite) return;
+    setEditSiteName(selectedSite.rawName || '');
+    setEditSiteGrade(selectedSite.rawGrade || 'A');
+    setEditSiteType(selectedSite.rawType || 'Indoor');
+    setIsEditingSite(true);
+  };
+
+  const handleSaveSiteEdit = async (e) => {
+    e.preventDefault();
+    if (!editSiteName.trim()) {
+      alert('กรุณากรอกชื่อสถานี');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/sites/${selectedSite.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          site_name: editSiteName.trim(),
+          site_grade: editSiteGrade,
+          site_type: editSiteType
+        })
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'บันทึกการแก้ไขล้มเหลว');
+      }
+      
+      const updatedSite = await res.json();
+      alert('แก้ไขข้อมูลสถานีสำเร็จแล้ว!');
+      
+      // Update local state list
+      setSites(prev => prev.map(s => {
+        if (s.id === updatedSite.site_id) {
+          return {
+            ...s,
+            name: `${updatedSite.site_name} (${updatedSite.site_code})`,
+            location: `${updatedSite.site_type || 'N/A'} - Grade ${updatedSite.site_grade || '-'}`,
+            rawName: updatedSite.site_name,
+            rawGrade: updatedSite.site_grade || 'A',
+            rawType: updatedSite.site_type || 'Indoor'
+          };
+        }
+        return s;
+      }));
+      
+      // Update selectedSite preview info
+      setSelectedSite(prev => ({
+        ...prev,
+        name: `${updatedSite.site_name} (${updatedSite.site_code})`,
+        location: `${updatedSite.site_type || 'N/A'} - Grade ${updatedSite.site_grade || '-'}`,
+        rawName: updatedSite.site_name,
+        rawGrade: updatedSite.site_grade || 'A',
+        rawType: updatedSite.site_type || 'Indoor'
+      }));
+      
+      setIsEditingSite(false);
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     // Reset selected site when changing search or cycle
     setSelectedSite(null);
@@ -50,7 +123,10 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
           name: `${site.site_name} (${site.site_code})`,
           code: site.site_code,
           location: `${site.site_type || 'N/A'} - Grade ${site.site_grade || '-'}`,
-          status: 'Active'
+          status: 'Active',
+          rawName: site.site_name,
+          rawGrade: site.site_grade || 'A',
+          rawType: site.site_type || 'Indoor'
         }));
         setSites(mapped);
       })
@@ -222,8 +298,17 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Selected Station</label>
-                <div className="p-3 bg-dark-accent/40 rounded-lg border border-dark-border text-sm text-gray-200">
-                  {selectedSite ? selectedSite.name : <span className="text-gray-500 italic">No station selected</span>}
+                <div className="p-3 bg-dark-accent/40 rounded-lg border border-dark-border text-sm text-gray-200 flex justify-between items-center">
+                  <span>{selectedSite ? selectedSite.name : <span className="text-gray-500 italic">No station selected</span>}</span>
+                  {selectedSite && isAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold transition-all shrink-0 ml-2"
+                    >
+                      แก้ไขสถานี
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -308,6 +393,69 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Edit Site Modal */}
+      {isEditingSite && selectedSite && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form onSubmit={handleSaveSiteEdit} className="w-full max-w-md bg-dark-card border border-dark-border p-6 rounded-2xl shadow-2xl space-y-4">
+            <h3 className="text-xl font-bold text-white">แก้ไขข้อมูลสถานี ({selectedSite.code})</h3>
+            
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชื่อสถานี (Site Name)</label>
+              <input
+                type="text"
+                required
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                value={editSiteName}
+                onChange={(e) => setEditSiteName(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ความสำคัญ (Site Grade)</label>
+                <select
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                  value={editSiteGrade}
+                  onChange={(e) => setEditSiteGrade(e.target.value)}
+                >
+                  <option value="A">Grade A</option>
+                  <option value="B">Grade B</option>
+                  <option value="C">Grade C</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ประเภท (Site Type)</label>
+                <select
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                  value={editSiteType}
+                  onChange={(e) => setEditSiteType(e.target.value)}
+                >
+                  <option value="Indoor">Indoor</option>
+                  <option value="Outdoor">Outdoor</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 justify-end">
+              <button
+                type="button"
+                onClick={() => setIsEditingSite(false)}
+                className="px-4 py-2 border border-dark-border bg-dark-bg text-gray-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-md"
+              >
+                บันทึกการแก้ไข
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
