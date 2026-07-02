@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
-  const [summaryIssue, setSummaryIssue] = useState('');
   const [rectifierQtyUih, setRectifierQtyUih] = useState('');
   const [localDate, setLocalDate] = useState(inspectionDate || '');
   const [localTime, setLocalTime] = useState(inspectionTime || '');
@@ -66,7 +65,6 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
         if (resData.data) {
           setSl6Number(resData.data.job_number_sl6 || '');
           setSapNumber(resData.data.sap_number || '');
-          setSummaryIssue(resData.data.summary_issue || '');
           setRectifierQtyUih(resData.data.rectifier_qty_uih ? String(resData.data.rectifier_qty_uih) : '');
           if (resData.data.inspection_date) {
             setLocalDate(resData.data.inspection_date.split('T')[0]);
@@ -97,7 +95,6 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
     // Dynamic validations
     const sl6Cfg = fieldConfigs.find(c => c.field_name === 'job_number_sl6');
     const sapCfg = fieldConfigs.find(c => c.field_name === 'sap_number');
-    const issueCfg = fieldConfigs.find(c => c.field_name === 'summary_issue');
 
     if (sl6Cfg?.is_enabled && sl6Cfg?.is_required && !sl6Number.trim()) {
       alert('กรุณากรอก SL6 Number');
@@ -105,10 +102,6 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
     }
     if (sapCfg?.is_enabled && sapCfg?.is_required && !sapNumber.trim()) {
       alert('กรุณากรอก SAP Number');
-      return;
-    }
-    if (issueCfg?.is_enabled && issueCfg?.is_required && !summaryIssue.trim()) {
-      alert('กรุณากรอก สรุปปัญหาหน้างาน');
       return;
     }
 
@@ -122,7 +115,6 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
         body: JSON.stringify({
           job_number_sl6: (sl6Cfg?.is_enabled ?? true) ? sl6Number : '',
           sap_number: (sapCfg?.is_enabled ?? true) ? sapNumber : '',
-          summary_issue: (issueCfg?.is_enabled ?? true) ? summaryIssue : '',
           rectifier_qty_uih: parseInt(rectifierQtyUih, 10),
           rpm_cycle: rpmCycle || '',
           inspection_date: localDate || null,
@@ -179,7 +171,6 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
 
   const sl6Config = getFieldConfig('job_number_sl6');
   const sapConfig = getFieldConfig('sap_number');
-  const issueConfig = getFieldConfig('summary_issue');
 
   return (
     <div className="p-8 space-y-6">
@@ -278,26 +269,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           </div>
         </div>
 
-        {issueConfig.isEnabled ? (
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-              สรุปปัญหาหน้างาน {issueConfig.isRequired && <span className="text-red-400">*</span>}
-            </label>
-            <textarea 
-              rows={4}
-              required={issueConfig.isRequired}
-              disabled={isReadOnly}
-              placeholder="รายละเอียดหรือปัญหาที่พบระหว่างตรวจสอบ..."
-              className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
-              value={summaryIssue}
-              onChange={(e) => setSummaryIssue(e.target.value)}
-            />
-          </div>
-        ) : (
-          <div className="opacity-40 bg-dark-bg/20 p-6 border border-dark-border/40 rounded-lg flex items-center justify-center text-xs text-gray-500 line-through">
-            สรุปปัญหาหน้างาน (ถูกปิดใช้งานโดย Admin)
-          </div>
-        )}
+
 
         <div className="pt-2">
           {!isReadOnly ? (

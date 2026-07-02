@@ -95,12 +95,12 @@ export default function FieldSettings() {
     surge_protection: 'Surge Protection Status',
     mdb_temp: 'MDB Cabinet Temperature (°C)',
     site_temp: 'Site Temperature (°C)',
-    voltage_p1: 'Voltage Phase 1 (V)',
-    voltage_p2: 'Voltage Phase 2 (V)',
-    voltage_p3: 'Voltage Phase 3 (V)',
-    current_p1: 'Current Phase 1 (A)',
-    current_p2: 'Current Phase 2 (A)',
-    current_p3: 'Current Phase 3 (A)',
+    voltage_p1: 'Voltage Phase 1 (Volt)',
+    voltage_p2: 'Voltage Phase 2 (Volt)',
+    voltage_p3: 'Voltage Phase 3 (Volt)',
+    current_p1: 'Current Phase 1 (Amp)',
+    current_p2: 'Current Phase 2 (Amp)',
+    current_p3: 'Current Phase 3 (Amp)',
     ground_resistance: 'Ground Resistance (Ω)',
 
     // Rectifier Tab
@@ -125,7 +125,7 @@ export default function FieldSettings() {
     battery_qty_bank: 'จำนวน Bank Batt',
 
     // Battery Tab
-    voltage: 'Cell Voltage (V)',
+    voltage: 'Cell Voltage (Volt)',
     internal_resistance: 'Internal Resistance (mΩ)',
     status: 'Battery Status',
     brand: 'ยี่ห้อ Bank (Battery Bank Brand)',

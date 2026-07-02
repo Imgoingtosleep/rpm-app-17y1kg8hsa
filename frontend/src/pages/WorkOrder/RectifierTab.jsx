@@ -512,21 +512,21 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 1 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase1} onChange={(e) => setBreakerPhase1(e.target.value)}>
                 <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
+                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 2 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase2} onChange={(e) => setBreakerPhase2(e.target.value)}>
                 <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
+                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 3 (Amp)</label>
               <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase3} onChange={(e) => setBreakerPhase3(e.target.value)}>
                 <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} A</option>)}
+                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
               </select>
             </div>
           </div>
@@ -550,7 +550,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
             {configsMap.input_current_ac.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (A)</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (Amp)</label>
                 <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
               </div>
             ) : (
@@ -558,7 +558,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
             {configsMap.output_current_dc.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (A)</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (Amp)</label>
                 <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
               </div>
             ) : (

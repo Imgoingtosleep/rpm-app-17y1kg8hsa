@@ -110,7 +110,7 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     vent_dc_fan: 'Ventilation DC Fan Status',
     vent_dc_fan_hood: 'Ventilation DC Fan Hood',
     vent_air_cond: 'Air Conditioner System Test',
-    vent_filters: 'Air Filters Condition',
+    // vent_filters: 'Air Filters Condition',
 
     vent_filter_door: 'ความสะอาด Filter Door',
     vent_filter_window: 'ความสะอาด Filter Window',

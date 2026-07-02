@@ -10,6 +10,7 @@ import AcMainTab from './pages/WorkOrder/AcMainTab';
 import RectifierTab from './pages/WorkOrder/RectifierTab';
 import BatteryTab from './pages/WorkOrder/BatteryTab';
 import FacilitiesTab from './pages/WorkOrder/FacilitiesTab';
+import SummaryTab from './pages/WorkOrder/SummaryTab';
 import FieldSettings from './pages/FieldSettings';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -34,9 +35,9 @@ function WorkOrderPanel() {
   const [completedSections, setCompletedSections] = useState(() => {
     try {
       const stored = localStorage.getItem(`completed_${site_code}`);
-      return stored ? JSON.parse(stored) : { master: false, acmain: false, rectifier: false, battery: false, facilities: false };
+      return stored ? JSON.parse(stored) : { master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false };
     } catch {
-      return { master: false, acmain: false, rectifier: false, battery: false, facilities: false };
+      return { master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false };
     }
   });
 
@@ -152,7 +153,7 @@ function WorkOrderPanel() {
   };
 
   const totalCompleted = Object.values(completedSections).filter(Boolean).length;
-  const progressPercent = Math.round((totalCompleted / 5) * 100);
+  const progressPercent = Math.round((totalCompleted / 6) * 100);
 
   const renderTabContent = () => {
     const isReadOnly = userRole === 'Viewer' || isSubmitted;
@@ -167,6 +168,8 @@ function WorkOrderPanel() {
         return <BatteryTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} />;
       case 'facilities':
         return <FacilitiesTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
+      case 'summary':
+        return <SummaryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('summary')} isReadOnly={isReadOnly} />;
       default:
         return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
     }
@@ -178,6 +181,7 @@ function WorkOrderPanel() {
     { id: 'rectifier', label: 'Rectifier' },
     { id: 'battery', label: 'Battery Bank' },
     { id: 'facilities', label: 'Facilities' },
+    { id: 'summary', label: 'สรุปปัญหาหน้างาน' },
   ];
 
   return (
@@ -206,7 +210,7 @@ function WorkOrderPanel() {
               onClick={() => {
                 if (window.confirm('คุณต้องการรีเซ็ตข้อมูลความคืบหน้าทั้งหมดของไซต์นี้ เพื่อเริ่มทดสอบใหม่ใช่หรือไม่?')) {
                   localStorage.removeItem(`completed_${site_code}`);
-                  setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false });
+                  setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false });
                   alert('รีเซ็ตสถานะความคืบหน้าของไซต์นี้เรียบร้อยแล้ว!');
                 }
               }}
@@ -221,8 +225,8 @@ function WorkOrderPanel() {
             <button 
               disabled={userRole === 'Viewer' || isSubmitted}
               onClick={async () => {
-                if (totalCompleted < 5) {
-                  alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 5 ส่วนก่อนส่งงานครับ!');
+                if (totalCompleted < 6) {
+                  alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 6 ส่วนก่อนส่งงานครับ!');
                   return;
                 }
                 if (!rpmId) {
@@ -237,7 +241,7 @@ function WorkOrderPanel() {
                   if (res.ok) {
                     alert('ส่งใบงานสำเร็จเรียบร้อย! ข้อมูลทั้งหมดถูกนำส่งเข้าระบบแล้ว');
                     localStorage.removeItem(`completed_${site_code}`);
-                    setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false });
+                    setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false });
                     navigate('/select-site');
                   } else {
                     const errData = await res.json();

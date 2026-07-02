@@ -426,7 +426,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
+                      Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v1} onChange={(e) => setV1(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p1.isRequired} />
                   </div>
@@ -436,7 +436,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p2.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
+                      Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p2.isRequired} />
                   </div>
@@ -446,7 +446,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p3.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (V)
+                      Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
                     <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p3.isRequired} />
                   </div>
@@ -459,7 +459,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
+                      Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur1} onChange={(e) => setCur1(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p1.isRequired} />
                   </div>
@@ -469,7 +469,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p2.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
+                      Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p2.isRequired} />
                   </div>
@@ -479,7 +479,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p3.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (A)
+                      Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
                     <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p3.isRequired} />
                   </div>

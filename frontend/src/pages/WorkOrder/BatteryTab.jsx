@@ -456,7 +456,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                 {configsMap.voltage.isEnabled ? (
                   <div>
                     <label className="block text-[10px] uppercase text-gray-500 mb-1">
-                      Volt (V) {configsMap.voltage.isRequired && <span className="text-red-400">*</span>}
+                      Volt (Volt) {configsMap.voltage.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input 
                       type="number" 

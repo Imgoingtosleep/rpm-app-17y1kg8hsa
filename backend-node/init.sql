@@ -173,8 +173,12 @@ ON CONFLICT (email) DO NOTHING;
 -- Seed field configs for Master Site Tab
 INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('master', 'job_number_sl6', true, true),
-('master', 'sap_number', true, true),
-('master', 'summary_issue', false, true)
+('master', 'sap_number', true, true)
+ON CONFLICT (tab_name, field_name) DO NOTHING;
+
+-- Seed field configs for Summary Tab
+INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('summary', 'summary_issue', false, true)
 ON CONFLICT (tab_name, field_name) DO NOTHING;
 
 -- Seed field configs for AC Main Tab

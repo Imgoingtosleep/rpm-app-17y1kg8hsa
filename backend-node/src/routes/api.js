@@ -153,6 +153,23 @@ router.put('/workorder/:rpm_id/master', async (req, res) => {
   }
 });
 
+router.put('/workorder/:rpm_id/summary', async (req, res) => {
+  const { rpm_id } = req.params;
+  const { summary_issue } = req.body;
+  try {
+    const result = await db.query(
+      'UPDATE rpm_records_master SET summary_issue = $1 WHERE rpm_id = $2 RETURNING *;',
+      [summary_issue, rpm_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 4. Get & Update AC Main details
 router.get('/workorder/:rpm_id/ac', async (req, res) => {
   const { rpm_id } = req.params;
