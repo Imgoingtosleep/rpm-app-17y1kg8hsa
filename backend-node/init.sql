@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS rpm_records_master (
     inspection_date DATE,                        -- วันที่เข้าตรวจสอบ
     inspection_time TIME,                        -- เวลาที่เข้าตรวจสอบ
     rectifier_qty_uih INT,                       -- จำนวนตู้ Rectifier
+    status VARCHAR(50) DEFAULT 'Pending',         -- สถานะใบงาน เช่น Pending, Submitted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -808,4 +808,53 @@ router.get('/workorders/active', async (req, res) => {
   }
 });
 
+// Submit a work order
+router.post('/workorder/:rpm_id/submit', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE rpm_records_master SET status = 'Submitted' WHERE rpm_id = $1 RETURNING *;",
+      [rpm_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json({ message: 'Work order submitted successfully', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all work orders with site info (for Admin review)
+router.get('/workorders/all', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT m.*, s.site_name, s.site_type, s.site_grade 
+       FROM rpm_records_master m
+       JOIN sites s ON m.site_code = s.site_code
+       ORDER BY m.created_at DESC;`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Unlock a work order (set status back to Pending)
+router.post('/workorder/:rpm_id/unlock', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE rpm_records_master SET status = 'Pending' WHERE rpm_id = $1 RETURNING *;",
+      [rpm_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json({ message: 'Work order unlocked successfully', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

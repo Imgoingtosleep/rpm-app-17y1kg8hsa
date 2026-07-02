@@ -136,15 +136,23 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
           <p className="text-gray-400 mt-1">Select a telecom/power station to initialize a work order checklist.</p>
         </div>
         {isAdmin && (
-          <button
-            onClick={() => navigate('/create-site')}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Station
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              className="px-5 py-2.5 bg-dark-accent hover:bg-dark-accent/80 border border-dark-border text-gray-200 font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2"
+            >
+              Admin Dashboard
+            </button>
+            <button
+              onClick={() => navigate('/create-site')}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Station
+            </button>
+          </div>
         )}
       </div>
 

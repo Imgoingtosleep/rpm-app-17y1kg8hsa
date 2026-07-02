@@ -11,6 +11,7 @@ import RectifierTab from './pages/WorkOrder/RectifierTab';
 import BatteryTab from './pages/WorkOrder/BatteryTab';
 import FacilitiesTab from './pages/WorkOrder/FacilitiesTab';
 import FieldSettings from './pages/FieldSettings';
+import AdminDashboard from './pages/AdminDashboard';
 
 import CreateSite from './pages/CreateSite';
 import StorageBrowser from './pages/StorageBrowser';
@@ -27,6 +28,7 @@ function WorkOrderPanel() {
   const [inspectionTime, setInspectionTime] = useState('');
   const [rpmId, setRpmId] = useState(null);
   const [userRole, setUserRole] = useState('Viewer');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Track completed sections
   const [completedSections, setCompletedSections] = useState(() => {
@@ -109,6 +111,7 @@ function WorkOrderPanel() {
         localStorage.removeItem('sapNo');
         if (resData.data && resData.data.rpm_id) {
           setRpmId(resData.data.rpm_id);
+          setIsSubmitted(resData.data.status === 'Submitted');
           if (resData.data.rpm_cycle) {
             setRpmCycle(resData.data.rpm_cycle);
             localStorage.setItem('rpmCycle', resData.data.rpm_cycle);
@@ -152,7 +155,7 @@ function WorkOrderPanel() {
   const progressPercent = Math.round((totalCompleted / 5) * 100);
 
   const renderTabContent = () => {
-    const isReadOnly = userRole === 'Viewer';
+    const isReadOnly = userRole === 'Viewer' || isSubmitted;
     switch (activeTab) {
       case 'master':
         return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
@@ -216,26 +219,43 @@ function WorkOrderPanel() {
               Reset Draft (Test Mode)
             </button>
             <button 
-              disabled={userRole === 'Viewer'}
-              onClick={() => {
+              disabled={userRole === 'Viewer' || isSubmitted}
+              onClick={async () => {
                 if (totalCompleted < 5) {
                   alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 5 ส่วนก่อนส่งงานครับ!');
-                } else {
-                  alert('ส่งใบงานสำเร็จเรียบร้อย! ข้อมูลทั้งหมดถูกนำส่งเข้าระบบแล้ว');
-                  localStorage.removeItem(`completed_${site_code}`);
-                  setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false });
-                  navigate('/select-site');
+                  return;
+                }
+                if (!rpmId) {
+                  alert('ไม่สามารถส่งงานได้ เนื่องจากไม่พบรหัสใบงานหลัก (RPM ID)');
+                  return;
+                }
+                if (!window.confirm('คุณต้องการส่งใบงานนี้ใช่หรือไม่? หลังจากส่งงานแล้วจะไม่สามารถแก้ไขข้อมูลได้อีก')) {
+                  return;
+                }
+                try {
+                  const res = await fetch(`/api/workorder/${rpmId}/submit`, { method: 'POST' });
+                  if (res.ok) {
+                    alert('ส่งใบงานสำเร็จเรียบร้อย! ข้อมูลทั้งหมดถูกนำส่งเข้าระบบแล้ว');
+                    localStorage.removeItem(`completed_${site_code}`);
+                    setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false });
+                    navigate('/select-site');
+                  } else {
+                    const errData = await res.json();
+                    alert('เกิดข้อผิดพลาดในการส่งงาน: ' + errData.error);
+                  }
+                } catch (e) {
+                  alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
                 }
               }}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
-                userRole === 'Viewer'
+                userRole === 'Viewer' || isSubmitted
                   ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
                   : totalCompleted === 5
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-indigo-600/20'
               }`}
             >
-              Submit Work Order {totalCompleted === 5 && '✓'}
+              {isSubmitted ? 'Submitted (ส่งแล้ว) ✓' : `Submit Work Order ${totalCompleted === 5 ? '✓' : ''}`}
             </button>
           </div>
         </div>
@@ -342,6 +362,14 @@ export default function App() {
         <Route path="/" element={<StartPage />} />
         <Route path="/select-site" element={<GatekeeperWrapper />} />
         <Route path="/create-site" element={<CreateSite />} />
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <MainLayout currentStep="admin-dashboard" currentSite={null} onNavigateBack={() => {}}>
+              <AdminDashboard />
+            </MainLayout>
+          } 
+        />
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
         <Route path="/admin/fields" element={<FieldSettings />} />

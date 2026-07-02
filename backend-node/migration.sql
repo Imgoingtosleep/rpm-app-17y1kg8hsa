@@ -35,3 +35,5 @@ ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_type VAR
 ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_type_img VARCHAR(500);
 ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_status VARCHAR(100);
 ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_status_img VARCHAR(500);
+
+ALTER TABLE rpm_records_master ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';

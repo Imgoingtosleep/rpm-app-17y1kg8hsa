@@ -80,6 +80,25 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
             {user?.role === 'Admin' && (
               <button 
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  currentStep === 'admin-dashboard' 
+                    ? 'bg-indigo-600/10 text-indigo-400 border-l-2 border-indigo-500 font-semibold' 
+                    : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
+                }`}
+                onClick={() => {
+                  navigate('/admin/dashboard');
+                  setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Admin Dashboard
+              </button>
+            )}
+
+            {user?.role === 'Admin' && (
+              <button 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   currentStep === 'storage-browser' 
                     ? 'bg-indigo-600/10 text-indigo-400 border-l-2 border-indigo-500 font-semibold' 
                     : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
@@ -138,7 +157,11 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
               </button>
             )}
             <span className="text-xs sm:text-sm font-semibold text-gray-300 truncate max-w-[150px] sm:max-w-none">
-              {currentStep === 'gatekeeper' ? 'Gatekeeper Stage' : 'Work Order Form Submission'}
+              {currentStep === 'gatekeeper' 
+                ? 'Gatekeeper Stage' 
+                : currentStep === 'admin-dashboard'
+                ? 'Admin Dashboard'
+                : 'Work Order Form Submission'}
             </span>
           </div>
 
