@@ -81,8 +81,8 @@ CREATE TABLE IF NOT EXISTS power_rectifier (
     battery_type VARCHAR(50),
     lithium_capacity VARCHAR(50),
     battery_run VARCHAR(50),
-    battery_soh VARCHAR(50),
-    battery_soc VARCHAR(50),
+    battery_soh NUMERIC(5,2),
+    battery_soc NUMERIC(5,2),
     battery_capacity_percent VARCHAR(50),
     battery_alarm VARCHAR(50),
     battery_qty_bank INT

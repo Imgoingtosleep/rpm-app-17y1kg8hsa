@@ -113,6 +113,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         updatedCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
         updatedCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
         updatedCells[cellNo].existingPath = bat.battery_img || null;
+        updatedCells[cellNo].status = bat.status || 'Good';
       }
     });
 
@@ -182,6 +183,35 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       };
     });
   };
+
+  // Re-evaluate statuses when brand changes
+  useEffect(() => {
+    setCells(prev => {
+      let updated = false;
+      const nextCells = { ...prev };
+      const match = BATTERY_MODELS.find(m => m.brand === brand);
+      const limitIr = match ? match.abnormalIr : 10.0;
+
+      [1, 2, 3, 4].forEach(num => {
+        if (!nextCells[num]) return;
+        const cell = nextCells[num];
+        const vVal = cell.voltage === '' ? NaN : parseFloat(cell.voltage);
+        const irVal = cell.ir === '' ? NaN : parseFloat(cell.ir);
+        
+        let newStatus = 'Good';
+        if ((!isNaN(vVal) && vVal < 12.0) || (!isNaN(irVal) && irVal > limitIr)) {
+          newStatus = 'Fail';
+        }
+        
+        if (cell.status !== newStatus) {
+          nextCells[num] = { ...cell, status: newStatus };
+          updated = true;
+        }
+      });
+
+      return updated ? nextCells : prev;
+    });
+  }, [brand]);
 
   const getFieldConfig = (name) => {
     const cfg = fieldConfigs.find(c => c.field_name === name);
@@ -460,11 +490,12 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                     </label>
                     <input 
                       type="number" 
+                      min="0"
                       step="0.01" 
                       disabled={isReadOnly}
                       className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                       value={cell.voltage}
-                      onChange={(e) => handleCellChange(num, 'voltage', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      onChange={(e) => handleCellChange(num, 'voltage', e.target.value)}
                       required={configsMap.voltage.isRequired}
                     />
                   </div>
@@ -479,6 +510,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                     </label>
                     <input 
                       type="number" 
+                      min="0"
                       step="0.01" 
                       disabled={isReadOnly}
                       className={`w-full bg-dark-bg border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50 ${
@@ -491,7 +523,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         })()
                       }`} 
                       value={cell.ir}
-                      onChange={(e) => handleCellChange(num, 'ir', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      onChange={(e) => handleCellChange(num, 'ir', e.target.value)}
                       required={configsMap.internal_resistance.isRequired}
                     />
                     {(() => {

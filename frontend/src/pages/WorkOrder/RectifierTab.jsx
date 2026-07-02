@@ -281,29 +281,31 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       alert('กรุณาเลือก ชนิดแบตเตอรี่ (Battery Type)');
       return;
     }
-    if (configsMap.lithium_capacity.isEnabled && configsMap.lithium_capacity.isRequired && !lithiumCapacity) {
-      alert('กรุณาเลือก Lithium Capacity');
-      return;
-    }
-    if (configsMap.battery_run.isEnabled && configsMap.battery_run.isRequired && !batteryRun) {
-      alert('กรุณาเลือก Battery RUN');
-      return;
-    }
-    if (configsMap.battery_soh.isEnabled && configsMap.battery_soh.isRequired && (batterySoh === '' || batterySoh === null || batterySoh === undefined)) {
-      alert('กรุณากรอก Battery % SOH');
-      return;
-    }
-    if (configsMap.battery_soc.isEnabled && configsMap.battery_soc.isRequired && (batterySoc === '' || batterySoc === null || batterySoc === undefined)) {
-      alert('กรุณากรอก Battery % SOC');
-      return;
-    }
-    if (configsMap.battery_capacity_percent.isEnabled && configsMap.battery_capacity_percent.isRequired && (batteryCapacityPercent === '' || batteryCapacityPercent === null || batteryCapacityPercent === undefined)) {
-      alert('กรุณากรอก Battery เปอร์เซ็น Capacity');
-      return;
-    }
-    if (configsMap.battery_alarm.isEnabled && configsMap.battery_alarm.isRequired && !batteryAlarm) {
-      alert('กรุณาเลือก Battery Alarm Status');
-      return;
+    if (batteryType === 'Lithium') {
+      if (configsMap.lithium_capacity.isEnabled && configsMap.lithium_capacity.isRequired && !lithiumCapacity) {
+        alert('กรุณาเลือก Lithium Capacity');
+        return;
+      }
+      if (configsMap.battery_run.isEnabled && configsMap.battery_run.isRequired && !batteryRun) {
+        alert('กรุณาเลือก Battery RUN');
+        return;
+      }
+      if (configsMap.battery_soh.isEnabled && configsMap.battery_soh.isRequired && (batterySoh === '' || batterySoh === null || batterySoh === undefined)) {
+        alert('กรุณากรอก Battery % SOH');
+        return;
+      }
+      if (configsMap.battery_soc.isEnabled && configsMap.battery_soc.isRequired && (batterySoc === '' || batterySoc === null || batterySoc === undefined)) {
+        alert('กรุณากรอก Battery % SOC');
+        return;
+      }
+      if (configsMap.battery_capacity_percent.isEnabled && configsMap.battery_capacity_percent.isRequired && (batteryCapacityPercent === '' || batteryCapacityPercent === null || batteryCapacityPercent === undefined)) {
+        alert('กรุณากรอก Battery เปอร์เซ็น Capacity');
+        return;
+      }
+      if (configsMap.battery_alarm.isEnabled && configsMap.battery_alarm.isRequired && !batteryAlarm) {
+        alert('กรุณาเลือก Battery Alarm Status');
+        return;
+      }
     }
     if (configsMap.battery_qty_bank.isEnabled && configsMap.battery_qty_bank.isRequired && !batteryQtyBank) {
       alert('กรุณาเลือก จำนวน Bank Batt');
@@ -535,7 +537,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.modules_all.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules All</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_all.isRequired} />
+                <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_all.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules All (Disabled)</div>
@@ -543,7 +545,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.modules_fail.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules Fail</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_fail.isRequired} />
+                <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_fail.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Modules Fail (Disabled)</div>
@@ -551,7 +553,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.input_current_ac.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (Amp)</label>
-                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
+                <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Input Current (Disabled)</div>
@@ -559,7 +561,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.output_current_dc.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (Amp)</label>
-                <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
+                <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
               </div>
             ) : (
               <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Output Current (Disabled)</div>
@@ -613,11 +615,11 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOH (State of Health)</label>
-                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                  <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOC (State of Charge)</label>
-                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                  <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery เปอร์เซ็น Capacity</label>

@@ -428,7 +428,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
-                    <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v1} onChange={(e) => setV1(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p1.isRequired} />
+                    <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v1} onChange={(e) => setV1(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p1.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P1 Disabled</div>
@@ -438,7 +438,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
-                    <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p2.isRequired} />
+                    <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p2.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P2 Disabled</div>
@@ -448,7 +448,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
-                    <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p3.isRequired} />
+                    <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p3.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P3 Disabled</div>
@@ -461,7 +461,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
-                    <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur1} onChange={(e) => setCur1(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p1.isRequired} />
+                    <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur1} onChange={(e) => setCur1(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p1.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P1 Disabled</div>
@@ -471,7 +471,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
-                    <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p2.isRequired} />
+                    <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p2.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P2 Disabled</div>
@@ -481,7 +481,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
-                    <input type="number" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p3.isRequired} />
+                    <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p3.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P3 Disabled</div>
