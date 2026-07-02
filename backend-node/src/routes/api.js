@@ -399,7 +399,7 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run, battery_soh, battery_soc,
           battery_capacity_percent, battery_alarm, battery_qty_bank
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *;`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING *;`,
         [
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
           modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,

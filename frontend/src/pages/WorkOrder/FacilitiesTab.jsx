@@ -15,7 +15,6 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     vent_dc_fan: { status: '', file: null },
     vent_dc_fan_hood: { status: '', file: null },
     vent_air_cond: { status: '', file: null },
-    vent_filters: { status: '', file: null }, // placeholder
 
     vent_filter_door: { status: '', file: null },
     vent_filter_window: { status: '', file: null },
