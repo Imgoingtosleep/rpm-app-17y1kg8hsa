@@ -87,12 +87,6 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
 
   const handleFileChange = (field, fileList) => {
     let files = Array.from(fileList);
-    const existing = existingPaths[field];
-    const existingCount = existing ? (Array.isArray(existing) ? existing.length : 1) : 0;
-    if (files.length + existingCount > 10) {
-      alert(`คุณสามารถอัปโหลดรูปภาพได้สูงสุด 10 รูปต่อหัวข้อเท่านั้น (มีรูปเดิมอยู่แล้ว ${existingCount} รูป เลือกเพิ่มได้อีกไม่เกิน ${10 - existingCount} รูป)`);
-      files = files.slice(0, 10 - existingCount);
-    }
     setImages(prev => ({ ...prev, [field]: files }));
   };
 

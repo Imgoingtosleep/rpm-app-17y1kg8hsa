@@ -5,6 +5,23 @@ const fs = require('fs');
 const db = require('../config/db');
 const upload = require('../middlewares/upload');
 
+const deletePhysicalFiles = (filesList) => {
+  if (!Array.isArray(filesList)) return;
+  filesList.forEach(relPath => {
+    if (!relPath) return;
+    const cleanPath = relPath.replace(/^\/storage/, '');
+    const fullPath = path.resolve(__dirname, '../../storage', cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath);
+    try {
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        console.log(`Physically deleted old excess image: ${fullPath}`);
+      }
+    } catch (err) {
+      console.error(`Failed to physically delete file ${fullPath}:`, err);
+    }
+  });
+};
+
 // 1. Get & Create sites
 router.get('/sites', async (req, res) => {
   try {
@@ -237,8 +254,12 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
         if (Array.isArray(pathVal)) arr = pathVal;
         else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
       }
-      // Cap at 10
-      if (arr.length > 10) arr = arr.slice(-10);
+      // Cap at 10 and delete physical files starting from index 1 (FIFO)
+      if (arr.length > 10) {
+        const discarded = arr.slice(0, arr.length - 10);
+        deletePhysicalFiles(discarded);
+        arr = arr.slice(-10);
+      }
       return arr;
     };
 
@@ -362,7 +383,11 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
         if (Array.isArray(pathVal)) arr = pathVal;
         else if (typeof pathVal === 'string' && !arr.includes(pathVal)) arr.push(pathVal);
       }
-      if (arr.length > 10) arr = arr.slice(-10);
+      if (arr.length > 10) {
+        const discarded = arr.slice(0, arr.length - 10);
+        deletePhysicalFiles(discarded);
+        arr = arr.slice(-10);
+      }
       return arr;
     };
 
@@ -525,7 +550,11 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
       if (Array.isArray(pathVal)) batteryImgArr = pathVal;
       else if (typeof pathVal === 'string' && !batteryImgArr.includes(pathVal)) batteryImgArr.push(pathVal);
     }
-    if (batteryImgArr.length > 10) batteryImgArr = batteryImgArr.slice(-10);
+    if (batteryImgArr.length > 10) {
+      const discarded = batteryImgArr.slice(0, batteryImgArr.length - 10);
+      deletePhysicalFiles(discarded);
+      batteryImgArr = batteryImgArr.slice(-10);
+    }
     
     let result;
     if (existing.rows.length > 0) {
@@ -626,7 +655,11 @@ router.post('/workorder/:rpm_id/facilities', upload.any(), async (req, res) => {
           arr.push(pathVal);
         }
       }
-      if (arr.length > 10) arr = arr.slice(-10);
+      if (arr.length > 10) {
+        const discarded = arr.slice(0, arr.length - 10);
+        deletePhysicalFiles(discarded);
+        arr = arr.slice(-10);
+      }
 
       updateParts.push(`${field} = $${i*2 + 1}`);
       updateParts.push(`${field}_img = $${i*2 + 2}`);
