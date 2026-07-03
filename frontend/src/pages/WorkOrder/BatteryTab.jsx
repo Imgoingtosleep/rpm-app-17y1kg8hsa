@@ -44,6 +44,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   });
 
   const [fileInputKey, setFileInputKey] = useState(Date.now());
+  const [loadedBankRect, setLoadedBankRect] = useState({ bank: '', rect: null });
 
   // 1. Fetch rectifiers for current workorder
   useEffect(() => {
@@ -98,26 +99,34 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // 4. Update UI cells state when active batteries list or bank selection changes
   useEffect(() => {
-    const updatedCells = {
-      1: { voltage: '', ir: '', file: null, existingPath: null },
-      2: { voltage: '', ir: '', file: null, existingPath: null },
-      3: { voltage: '', ir: '', file: null, existingPath: null },
-      4: { voltage: '', ir: '', file: null, existingPath: null }
-    };
+    const isDifferentBankOrRect = bankNo !== loadedBankRect.bank || activeRectId !== loadedBankRect.rect;
 
-    // Filter batteries for selected bank
-    const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
-    bankBatteries.forEach(bat => {
-      const cellNo = bat.cell_no;
-      if (updatedCells[cellNo]) {
-        updatedCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
-        updatedCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
-        updatedCells[cellNo].existingPath = bat.battery_img || null;
-        updatedCells[cellNo].status = bat.status || 'Good';
-      }
+    setCells(prev => {
+      const nextCells = isDifferentBankOrRect ? {
+        1: { voltage: '', ir: '', file: null, existingPath: null },
+        2: { voltage: '', ir: '', file: null, existingPath: null },
+        3: { voltage: '', ir: '', file: null, existingPath: null },
+        4: { voltage: '', ir: '', file: null, existingPath: null }
+      } : { ...prev };
+
+      // Filter batteries for selected bank
+      const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
+      bankBatteries.forEach(bat => {
+        const cellNo = bat.cell_no;
+        if (nextCells[cellNo]) {
+          nextCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
+          nextCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
+          nextCells[cellNo].existingPath = bat.battery_img || null;
+          nextCells[cellNo].status = bat.status || 'Good';
+        }
+      });
+
+      return nextCells;
     });
 
-    setCells(updatedCells);
+    if (isDifferentBankOrRect) {
+      setLoadedBankRect({ bank: bankNo, rect: activeRectId });
+    }
 
     const formatDateForInput = (dateStr) => {
       if (!dateStr) return '';
@@ -134,13 +143,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       setCapacity(matchedBank.capacity || '100AH');
       setInstalledDate(formatDateForInput(matchedBank.installed_date));
       setWarranteeDate(formatDateForInput(matchedBank.warrantee_date));
-    } else {
+    } else if (isDifferentBankOrRect) {
       setBrand('');
       setCapacity('100AH');
       setInstalledDate('');
       setWarranteeDate('');
     }
-  }, [bankNo, batteries]);
+  }, [bankNo, batteries, activeRectId, loadedBankRect]);
 
   const handleCellChange = (num, field, value) => {
     setCells(prev => {

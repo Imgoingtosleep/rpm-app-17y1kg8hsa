@@ -51,9 +51,9 @@ CREATE TABLE IF NOT EXISTS power_main_ac (
     voltage_p1 INT,
     voltage_p2 INT,
     voltage_p3 INT,
-    current_p1 NUMERIC(5,2),
-    current_p2 NUMERIC(5,2),
-    current_p3 NUMERIC(5,2),
+    current_p1 NUMERIC(10,2),
+    current_p2 NUMERIC(10,2),
+    current_p3 NUMERIC(10,2),
     ground_resistance VARCHAR(100),
     ground_img VARCHAR(500)[],
     site_temp VARCHAR(50)
@@ -70,8 +70,8 @@ CREATE TABLE IF NOT EXISTS power_rectifier (
     breaker_img VARCHAR(500)[],
     modules_all INT DEFAULT 0,
     modules_fail INT DEFAULT 0,
-    input_current_ac NUMERIC(5,2),
-    output_current_dc NUMERIC(5,2),
+    input_current_ac NUMERIC(10,2),
+    output_current_dc NUMERIC(10,2),
     pdb_temp_img VARCHAR(500)[],
     surge_status VARCHAR(100),
     surge_rect_img VARCHAR(500)[],
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS battery_tests (
     bat_id SERIAL PRIMARY KEY,
     bank_id INT NOT NULL REFERENCES rectifier_banks(bank_id) ON DELETE CASCADE, -- อ้างอิง Bank แทน Rectifier
     cell_no INT NOT NULL,          -- ลูกที่ 1, 2, 3, 4
-    voltage NUMERIC(4,2),          -- เช่น 13.21
-    internal_resistance NUMERIC(5,2), -- ค่า IR (มิลลิโอห์ม)
+    voltage NUMERIC(10,2),          -- เช่น 13.21
+    internal_resistance NUMERIC(10,2), -- ค่า IR (มิลลิโอห์ม)
     status VARCHAR(100),           -- ปกติ / เสื่อม
     installed_date DATE,
     warrantee_date DATE,

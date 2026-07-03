@@ -22,6 +22,13 @@ const deletePhysicalFiles = (filesList) => {
   });
 };
 
+const toNumOrNull = (val) => {
+  if (val === "" || val === undefined || val === null) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+};
+
+
 // 1. Get & Create sites
 router.get('/sites', async (req, res) => {
   try {
@@ -283,8 +290,10 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
         [
           meter_ac_size, meter_ac_img, cable_status, cable_img,
           change_over_switch, change_over_img, ac_phase_qty, surge_protection,
-          surge_img, mdb_temp || null, mdb_temp_img, voltage_p1 || null, voltage_p2 || null,
-          voltage_p3 || null, current_p1 || null, current_p2 || null, current_p3 || null, ground_resistance || null, ground_img,
+          surge_img, mdb_temp || null, mdb_temp_img,
+          toNumOrNull(voltage_p1), toNumOrNull(voltage_p2), toNumOrNull(voltage_p3),
+          toNumOrNull(current_p1), toNumOrNull(current_p2), toNumOrNull(current_p3),
+          ground_resistance || null, ground_img,
           rpm_id, site_temp
         ]
       );
@@ -299,8 +308,10 @@ router.post('/workorder/:rpm_id/ac', upload.fields([
         [
           rpm_id, meter_ac_size, meter_ac_img, cable_status, cable_img,
           change_over_switch, change_over_img, ac_phase_qty, surge_protection,
-          surge_img, mdb_temp || null, mdb_temp_img, voltage_p1 || null, voltage_p2 || null,
-          voltage_p3 || null, current_p1 || null, current_p2 || null, current_p3 || null, ground_resistance || null, ground_img, site_temp
+          surge_img, mdb_temp || null, mdb_temp_img,
+          toNumOrNull(voltage_p1), toNumOrNull(voltage_p2), toNumOrNull(voltage_p3),
+          toNumOrNull(current_p1), toNumOrNull(current_p2), toNumOrNull(current_p3),
+          ground_resistance || null, ground_img, site_temp
         ]
       );
     }
@@ -408,11 +419,15 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22
         WHERE rect_id = $23 RETURNING *;`,
         [
-          model, ac_cable_size, breaker_size, breaker_img, modules_all, modules_fail, 
-          input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
+          model, ac_cable_size, breaker_size, breaker_img,
+          toNumOrNull(modules_all), toNumOrNull(modules_fail), 
+          toNumOrNull(input_current_ac), toNumOrNull(output_current_dc),
+          pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
-          lithium_capacity, battery_run, battery_soh, battery_soc,
-          battery_capacity_percent, battery_alarm, battery_qty_bank || null,
+          lithium_capacity, battery_run,
+          toNumOrNull(battery_soh), toNumOrNull(battery_soc),
+          battery_capacity_percent, battery_alarm,
+          toNumOrNull(battery_qty_bank),
           existing.rows[0].rect_id
         ]
       );
@@ -427,10 +442,14 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING *;`,
         [
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
-          modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
+          toNumOrNull(modules_all), toNumOrNull(modules_fail),
+          toNumOrNull(input_current_ac), toNumOrNull(output_current_dc),
+          pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
-          lithium_capacity, battery_run, battery_soh, battery_soc,
-          battery_capacity_percent, battery_alarm, battery_qty_bank || null
+          lithium_capacity, battery_run,
+          toNumOrNull(battery_soh), toNumOrNull(battery_soc),
+          battery_capacity_percent, battery_alarm,
+          toNumOrNull(battery_qty_bank)
         ]
       );
     }
@@ -445,7 +464,7 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   const { rect_id } = req.params;
   try {
     const result = await db.query(
-      `SELECT bt.*, rb.bank_name 
+      `SELECT bt.*, rb.bank_name, rb.brand, rb.capacity, rb.installed_date, rb.warrantee_date 
        FROM battery_tests bt 
        JOIN rectifier_banks rb ON bt.bank_id = rb.bank_id 
        WHERE rb.rect_id = $1 
@@ -561,13 +580,13 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
       result = await db.query(
         `UPDATE battery_tests SET voltage = $1, internal_resistance = $2, status = $3, battery_img = $4
         WHERE bat_id = $5 RETURNING *;`,
-        [voltage, internal_resistance, status, batteryImgArr, existing.rows[0].bat_id]
+        [toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr, existing.rows[0].bat_id]
       );
     } else {
       result = await db.query(
         `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img)
         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
-        [bank_id, cell_no, voltage, internal_resistance, status, batteryImgArr]
+        [bank_id, cell_no, toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr]
       );
     }
     res.json(result.rows[0]);

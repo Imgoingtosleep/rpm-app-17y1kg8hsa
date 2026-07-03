@@ -40,8 +40,7 @@ Thumbs.db
 
 # Docker and Local Database Volumes
 postgres_data/
-/storage/sites/*
-!/storage/sites/.gitkeep
+storage/
 
 # Temporary files
 tmp/

@@ -37,3 +37,13 @@ ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_status V
 ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_status_img VARCHAR(500);
 
 ALTER TABLE rpm_records_master ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
+
+-- Increase precision of numeric fields to prevent numeric field overflow
+ALTER TABLE battery_tests ALTER COLUMN voltage TYPE NUMERIC(10,2);
+ALTER TABLE battery_tests ALTER COLUMN internal_resistance TYPE NUMERIC(10,2);
+ALTER TABLE power_main_ac ALTER COLUMN current_p1 TYPE NUMERIC(10,2);
+ALTER TABLE power_main_ac ALTER COLUMN current_p2 TYPE NUMERIC(10,2);
+ALTER TABLE power_main_ac ALTER COLUMN current_p3 TYPE NUMERIC(10,2);
+ALTER TABLE power_rectifier ALTER COLUMN input_current_ac TYPE NUMERIC(10,2);
+ALTER TABLE power_rectifier ALTER COLUMN output_current_dc TYPE NUMERIC(10,2);
+
