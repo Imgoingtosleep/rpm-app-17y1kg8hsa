@@ -242,7 +242,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 overflow-y-auto bg-dark-bg p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto bg-dark-bg p-4 pb-24 md:p-8">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
