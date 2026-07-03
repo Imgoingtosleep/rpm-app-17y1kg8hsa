@@ -30,6 +30,13 @@ export default function StartPage() {
   };
 
   useEffect(() => {
+    // Redirect if already logged in
+    const user = localStorage.getItem('user');
+    if (user) {
+      navigate('/select-site');
+      return;
+    }
+
     const initializeGoogleSignIn = () => {
       if (window.google) {
         try {
