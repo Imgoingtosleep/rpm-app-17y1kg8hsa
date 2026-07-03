@@ -66,8 +66,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
                   : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
               }`}
               onClick={() => {
-                if (onNavigateBack) onNavigateBack();
-                else navigate('/select-site');
+                navigate('/select-site');
                 setIsSidebarOpen(false);
               }}
             >
