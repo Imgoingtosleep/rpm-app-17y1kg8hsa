@@ -150,25 +150,29 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
       alert('กรุณากรอก Phase#1 แรงดันไฟฟ้า');
       return;
     }
-    if (configsMap.voltage_p2.isEnabled && configsMap.voltage_p2.isRequired && (v2 === '' || v2 === null || v2 === undefined)) {
-      alert('กรุณากรอก Phase#2 แรงดันไฟฟ้า');
-      return;
-    }
-    if (configsMap.voltage_p3.isEnabled && configsMap.voltage_p3.isRequired && (v3 === '' || v3 === null || v3 === undefined)) {
-      alert('กรุณากรอก Phase#3 แรงดันไฟฟ้า');
-      return;
+    if (phaseQty !== '1 Phase') {
+      if (configsMap.voltage_p2.isEnabled && configsMap.voltage_p2.isRequired && (v2 === '' || v2 === null || v2 === undefined)) {
+        alert('กรุณากรอก Phase#2 แรงดันไฟฟ้า');
+        return;
+      }
+      if (configsMap.voltage_p3.isEnabled && configsMap.voltage_p3.isRequired && (v3 === '' || v3 === null || v3 === undefined)) {
+        alert('กรุณากรอก Phase#3 แรงดันไฟฟ้า');
+        return;
+      }
     }
     if (configsMap.current_p1.isEnabled && configsMap.current_p1.isRequired && (cur1 === '' || cur1 === null || cur1 === undefined)) {
       alert('กรุณากรอก Phase#1 กระแสโหลด');
       return;
     }
-    if (configsMap.current_p2.isEnabled && configsMap.current_p2.isRequired && (cur2 === '' || cur2 === null || cur2 === undefined)) {
-      alert('กรุณากรอก Phase#2 กระแสโหลด');
-      return;
-    }
-    if (configsMap.current_p3.isEnabled && configsMap.current_p3.isRequired && (cur3 === '' || cur3 === null || cur3 === undefined)) {
-      alert('กรุณากรอก Phase#3 กระแสโหลด');
-      return;
+    if (phaseQty !== '1 Phase') {
+      if (configsMap.current_p2.isEnabled && configsMap.current_p2.isRequired && (cur2 === '' || cur2 === null || cur2 === undefined)) {
+        alert('กรุณากรอก Phase#2 กระแสโหลด');
+        return;
+      }
+      if (configsMap.current_p3.isEnabled && configsMap.current_p3.isRequired && (cur3 === '' || cur3 === null || cur3 === undefined)) {
+        alert('กรุณากรอก Phase#3 กระแสโหลด');
+        return;
+      }
     }
     if (configsMap.ground_resistance.isEnabled && configsMap.ground_resistance.isRequired && !groundResistance) {
       alert('กรุณาเลือก Ground Site วัดค่าความต้านทาน');
@@ -203,11 +207,11 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     formData.append('mdb_temp', configsMap.mdb_temp.isEnabled ? mdbTemp : '');
     formData.append('site_temp', siteTemp);
     formData.append('voltage_p1', configsMap.voltage_p1.isEnabled ? v1 : 0);
-    formData.append('voltage_p2', configsMap.voltage_p2.isEnabled ? v2 : 0);
-    formData.append('voltage_p3', configsMap.voltage_p3.isEnabled ? v3 : 0);
+    formData.append('voltage_p2', configsMap.voltage_p2.isEnabled ? (phaseQty === '1 Phase' ? '' : v2) : 0);
+    formData.append('voltage_p3', configsMap.voltage_p3.isEnabled ? (phaseQty === '1 Phase' ? '' : v3) : 0);
     formData.append('current_p1', configsMap.current_p1.isEnabled ? cur1 : 0.0);
-    formData.append('current_p2', configsMap.current_p2.isEnabled ? cur2 : 0.0);
-    formData.append('current_p3', configsMap.current_p3.isEnabled ? cur3 : 0.0);
+    formData.append('current_p2', configsMap.current_p2.isEnabled ? (phaseQty === '1 Phase' ? '' : cur2) : 0.0);
+    formData.append('current_p3', configsMap.current_p3.isEnabled ? (phaseQty === '1 Phase' ? '' : cur3) : 0.0);
     formData.append('ground_resistance', configsMap.ground_resistance.isEnabled ? groundResistance : '');
 
     // Append files or original paths if enabled
@@ -428,21 +432,21 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P1 Disabled</div>
                 )}
                 {configsMap.voltage_p2.isEnabled ? (
-                  <div>
+                  <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
-                    <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p2.isRequired} />
+                    <input type="number" min="0" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.voltage_p2.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P2 Disabled</div>
                 )}
                 {configsMap.voltage_p3.isEnabled ? (
-                  <div>
+                  <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt)
                     </label>
-                    <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p3.isRequired} />
+                    <input type="number" min="0" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.voltage_p3.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">V-P3 Disabled</div>
@@ -461,21 +465,21 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P1 Disabled</div>
                 )}
                 {configsMap.current_p2.isEnabled ? (
-                  <div>
+                  <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
-                    <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p2.isRequired} />
+                    <input type="number" min="0" step="0.1" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.current_p2.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P2 Disabled</div>
                 )}
                 {configsMap.current_p3.isEnabled ? (
-                  <div>
+                  <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
                       Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp)
                     </label>
-                    <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p3.isRequired} />
+                    <input type="number" min="0" step="0.1" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.current_p3.isRequired} />
                   </div>
                 ) : (
                   <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-[10px] text-gray-500 line-through flex items-center justify-center">Cur-P3 Disabled</div>
