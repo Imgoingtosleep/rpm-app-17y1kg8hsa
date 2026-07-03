@@ -1032,6 +1032,48 @@ router.delete('/storage/delete', async (req, res) => {
   }
 });
 
+// 15. Manage Users & Roles API (Admin only)
+router.get('/users', async (req, res) => {
+  try {
+    const result = await db.query('SELECT user_id, email, name, role, created_at FROM users ORDER BY user_id DESC;');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/users/update-role', async (req, res) => {
+  const { userId, role, requesterEmail } = req.body;
+  if (!userId || !role) {
+    return res.status(400).json({ error: 'Missing userId or role' });
+  }
+
+  try {
+    // 1. Check target user current role
+    const targetResult = await db.query('SELECT role, email FROM users WHERE user_id = $1;', [userId]);
+    if (targetResult.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบผู้ใช้ที่ระบุ' });
+    }
+
+    const targetUser = targetResult.rows[0];
+
+    // Cannot modify roles of Admins!
+    if (targetUser.role === 'Admin') {
+      return res.status(403).json({ error: 'คุณไม่สามารถแก้ไขสิทธิ์ของบัญชีผู้ดูแลระบบ (Admin) ได้' });
+    }
+
+    // 2. Perform update
+    const updateResult = await db.query(
+      'UPDATE users SET role = $1 WHERE user_id = $2 RETURNING user_id, email, name, role;',
+      [role, userId]
+    );
+
+    res.json({ message: 'ปรับปรุงสิทธิ์เรียบร้อยแล้ว', user: updateResult.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/auth/version', (req, res) => {
   res.json({ version: '1.0.2' });
 });

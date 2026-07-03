@@ -16,6 +16,7 @@ import AdminDashboard from './pages/AdminDashboard';
 
 import CreateSite from './pages/CreateSite';
 import StorageBrowser from './pages/StorageBrowser';
+import ManageUsers from './pages/ManageUsers';
 
 function WorkOrderPanel() {
   const { site_code, tab } = useParams();
@@ -391,6 +392,7 @@ export default function App() {
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
         <Route path="/admin/fields" element={<FieldSettings />} />
+        <Route path="/admin/users" element={<ManageUsers />} />
         <Route path="/storage" element={<StorageBrowser />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
