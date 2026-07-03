@@ -393,7 +393,7 @@ export default function App() {
         <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
         <Route path="/admin/fields" element={<FieldSettings />} />
         <Route path="/admin/users" element={<ManageUsers />} />
-        <Route path="/storage" element={<StorageBrowser />} />
+        <Route path="/admin/storage" element={<StorageBrowser />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

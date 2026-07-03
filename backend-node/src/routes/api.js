@@ -28,6 +28,60 @@ const toNumOrNull = (val) => {
   return isNaN(num) ? null : num;
 };
 
+// Middleware to automatically log all modifications (POST, PUT, DELETE)
+router.use((req, res, next) => {
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    // Intercept response finish
+    const originalJson = res.json;
+    res.json = function (data) {
+      res.json = originalJson; // Restore
+      
+      // Execute logging after successful response
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        const email = req.headers['x-user-email'] || 'System/Anonymous';
+        const name = req.headers['x-user-name'] || 'Anonymous';
+        const role = req.headers['x-user-role'] || 'Viewer';
+        const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00';
+        const logDir = path.resolve(__dirname, '../../storage/db_text');
+        
+        if (!fs.existsSync(logDir)) {
+          fs.mkdirSync(logDir, { recursive: true });
+        }
+        
+        // Extract site code from body, query or path if present
+        let siteCode = req.body.site_code || req.query.site_code || req.body.siteCode || '';
+        if (!siteCode && req.params.site_code) siteCode = req.params.site_code;
+        
+        let action = `Method: ${req.method} on ${req.originalUrl}`;
+        // Map common endpoints to clear descriptions
+        if (req.originalUrl.includes('/workorder/start')) action = `เริ่มต้นใบงาน (Start Work Order)`;
+        else if (req.originalUrl.includes('/master')) action = `แก้ไขข้อมูลใบงานหลัก (Edit Master Details)`;
+        else if (req.originalUrl.includes('/acmain')) action = `แก้ไขข้อมูลระบบไฟฟ้า AC (Edit AC Main)`;
+        else if (req.originalUrl.includes('/battery')) action = `แก้ไขข้อมูลแบตเตอรี่ (Edit Battery Cell)`;
+        else if (req.originalUrl.includes('/rectifier')) action = `แก้ไขข้อมูลตู้ Rectifier (Edit Rectifier)`;
+        else if (req.originalUrl.includes('/facilities')) action = `แก้ไขข้อมูลระบบ Facilities (Edit Facilities)`;
+        else if (req.originalUrl.includes('/summary')) action = `แก้ไขข้อมูลสรุปปัญหาหน้างาน (Edit Summary Issue)`;
+        else if (req.originalUrl.includes('/submit')) action = `ส่งใบงาน (Submit Work Order)`;
+        else if (req.originalUrl.includes('/unlock')) action = `ปลดล็อกใบงาน (Unlock Work Order)`;
+        else if (req.originalUrl.includes('/users/update-role')) action = `แก้ไขสิทธิ์ผู้ใช้งาน (Update User Role) ให้กับ ID ${req.body.userId || ''} เป็น ${req.body.role || ''}`;
+        else if (req.originalUrl.includes('/field-configs/update')) action = `แก้ไขการตั้งค่าฟิลด์กรอกข้อมูล (Update Field Config)`;
+        else if (req.originalUrl.includes('/storage/delete')) action = `ลบไฟล์ในคลังภาพ (Delete Storage Files)`;
+        else if (req.originalUrl.includes('/sites/bulk')) action = `นำเข้าข้อมูลสถานีแบบกลุ่ม (Bulk Import Sites)`;
+        else if (req.originalUrl.includes('/sites')) action = `เพิ่ม/แก้ไขข้อมูลสถานี (Add/Edit Site)`;
+        
+        const logFile = path.join(logDir, 'audit_log.txt');
+        const logEntry = `[${timestamp}] User: ${name} (${email}, Role: ${role}) | Action: ${action}${siteCode ? ` | Site: ${siteCode}` : ''} | Path: ${req.originalUrl}\n`;
+        
+        fs.appendFile(logFile, logEntry, 'utf8', (err) => {
+          if (err) console.error('Failed to write audit log:', err);
+        });
+      }
+      return originalJson.call(this, data);
+    };
+  }
+  next();
+});
+
 
 // 1. Get & Create sites
 router.get('/sites', async (req, res) => {

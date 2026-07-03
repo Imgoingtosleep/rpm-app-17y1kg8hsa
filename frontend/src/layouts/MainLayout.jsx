@@ -103,7 +103,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
                     : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
                 }`}
                 onClick={() => {
-                  navigate('/storage');
+                  navigate('/admin/storage');
                   setIsSidebarOpen(false);
                 }}
               >
