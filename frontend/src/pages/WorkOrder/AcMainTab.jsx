@@ -105,6 +105,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     ac_phase_qty: getFieldConfig('ac_phase_qty'),
     surge_protection: getFieldConfig('surge_protection'),
     mdb_temp: getFieldConfig('mdb_temp'),
+    site_temp: getFieldConfig('site_temp'),
     voltage_p1: getFieldConfig('voltage_p1'),
     voltage_p2: getFieldConfig('voltage_p2'),
     voltage_p3: getFieldConfig('voltage_p3'),
@@ -144,6 +145,10 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     }
     if (configsMap.mdb_temp.isEnabled && configsMap.mdb_temp.isRequired && !mdbTemp) {
       alert('กรุณาเลือก อุณหภูมิ จุดต่อสายภายในตู้ AC MDB และ DC PDB');
+      return;
+    }
+    if (configsMap.site_temp.isEnabled && configsMap.site_temp.isRequired && !siteTemp) {
+      alert('กรุณาเลือก อุณหภูมิ ภายใน Site');
       return;
     }
     if (configsMap.voltage_p1.isEnabled && configsMap.voltage_p1.isRequired && (v1 === '' || v1 === null || v1 === undefined)) {
@@ -205,7 +210,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     formData.append('ac_phase_qty', configsMap.ac_phase_qty.isEnabled ? phaseQty : '');
     formData.append('surge_protection', configsMap.surge_protection.isEnabled ? surgeProtection : '');
     formData.append('mdb_temp', configsMap.mdb_temp.isEnabled ? mdbTemp : '');
-    formData.append('site_temp', siteTemp);
+    formData.append('site_temp', configsMap.site_temp.isEnabled ? siteTemp : '');
     formData.append('voltage_p1', configsMap.voltage_p1.isEnabled ? v1 : 0);
     formData.append('voltage_p2', configsMap.voltage_p2.isEnabled ? (phaseQty === '1 Phase' ? '' : v2) : 0);
     formData.append('voltage_p3', configsMap.voltage_p3.isEnabled ? (phaseQty === '1 Phase' ? '' : v3) : 0);
@@ -274,19 +279,23 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Col 1 */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                  2. อุณหภูมิ ภายใน Site (°C)
-                </label>
-                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={siteTemp} onChange={(e) => setSiteTemp(e.target.value)}>
-                  <option value="">-- เลือก --</option>
-                  <option value="<25">&lt;25</option>
-                  <option value="25-30">25-30</option>
-                  <option value="30-35">30-35</option>
-                  <option value="35-40">35-40</option>
-                  <option value=">40">&gt;40</option>
-                </select>
-              </div>
+              {configsMap.site_temp.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    2. อุณหภูมิ ภายใน Site (°C) {configsMap.site_temp.isRequired && <span className="text-red-400">*</span>}
+                  </label>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={siteTemp} onChange={(e) => setSiteTemp(e.target.value)}>
+                    <option value="">-- เลือก --</option>
+                    <option value="<25">&lt;25</option>
+                    <option value="25-30">25-30</option>
+                    <option value="30-35">30-35</option>
+                    <option value="35-40">35-40</option>
+                    <option value=">40">&gt;40</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">2. อุณหภูมิ ภายใน Site (Disabled)</div>
+              )}
 
               {configsMap.mdb_temp.isEnabled ? (
                 <div>

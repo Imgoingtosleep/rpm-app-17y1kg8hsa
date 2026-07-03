@@ -228,6 +228,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     voltage: getFieldConfig('voltage'),
     internal_resistance: getFieldConfig('internal_resistance'),
     status: getFieldConfig('status'),
+    brand: getFieldConfig('brand'),
+    capacity: getFieldConfig('capacity'),
+    installed_date: getFieldConfig('installed_date'),
+    warrantee_date: getFieldConfig('warrantee_date'),
   };
 
   const handleSaveCell = async (num) => {
@@ -261,6 +265,24 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       }
     }
 
+    // Bank metadata validation
+    if (configsMap.brand.isEnabled && configsMap.brand.isRequired && !brand) {
+      alert('กรุณากรอก/เลือกยี่ห้อ Bank แบตเตอรี่!');
+      return;
+    }
+    if (configsMap.capacity.isEnabled && configsMap.capacity.isRequired && !capacity) {
+      alert('กรุณาเลือก Capacity แบตเตอรี่!');
+      return;
+    }
+    if (configsMap.installed_date.isEnabled && configsMap.installed_date.isRequired && !installedDate) {
+      alert('กรุณาเลือกวันที่ติดตั้งแบตเตอรี่!');
+      return;
+    }
+    if (configsMap.warrantee_date.isEnabled && configsMap.warrantee_date.isRequired && !warranteeDate) {
+      alert('กรุณาเลือกวันหมดประกันแบตเตอรี่!');
+      return;
+    }
+
     const status = cell.status || 'Good';
     const formData = new FormData();
     formData.append('bank_name', bankNo);
@@ -270,10 +292,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     formData.append('status', configsMap.status.isEnabled ? status : 'Good');
 
     // Add VRLA bank metadata
-    formData.append('brand', brand);
-    formData.append('capacity', capacity);
-    formData.append('installed_date', installedDate);
-    formData.append('warrantee_date', warranteeDate);
+    formData.append('brand', configsMap.brand.isEnabled ? brand : '');
+    formData.append('capacity', configsMap.capacity.isEnabled ? capacity : '');
+    formData.append('installed_date', configsMap.installed_date.isEnabled ? installedDate : '');
+    formData.append('warrantee_date', configsMap.warrantee_date.isEnabled ? warranteeDate : '');
 
     if (configsMap.status.isEnabled) {
       if (cell.file && cell.file.length > 0) {
@@ -357,110 +379,126 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-4">
         <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <label className="block text-[10px] uppercase text-gray-400 mb-2">ยี่ห้อ Bank</label>
-            {!isCustomBrand ? (
-              <select 
-                className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
-                value={brand} 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'custom') {
-                    setIsCustomBrand(true);
-                    setBrand('');
-                  } else {
-                    setBrand(val);
-                    const matched = BATTERY_MODELS.find(m => m.brand === val);
-                    if (matched) {
-                      setCapacity(matched.capacity);
-                    }
-                  }
-                }} 
-                disabled={isReadOnly}
-              >
-                <option value="">-- เลือกยี่ห้อ Bank --</option>
-                {BATTERY_MODELS.map((model, idx) => (
-                  <option key={idx} value={model.brand}>{model.brand}</option>
-                ))}
-                <option value="custom">อื่น ๆ (ระบุเอง)</option>
-              </select>
-            ) : (
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
+          {configsMap.brand.isEnabled ? (
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 mb-2">ยี่ห้อ Bank {configsMap.brand.isRequired && <span className="text-red-400">*</span>}</label>
+              {!isCustomBrand ? (
+                <select 
                   className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
                   value={brand} 
-                  onChange={(e) => setBrand(e.target.value)} 
-                  placeholder="ระบุยี่ห้อ/รุ่นด้วยตัวเอง"
-                  disabled={isReadOnly} 
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCustomBrand(false);
-                    setBrand('');
-                  }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      setIsCustomBrand(true);
+                      setBrand('');
+                    } else {
+                      setBrand(val);
+                      const matched = BATTERY_MODELS.find(m => m.brand === val);
+                      if (matched) {
+                        setCapacity(matched.capacity);
+                      }
+                    }
+                  }} 
                   disabled={isReadOnly}
                 >
-                  เลือกจากรายการ
-                </button>
-              </div>
-            )}
-            {(() => {
-              const info = BATTERY_MODELS.find(m => m.brand === brand);
-              if (info) {
-                return (
-                  <div className="mt-2 text-[10px] bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg flex justify-between text-indigo-300">
-                    <span>🔋 <strong>Spec IR:</strong> {info.specIr} mΩ</span>
-                    <span>⚠️ <strong>ผิดปกติ (Fail) เมื่อ:</strong> &gt; {info.abnormalIr} mΩ</span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase text-gray-400 mb-2">Capacity</label>
-            <select className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" value={capacity} onChange={(e) => setCapacity(e.target.value)} disabled={isReadOnly}>
-              <option value="12AH">12AH</option>
-              <option value="40AH">40AH</option>
-              <option value="100AH">100AH</option>
-              <option value="150AH">150AH</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase text-gray-400 mb-2">วันที่ติดตั้ง</label>
-            <input 
-              type="date" 
-              style={{ colorScheme: 'dark' }}
-              onClick={(e) => {
-                try {
-                  e.target.showPicker();
-                } catch (err) {}
-              }}
-              className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
-              value={installedDate} 
-              onChange={(e) => setInstalledDate(e.target.value)} 
-              disabled={isReadOnly} 
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase text-gray-400 mb-2">วันหมดประกัน สติ๊กเกอร์ขาว</label>
-            <input 
-              type="date" 
-              style={{ colorScheme: 'dark' }}
-              onClick={(e) => {
-                try {
-                  e.target.showPicker();
-                } catch (err) {}
-              }}
-              className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
-              value={warranteeDate} 
-              onChange={(e) => setWarranteeDate(e.target.value)} 
-              disabled={isReadOnly} 
-            />
-          </div>
+                  <option value="">-- เลือกยี่ห้อ Bank --</option>
+                  {BATTERY_MODELS.map((model, idx) => (
+                    <option key={idx} value={model.brand}>{model.brand}</option>
+                  ))}
+                  <option value="custom">อื่น ๆ (ระบุเอง)</option>
+                </select>
+              ) : (
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none disabled:opacity-50" 
+                    value={brand} 
+                    onChange={(e) => setBrand(e.target.value)} 
+                    placeholder="ระบุยี่ห้อ/รุ่นด้วยตัวเอง"
+                    disabled={isReadOnly} 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomBrand(false);
+                      setBrand('');
+                    }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+                    disabled={isReadOnly}
+                  >
+                    เลือกจากรายการ
+                  </button>
+                </div>
+              )}
+              {(() => {
+                const info = BATTERY_MODELS.find(m => m.brand === brand);
+                if (info) {
+                  return (
+                    <div className="mt-2 text-[10px] bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg flex justify-between text-indigo-300">
+                      <span>🔋 <strong>Spec IR:</strong> {info.specIr} mΩ</span>
+                      <span>⚠️ <strong>ผิดปกติ (Fail) เมื่อ:</strong> &gt; {info.abnormalIr} mΩ</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">ยี่ห้อ Bank (Disabled)</div>
+          )}
+          {configsMap.capacity.isEnabled ? (
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 mb-2">Capacity {configsMap.capacity.isRequired && <span className="text-red-400">*</span>}</label>
+              <select className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none" value={capacity} onChange={(e) => setCapacity(e.target.value)} disabled={isReadOnly}>
+                <option value="12AH">12AH</option>
+                <option value="40AH">40AH</option>
+                <option value="100AH">100AH</option>
+                <option value="150AH">150AH</option>
+              </select>
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">Capacity (Disabled)</div>
+          )}
+          {configsMap.installed_date.isEnabled ? (
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 mb-2">วันที่ติดตั้ง {configsMap.installed_date.isRequired && <span className="text-red-400">*</span>}</label>
+              <input 
+                type="date" 
+                style={{ colorScheme: 'dark' }}
+                onClick={(e) => {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {}
+                }}
+                className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
+                value={installedDate} 
+                onChange={(e) => setInstalledDate(e.target.value)} 
+                disabled={isReadOnly} 
+              />
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">วันที่ติดตั้ง (Disabled)</div>
+          )}
+          {configsMap.warrantee_date.isEnabled ? (
+            <div>
+              <label className="block text-[10px] uppercase text-gray-400 mb-2">วันหมดประกัน สติ๊กเกอร์ขาว {configsMap.warrantee_date.isRequired && <span className="text-red-400">*</span>}</label>
+              <input 
+                type="date" 
+                style={{ colorScheme: 'dark' }}
+                onClick={(e) => {
+                  try {
+                    e.target.showPicker();
+                  } catch (err) {}
+                }}
+                className="w-full bg-dark-bg border border-dark-border rounded p-2 text-xs text-gray-200 outline-none cursor-pointer" 
+                value={warranteeDate} 
+                onChange={(e) => setWarranteeDate(e.target.value)} 
+                disabled={isReadOnly} 
+              />
+            </div>
+          ) : (
+            <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-[10px] text-gray-500 line-through flex items-center justify-center">วันหมดประกัน (Disabled)</div>
+          )}
         </div>
       </div>
 

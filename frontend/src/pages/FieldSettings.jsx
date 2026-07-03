@@ -165,7 +165,8 @@ export default function FieldSettings() {
     { id: 'acmain', label: 'AC Main Tab' },
     { id: 'rectifier', label: 'Rectifier Tab' },
     { id: 'battery', label: 'Battery Tab' },
-    { id: 'facilities', label: 'Facilities Tab' }
+    { id: 'facilities', label: 'Facilities Tab' },
+    { id: 'summary', label: 'Summary Tab' }
   ];
 
   if (!isAdmin) {

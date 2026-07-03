@@ -504,27 +504,39 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
 
           {/* Rate Breaker AC Phase 1, 2, 3 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-dark-bg/30 p-4 rounded-xl border border-dark-border/40">
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 1 (Amp)</label>
-              <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase1} onChange={(e) => setBreakerPhase1(e.target.value)}>
-                <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 2 (Amp)</label>
-              <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase2} onChange={(e) => setBreakerPhase2(e.target.value)}>
-                <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 3 (Amp)</label>
-              <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase3} onChange={(e) => setBreakerPhase3(e.target.value)}>
-                <option value="">-- เลือก --</option>
-                {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
-              </select>
-            </div>
+            {configsMap.breaker_phase1.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 1 (Amp) {configsMap.breaker_phase1.isRequired && <span className="text-red-400">*</span>}</label>
+                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase1} onChange={(e) => setBreakerPhase1(e.target.value)}>
+                  <option value="">-- เลือก --</option>
+                  {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Breaker Phase 1 (Disabled)</div>
+            )}
+            {configsMap.breaker_phase2.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 2 (Amp) {configsMap.breaker_phase2.isRequired && <span className="text-red-400">*</span>}</label>
+                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase2} onChange={(e) => setBreakerPhase2(e.target.value)}>
+                  <option value="">-- เลือก --</option>
+                  {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Breaker Phase 2 (Disabled)</div>
+            )}
+            {configsMap.breaker_phase3.isEnabled ? (
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Rate Breaker AC Phase 3 (Amp) {configsMap.breaker_phase3.isRequired && <span className="text-red-400">*</span>}</label>
+                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerPhase3} onChange={(e) => setBreakerPhase3(e.target.value)}>
+                  <option value="">-- เลือก --</option>
+                  {breakerOptions.map(opt => <option key={opt} value={opt}>{opt} Amp</option>)}
+                </select>
+              </div>
+            ) : (
+              <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Breaker Phase 3 (Disabled)</div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -563,62 +575,94 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
           </div>
 
           <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-6">
-            <h4 className="font-bold text-white text-md border-b border-dark-border/60 pb-2">🔋 ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)</h4>
+            <h4 className="font-bold text-white text-md border-b border-dark-border/60 pb-2">ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่</label>
-                <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
-                  <option value="">-- เลือก --</option>
-                  <option value="VRLA AGM">VRLA AGM</option>
-                  <option value="Lithium">Lithium</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt</label>
-                <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryQtyBank} onChange={(e) => setBatteryQtyBank(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
-              </div>
+              {configsMap.battery_type.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่ {configsMap.battery_type.isRequired && <span className="text-red-400">*</span>}</label>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
+                    <option value="">-- เลือก --</option>
+                    <option value="VRLA AGM">VRLA AGM</option>
+                    <option value="Lithium">Lithium</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">ชนิดแบตเตอรี่ (Disabled)</div>
+              )}
+              {configsMap.battery_qty_bank.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}</label>
+                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryQtyBank} onChange={(e) => setBatteryQtyBank(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">จำนวน Bank Batt (Disabled)</div>
+              )}
             </div>
 
             {batteryType === 'Lithium' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 bg-dark-bg/60 p-4 rounded-xl border border-dark-border/40">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Lithium Capacity</label>
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={lithiumCapacity} onChange={(e) => setLithiumCapacity(e.target.value)}>
-                    <option value="">-- เลือก --</option>
-                    <option value="12AH">12AH</option>
-                    <option value="40AH">40AH</option>
-                    <option value="100AH">100AH</option>
-                    <option value="150AH">150AH</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery RUN</label>
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryRun} onChange={(e) => setBatteryRun(e.target.value)}>
-                    <option value="">-- เลือก --</option>
-                    <option value="ON (เขียว)">ON (เขียว)</option>
-                    <option value="OFF (ดับ)">OFF (ดับ)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery Alarm Status</label>
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryAlarm} onChange={(e) => setBatteryAlarm(e.target.value)}>
-                    <option value="">-- เลือก --</option>
-                    <option value="Alarm LED (สีแดง) ดับ">Alarm LED (สีแดง) ดับ</option>
-                    <option value="Alarm LED (สีแดง) ติด">Alarm LED (สีแดง) ติด</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOH (State of Health)</label>
-                  <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseFloat(e.target.value))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOC (State of Charge)</label>
-                  <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseFloat(e.target.value))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery เปอร์เซ็น Capacity</label>
-                  <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryCapacityPercent} onChange={(e) => setBatteryCapacityPercent(e.target.value)} />
-                </div>
+                {configsMap.lithium_capacity.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Lithium Capacity {configsMap.lithium_capacity.isRequired && <span className="text-red-400">*</span>}</label>
+                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={lithiumCapacity} onChange={(e) => setLithiumCapacity(e.target.value)}>
+                      <option value="">-- เลือก --</option>
+                      <option value="12AH">12AH</option>
+                      <option value="40AH">40AH</option>
+                      <option value="100AH">100AH</option>
+                      <option value="150AH">150AH</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Lithium Capacity (Disabled)</div>
+                )}
+                {configsMap.battery_run.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery RUN {configsMap.battery_run.isRequired && <span className="text-red-400">*</span>}</label>
+                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryRun} onChange={(e) => setBatteryRun(e.target.value)}>
+                      <option value="">-- เลือก --</option>
+                      <option value="ON (เขียว)">ON (เขียว)</option>
+                      <option value="OFF (ดับ)">OFF (ดับ)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery RUN (Disabled)</div>
+                )}
+                {configsMap.battery_alarm.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery Alarm Status {configsMap.battery_alarm.isRequired && <span className="text-red-400">*</span>}</label>
+                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryAlarm} onChange={(e) => setBatteryAlarm(e.target.value)}>
+                      <option value="">-- เลือก --</option>
+                      <option value="Alarm LED (สีแดง) ดับ">Alarm LED (สีแดง) ดับ</option>
+                      <option value="Alarm LED (สีแดง) ติด">Alarm LED (สีแดง) ติด</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery Alarm Status (Disabled)</div>
+                )}
+                {configsMap.battery_soh.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOH (State of Health) {configsMap.battery_soh.isRequired && <span className="text-red-400">*</span>}</label>
+                    <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOH (Disabled)</div>
+                )}
+                {configsMap.battery_soc.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOC (State of Charge) {configsMap.battery_soc.isRequired && <span className="text-red-400">*</span>}</label>
+                    <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOC (Disabled)</div>
+                )}
+                {configsMap.battery_capacity_percent.isEnabled ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery เปอร์เซ็น Capacity {configsMap.battery_capacity_percent.isRequired && <span className="text-red-400">*</span>}</label>
+                    <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryCapacityPercent} onChange={(e) => setBatteryCapacityPercent(e.target.value)} />
+                  </div>
+                ) : (
+                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % Capacity (Disabled)</div>
+                )}
               </div>
             )}
           </div>
