@@ -156,7 +156,7 @@ function WorkOrderPanel() {
   const progressPercent = Math.round((totalCompleted / 6) * 100);
 
   const renderTabContent = () => {
-    const isReadOnly = userRole === 'Viewer' || isSubmitted;
+    const isReadOnly = userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin');
     switch (activeTab) {
       case 'master':
         return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
@@ -223,7 +223,7 @@ function WorkOrderPanel() {
               Reset Draft (Test Mode)
             </button>
             <button 
-              disabled={userRole === 'Viewer' || isSubmitted}
+              disabled={userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')}
               onClick={async () => {
                 if (totalCompleted < 6) {
                   alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 6 ส่วนก่อนส่งงานครับ!');
@@ -252,7 +252,7 @@ function WorkOrderPanel() {
                 }
               }}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
-                userRole === 'Viewer' || isSubmitted
+                userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')
                   ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
                   : totalCompleted === 5
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
