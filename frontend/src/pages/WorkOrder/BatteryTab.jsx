@@ -152,6 +152,15 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   }, [bankNo, batteries, activeRectId, loadedBankRect]);
 
   const handleCellChange = (num, field, value) => {
+    if (field === 'file') {
+      const existingCount = cells[num]?.existingPath ? (Array.isArray(cells[num].existingPath) ? cells[num].existingPath.length : 1) : 0;
+      const files = Array.from(value);
+      if (existingCount + files.length > 10) {
+        alert(`คุณไม่สามารถอัปโหลดรูปภาพเกิน 10 รูปได้ในฟิลด์นี้ (มีรูปภาพเดิมอยู่ ${existingCount} รูป และรูปภาพใหม่ ${files.length} รูป)`);
+        return;
+      }
+    }
+
     setCells(prev => {
       let finalValue = value;
       if (field === 'file') {

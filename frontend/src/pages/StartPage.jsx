@@ -49,7 +49,7 @@ export default function StartPage() {
             document.getElementById('google-signin-btn'),
             { theme: 'outline', size: 'large', width: 320 }
           );
-        } catch (err) {
+        } catch (err) {ป
           console.error('Google Sign-In initialization failed:', err);
         }
       }

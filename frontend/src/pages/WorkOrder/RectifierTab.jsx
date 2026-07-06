@@ -215,6 +215,11 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
 
   const handleFileChange = (field, fileList, setter) => {
     let files = Array.from(fileList);
+    const existingCount = existingPaths[field] ? (Array.isArray(existingPaths[field]) ? existingPaths[field].length : 1) : 0;
+    if (existingCount + files.length > 10) {
+      alert(`คุณไม่สามารถอัปโหลดรูปภาพเกิน 10 รูปได้ในฟิลด์นี้ (มีรูปภาพเดิมอยู่ ${existingCount} รูป และรูปภาพใหม่ ${files.length} รูป)`);
+      return;
+    }
     setter(files);
   };
 

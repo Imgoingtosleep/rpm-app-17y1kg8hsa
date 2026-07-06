@@ -84,6 +84,11 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
   const handleFileChange = (key, fileList) => {
     if (isReadOnly) return;
     let files = Array.from(fileList);
+    const existingCount = existingPaths[key] ? (Array.isArray(existingPaths[key]) ? existingPaths[key].length : 1) : 0;
+    if (existingCount + files.length > 10) {
+      alert(`คุณไม่สามารถอัปโหลดรูปภาพเกิน 10 รูปได้ในฟิลด์นี้ (มีรูปภาพเดิมอยู่ ${existingCount} รูป และรูปภาพใหม่ ${files.length} รูป)`);
+      return;
+    }
     setParams(prev => ({
       ...prev,
       [key]: { ...prev[key], file: files }
