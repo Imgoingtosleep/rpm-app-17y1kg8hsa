@@ -12,18 +12,7 @@ export default function DatabaseQuery() {
   const [error, setError] = useState(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
-  const [history, setHistory] = useState(() => {
-    try {
-      const stored = localStorage.getItem('sql_query_history');
-      return stored ? JSON.parse(stored) : [
-        'SELECT * FROM sites LIMIT 10;', 
-        'SELECT * FROM users;', 
-        'SELECT * FROM rpm_records_master LIMIT 50;'
-      ];
-    } catch {
-      return [];
-    }
-  });
+
 
   useEffect(() => {
     try {
@@ -99,13 +88,6 @@ export default function DatabaseQuery() {
     }
   };
 
-  const saveHistory = (newQuery) => {
-    if (!newQuery.trim()) return;
-    const updated = [newQuery, ...history.filter(q => q !== newQuery)].slice(0, 15);
-    setHistory(updated);
-    localStorage.setItem('sql_query_history', JSON.stringify(updated));
-  };
-
   const handleExecute = async () => {
     if (!sql.trim()) return;
     setExecuting(true);
@@ -135,7 +117,6 @@ export default function DatabaseQuery() {
         ...data,
         durationMs
       });
-      saveHistory(sql);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -392,25 +373,7 @@ export default function DatabaseQuery() {
               />
             </div>
 
-            <div className="flex justify-between items-center flex-wrap gap-3">
-              {/* History Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">ประวัติล่าสุด:</span>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) setSql(e.target.value);
-                  }}
-                  className="bg-dark-bg border border-dark-border text-xs rounded-lg px-2 py-1.5 max-w-[200px] text-gray-300 focus:outline-none focus:border-indigo-500"
-                  defaultValue=""
-                >
-                  <option value="" disabled>-- เลือกคำสั่งเก่า --</option>
-                  {history.map((q, idx) => (
-                    <option key={idx} value={q}>
-                      {q.length > 50 ? `${q.substring(0, 50)}...` : q}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex justify-end items-center">
 
               <button
                 onClick={handleExecute}
