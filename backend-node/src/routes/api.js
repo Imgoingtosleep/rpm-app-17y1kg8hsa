@@ -1132,4 +1132,84 @@ router.get('/auth/version', (req, res) => {
   res.json({ version: '1.0.2' });
 });
 
+// Database Query APIs
+router.get('/query/tables', async (req, res) => {
+  try {
+    // Admin restriction check
+    const userRoleHeader = req.headers['x-user-role'];
+    const userEmailHeader = req.headers['x-user-email'];
+    if (userRoleHeader !== 'Admin' || !userEmailHeader) {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถใช้งานส่วนนี้ได้' });
+    }
+    const dbUserResult = await db.query('SELECT role FROM users WHERE email = $1', [userEmailHeader]);
+    if (dbUserResult.rows.length === 0 || dbUserResult.rows[0].role !== 'Admin') {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: บัญชีของคุณไม่มีสิทธิ์เป็นผู้ดูแลระบบ' });
+    }
+
+    const tablesQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name;
+    `;
+    const tablesResult = await db.query(tablesQuery);
+    
+    const tables = [];
+    for (const row of tablesResult.rows) {
+      const tableName = row.table_name;
+      const columnsQuery = `
+        SELECT column_name, data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = $1
+        ORDER BY ordinal_position;
+      `;
+      const columnsResult = await db.query(columnsQuery, [tableName]);
+      tables.push({
+        tableName,
+        columns: columnsResult.rows.map(c => ({
+          name: c.column_name,
+          type: c.data_type,
+          nullable: c.is_nullable
+        }))
+      });
+    }
+    res.json(tables);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/query/execute', async (req, res) => {
+  const { sql } = req.body;
+  if (!sql) {
+    return res.status(400).json({ error: 'กรุณากรอกคำสั่ง SQL' });
+  }
+  
+  try {
+    // Admin restriction check
+    const userRoleHeader = req.headers['x-user-role'];
+    const userEmailHeader = req.headers['x-user-email'];
+    if (userRoleHeader !== 'Admin' || !userEmailHeader) {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถใช้งานส่วนนี้ได้' });
+    }
+    const dbUserResult = await db.query('SELECT role FROM users WHERE email = $1', [userEmailHeader]);
+    if (dbUserResult.rows.length === 0 || dbUserResult.rows[0].role !== 'Admin') {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: บัญชีของคุณไม่มีสิทธิ์เป็นผู้ดูแลระบบ' });
+    }
+
+    const result = await db.query(sql);
+    const fields = result.fields ? result.fields.map(f => f.name) : [];
+    res.json({
+      success: true,
+      command: result.command,
+      rowCount: result.rowCount,
+      fields: fields,
+      rows: result.rows
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

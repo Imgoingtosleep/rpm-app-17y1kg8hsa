@@ -114,6 +114,26 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
               </button>
             )}
 
+            {user?.role === 'Admin' && (
+              <button 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  currentStep === 'db-query' 
+                    ? 'bg-indigo-600/10 text-indigo-400 border-l-2 border-indigo-500 font-semibold' 
+                    : 'text-gray-400 hover:bg-dark-accent hover:text-gray-200'
+                }`}
+                onClick={() => {
+                  navigate('/admin/query');
+                  setIsSidebarOpen(false);
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                </svg>
+                Database Query
+              </button>
+            )}
+
+
             {currentSite && (
               <div className="pt-4 px-2">
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Active Work Order</span>
@@ -160,6 +180,8 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
                 ? 'Gatekeeper Stage' 
                 : currentStep === 'admin-dashboard'
                 ? 'Admin Dashboard'
+                : currentStep === 'db-query'
+                ? 'Database Query Console'
                 : 'Work Order Form Submission'}
             </span>
           </div>

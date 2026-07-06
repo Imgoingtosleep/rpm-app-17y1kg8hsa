@@ -17,6 +17,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import CreateSite from './pages/CreateSite';
 import StorageBrowser from './pages/StorageBrowser';
 import ManageUsers from './pages/ManageUsers';
+import DatabaseQuery from './pages/DatabaseQuery';
 
 function WorkOrderPanel() {
   const { site_code, tab } = useParams();
@@ -394,6 +395,14 @@ export default function App() {
         <Route path="/admin/fields" element={<FieldSettings />} />
         <Route path="/admin/users" element={<ManageUsers />} />
         <Route path="/admin/storage" element={<StorageBrowser />} />
+        <Route 
+          path="/admin/query" 
+          element={
+            <MainLayout currentStep="db-query" currentSite={null} onNavigateBack={() => {}}>
+              <DatabaseQuery />
+            </MainLayout>
+          } 
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

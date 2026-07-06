@@ -128,7 +128,7 @@ export default function ManageUsers() {
                     <th className="px-6 py-4 text-center">แก้ไขสิทธิ์</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-dark-border/40">
+                <tbody className="divide-y divide-dark-bo rder/40">
                   {users.map((u) => {
                     const isAdminProtected = u.role === 'Admin';
                     return (
