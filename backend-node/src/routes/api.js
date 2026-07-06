@@ -1133,6 +1133,26 @@ router.get('/auth/version', (req, res) => {
 });
 
 // Database Query APIs
+router.get('/query/cycles', async (req, res) => {
+  try {
+    // Admin restriction check
+    const userRoleHeader = req.headers['x-user-role'];
+    const userEmailHeader = req.headers['x-user-email'];
+    if (userRoleHeader !== 'Admin' || !userEmailHeader) {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถใช้งานส่วนนี้ได้' });
+    }
+    const dbUserResult = await db.query('SELECT role FROM users WHERE email = $1', [userEmailHeader]);
+    if (dbUserResult.rows.length === 0 || dbUserResult.rows[0].role !== 'Admin') {
+      return res.status(403).json({ error: 'ปฏิเสธการเข้าถึง: บัญชีของคุณไม่มีสิทธิ์เป็นผู้ดูแลระบบ' });
+    }
+
+    const result = await db.query("SELECT DISTINCT rpm_cycle FROM rpm_records_master WHERE rpm_cycle IS NOT NULL AND rpm_cycle != '' ORDER BY rpm_cycle DESC;");
+    res.json(result.rows.map(r => r.rpm_cycle));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/query/tables', async (req, res) => {
   try {
     // Admin restriction check

@@ -43,11 +43,38 @@ export default function DatabaseQuery() {
     }
   }, [navigate]);
 
+  const [cycles, setCycles] = useState([]);
+  const [selectedCycle, setSelectedCycle] = useState('');
+
   useEffect(() => {
     if (currentUser && currentUser.role === 'Admin') {
       fetchTables();
+      fetchCycles();
     }
   }, [currentUser]);
+
+  const fetchCycles = async () => {
+    try {
+      const stored = localStorage.getItem('user');
+      const parsed = stored ? JSON.parse(stored) : null;
+      const res = await fetch('/api/query/cycles', {
+        headers: {
+          'x-user-email': parsed?.email || '',
+          'x-user-name': parsed?.name || '',
+          'x-user-role': parsed?.role || ''
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCycles(data);
+        if (data.length > 0) {
+          setSelectedCycle(data[0]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchTables = async () => {
     setLoadingTables(true);
@@ -304,6 +331,54 @@ export default function DatabaseQuery() {
                 >
                   ดูสถิติสิทธิ์ทั้งหมด
                 </button>
+
+                <div className="w-full h-px my-1 bg-dark-border/40"></div>
+
+                <div className="flex items-center gap-2 flex-wrap w-full">
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-1">สอบถามข้อมูลรอบ RPM:</span>
+                  <select
+                    value={selectedCycle}
+                    onChange={(e) => setSelectedCycle(e.target.value)}
+                    className="bg-dark-bg border border-dark-border text-[10px] rounded px-2 py-1 text-gray-300 font-mono focus:outline-none focus:border-indigo-500"
+                  >
+                    {cycles.length === 0 ? (
+                      <option value="">-- ไม่พบรอบ RPM --</option>
+                    ) : (
+                      cycles.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))
+                    )}
+                  </select>
+                  
+                  {selectedCycle && (
+                    <>
+                      <button
+                        onClick={() => loadQueryTemplate(`SELECT * FROM rpm_records_master WHERE rpm_cycle = '${selectedCycle}' ORDER BY rpm_id DESC;`)}
+                        className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                      >
+                        ดูใบงานรอบ {selectedCycle}
+                      </button>
+                      <button
+                        onClick={() => loadQueryTemplate(`SELECT site_code, job_number_sl6, sap_number, summary_issue, status FROM rpm_records_master WHERE rpm_cycle = '${selectedCycle}' ORDER BY site_code;`)}
+                        className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                      >
+                        สรุปปัญหาหน้างาน
+                      </button>
+                      <button
+                        onClick={() => loadQueryTemplate(`SELECT r.site_code, r.rpm_cycle, a.* FROM power_main_ac a JOIN rpm_records_master r ON a.rpm_id = r.rpm_id WHERE r.rpm_cycle = '${selectedCycle}' ORDER BY r.site_code;`)}
+                        className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                      >
+                        ดูระบบไฟฟ้า AC
+                      </button>
+                      <button
+                        onClick={() => loadQueryTemplate(`SELECT r.site_code, r.rpm_cycle, p.* FROM power_rectifier p JOIN rpm_records_master r ON p.rpm_id = r.rpm_id WHERE r.rpm_cycle = '${selectedCycle}' ORDER BY r.site_code;`)}
+                        className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                      >
+                        ดูตู้ Rectifier
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
