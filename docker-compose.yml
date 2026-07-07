@@ -20,8 +20,8 @@ services:
     container_name: rpm-pgadmin
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rpm.com
-      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
       - "5050:80"
     volumes:
@@ -40,6 +40,7 @@ services:
     environment:
       - PORT=${BACKEND_PORT}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - NODE_ENV=${NODE_ENV}
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
@@ -55,6 +56,7 @@ services:
       - backend
     environment:
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+      - VITE_API_URL=${VITE_API_URL}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:
