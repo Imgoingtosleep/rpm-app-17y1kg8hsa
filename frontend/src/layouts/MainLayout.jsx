@@ -16,6 +16,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     localStorage.removeItem('inspectorName');
     navigate('/');
   };

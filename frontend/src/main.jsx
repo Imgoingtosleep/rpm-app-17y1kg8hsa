@@ -8,14 +8,16 @@ const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
   try {
     const userStr = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    options.headers = options.headers || {};
     if (userStr) {
       const user = JSON.parse(userStr);
-      options.headers = {
-        ...options.headers,
-        'x-user-email': user.email || '',
-        'x-user-name': user.name || '',
-        'x-user-role': user.role || ''
-      };
+      options.headers['x-user-email'] = user.email || '';
+      options.headers['x-user-name'] = user.name || '';
+      options.headers['x-user-role'] = user.role || '';
+    }
+    if (token) {
+      options.headers['Authorization'] = `Bearer ${token}`;
     }
   } catch (e) {
     console.error('Fetch interceptor error:', e);

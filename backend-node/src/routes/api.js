@@ -4,6 +4,11 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../config/db');
 const upload = require('../middlewares/upload');
+const { authenticateToken } = require('../middlewares/auth');
+const { generateToken } = require('../services/tokenService');
+
+router.use(authenticateToken);
+
 
 const deletePhysicalFiles = (filesList) => {
   if (!Array.isArray(filesList)) return;
@@ -803,7 +808,9 @@ router.post('/auth/google', async (req, res) => {
       avatar: payload.picture || dbUser.name.charAt(0)
     };
 
-    res.json({ message: 'ลงชื่อเข้าใช้สำเร็จ', user });
+    const token = generateToken(user);
+
+    res.json({ message: 'ลงชื่อเข้าใช้สำเร็จ', user, token });
   } catch (err) {
     res.status(500).json({ error: 'เกิดข้อผิดพลาดจากทางเซิร์ฟเวอร์: ' + err.message });
   }
