@@ -56,7 +56,8 @@ export default function AdminDashboard() {
       wo.site_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.site_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (wo.job_number_sl6 && wo.job_number_sl6.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (wo.sap_number && wo.sap_number.toLowerCase().includes(searchTerm.toLowerCase()));
+      (wo.sap_number && wo.sap_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (wo.rpm_cycle && wo.rpm_cycle.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = 
       statusFilter === 'All' || 
@@ -102,7 +103,7 @@ export default function AdminDashboard() {
           </svg>
           <input 
             type="text" 
-            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, Job หรือ SAP No..."
+            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, รอบตรวจ, Job หรือ SAP No..."
             className="bg-transparent border-0 outline-none w-full text-sm text-gray-200 placeholder-gray-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
