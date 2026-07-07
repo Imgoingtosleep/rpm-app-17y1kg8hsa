@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [cycleFilter, setCycleFilter] = useState('All');
 
   useEffect(() => {
     fetchWorkorders();
@@ -51,20 +52,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const uniqueCycles = ['All', ...new Set(workorders.map(wo => wo.rpm_cycle).filter(Boolean))];
+
   const filteredWorkorders = workorders.filter(wo => {
     const matchesSearch = 
       wo.site_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.site_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (wo.job_number_sl6 && wo.job_number_sl6.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (wo.sap_number && wo.sap_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (wo.rpm_cycle && wo.rpm_cycle.toLowerCase().includes(searchTerm.toLowerCase()));
+      (wo.sap_number && wo.sap_number.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = 
       statusFilter === 'All' || 
       (statusFilter === 'Submitted' && wo.status === 'Submitted') ||
       (statusFilter === 'Pending' && (wo.status === 'Pending' || !wo.status));
 
-    return matchesSearch && matchesStatus;
+    const matchesCycle =
+      cycleFilter === 'All' ||
+      wo.rpm_cycle === cycleFilter;
+
+    return matchesSearch && matchesStatus && matchesCycle;
   });
 
   const formatDate = (dateStr) => {
@@ -103,29 +109,46 @@ export default function AdminDashboard() {
           </svg>
           <input 
             type="text" 
-            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, รอบตรวจ, Job หรือ SAP No..."
+            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, Job หรือ SAP No..."
             className="bg-transparent border-0 outline-none w-full text-sm text-gray-200 placeholder-gray-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          <span className="text-xs text-gray-400 font-semibold uppercase">สถานะใบงาน:</span>
-          <div className="flex bg-dark-bg border border-dark-border rounded-lg p-1">
-            {['All', 'Submitted', 'Pending'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  statusFilter === status
-                    ? 'bg-indigo-600 text-white shadow'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {status === 'All' ? 'ทั้งหมด' : status === 'Submitted' ? 'ส่งงานแล้ว' : 'กำลังดำเนินการ'}
-              </button>
-            ))}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-gray-400 font-semibold uppercase whitespace-nowrap">รอบตรวจ RPM:</span>
+            <select
+              value={cycleFilter}
+              onChange={(e) => setCycleFilter(e.target.value)}
+              className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer min-w-[120px]"
+            >
+              {uniqueCycles.map(cycle => (
+                <option key={cycle} value={cycle} className="bg-dark-card text-gray-200">
+                  {cycle === 'All' ? 'ทุกรอบ' : cycle}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-gray-400 font-semibold uppercase whitespace-nowrap">สถานะใบงาน:</span>
+            <div className="flex bg-dark-bg border border-dark-border rounded-lg p-1">
+              {['All', 'Submitted', 'Pending'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    statusFilter === status
+                      ? 'bg-indigo-600 text-white shadow'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {status === 'All' ? 'ทั้งหมด' : status === 'Submitted' ? 'ส่งงานแล้ว' : 'กำลังดำเนินการ'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
