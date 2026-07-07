@@ -31,7 +31,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 w-64 bg-dark-card border-r border-dark-border flex flex-col justify-between shrink-0 z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+      <aside className={`fixed inset-y-0 left-0 w-64 bg-dark-card border-r border-dark-border flex flex-col justify-between shrink-0 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div>
@@ -153,7 +153,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:pl-64">
         {/* Topbar */}
         <header className="h-16 bg-dark-card border-b border-dark-border px-4 md:px-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
