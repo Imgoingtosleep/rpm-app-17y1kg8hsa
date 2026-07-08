@@ -5,6 +5,23 @@ export default function StartPage() {
   const navigate = useNavigate();
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [errorMessage, setErrorMessage] = useState('');
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+  };
 
   const handleCredentialResponse = async (response) => {
     try {
@@ -83,7 +100,27 @@ export default function StartPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex flex-col justify-center items-center px-4 py-12">
+    <div className="min-h-[90vh] flex flex-col justify-center items-center px-4 py-12 relative">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl border border-dark-border bg-dark-card text-gray-400 hover:text-white transition-all shadow-lg active:scale-95 hover:bg-dark-accent/60"
+          aria-label="Toggle Theme"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
+      </div>
+
       <div className="max-w-md w-full space-y-8 bg-dark-card border border-dark-border p-8 sm:p-10 rounded-2xl shadow-2xl relative overflow-hidden">
         {/* Glow effect decorative */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />

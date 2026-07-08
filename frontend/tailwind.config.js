@@ -8,10 +8,10 @@ export default {
     extend: {
       colors: {
         dark: {
-          bg: '#0F0F11',
-          card: '#16161E',
-          border: '#22222E',
-          accent: '#2A2B3D'
+          bg: 'var(--dark-bg, #0F0F11)',
+          card: 'var(--dark-card, #16161E)',
+          border: 'var(--dark-border, #22222E)',
+          accent: 'var(--dark-accent, #2A2B3D)'
         },
         primary: {
           DEFAULT: '#6366F1',
@@ -22,3 +22,4 @@ export default {
   },
   plugins: [],
 }
+

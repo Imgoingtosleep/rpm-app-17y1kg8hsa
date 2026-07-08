@@ -2,12 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --dark-bg: #0F0F11;
+  --dark-card: #16161E;
+  --dark-border: #22222E;
+  --dark-accent: #2A2B3D;
+  --text-white: #FFFFFF;
+  --text-gray-100: #F3F4F6;
+  --text-gray-200: #E5E7EB;
+  --text-gray-300: #D1D5DB;
+  --text-gray-400: #9CA3AF;
+  --text-gray-500: #6B7280;
+}
+
+html.light {
+  --dark-bg: #F4F6F9;
+  --dark-card: #FFFFFF;
+  --dark-border: #E2E8F0;
+  --dark-accent: #EDF2F7;
+  --text-white: #0F172A;
+  --text-gray-100: #1E293B;
+  --text-gray-200: #334155;
+  --text-gray-300: #475569;
+  --text-gray-400: #64748B;
+  --text-gray-500: #94A3B8;
+}
+
 html, body, #root {
   min-height: 100dvh;
   margin: 0;
-  background-color: #0F0F11;
-  color: #F3F4F6;
+  background-color: var(--dark-bg);
+  color: var(--text-gray-100);
   overflow-x: hidden;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 html {
@@ -19,3 +46,60 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
 }
+
+/* Light mode overrides for text classes to prevent white-on-white text */
+html.light .text-white {
+  color: var(--text-white) !important;
+}
+html.light .text-gray-100 {
+  color: var(--text-gray-100) !important;
+}
+html.light .text-gray-200 {
+  color: var(--text-gray-200) !important;
+}
+html.light .text-gray-300 {
+  color: var(--text-gray-300) !important;
+}
+html.light .text-gray-400 {
+  color: var(--text-gray-400) !important;
+}
+html.light .text-gray-500 {
+  color: var(--text-gray-500) !important;
+}
+
+/* Light mode overrides for borders to ensure they look clean */
+html.light .border-dark-border {
+  border-color: var(--dark-border) !important;
+}
+html.light .divide-dark-border > * + * {
+  border-color: var(--dark-border) !important;
+}
+
+/* Form input placeholder styling in light mode */
+html.light ::placeholder {
+  color: var(--text-gray-500) !important;
+}
+
+/* Global Input, Select, and Textarea theme styling */
+input, select, textarea {
+  background-color: var(--dark-accent) !important;
+  color: var(--text-white) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* Autofill styling overrides to prevent browser from forcing white/yellow backgrounds */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-white) !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--dark-accent) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+
