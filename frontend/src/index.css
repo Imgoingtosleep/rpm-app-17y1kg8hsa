@@ -102,4 +102,31 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* Fix Tailwind opacity classes on custom theme CSS variables */
+.bg-dark-bg\/85 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/80 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/60 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/50 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/40 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/30 { background-color: var(--dark-bg) !important; }
+.bg-dark-bg\/20 { background-color: var(--dark-bg) !important; }
+
+.bg-dark-card\/30 { background-color: var(--dark-card) !important; }
+
+.bg-dark-accent\/80 { background-color: var(--dark-accent) !important; }
+.bg-dark-accent\/60 { background-color: var(--dark-accent) !important; }
+.bg-dark-accent\/50 { background-color: var(--dark-accent) !important; }
+.bg-dark-accent\/40 { background-color: var(--dark-accent) !important; }
+.bg-dark-accent\/20 { background-color: var(--dark-accent) !important; }
+.bg-dark-accent\/10 { background-color: var(--dark-accent) !important; }
+
+/* Fix Tailwind border opacity classes on custom theme CSS variables */
+.border-dark-border\/85 { border-color: var(--dark-border) !important; }
+.border-dark-border\/80 { border-color: var(--dark-border) !important; }
+.border-dark-border\/60 { border-color: var(--dark-border) !important; }
+.border-dark-border\/40 { border-color: var(--dark-border) !important; }
+.border-dark-border\/20 { border-color: var(--dark-border) !important; }
+
+
+
 
