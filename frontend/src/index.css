@@ -81,7 +81,7 @@ html.light ::placeholder {
 }
 
 /* Global Input, Select, and Textarea theme styling */
-input, select, textarea {
+input:not(.bg-transparent), select, textarea {
   background-color: var(--dark-accent) !important;
   color: var(--text-white) !important;
   border-color: var(--dark-border) !important;
