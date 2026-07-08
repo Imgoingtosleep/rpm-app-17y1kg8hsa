@@ -34,6 +34,7 @@ export default function DatabaseQuery() {
 
   const [cycles, setCycles] = useState([]);
   const [selectedCycle, setSelectedCycle] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('A');
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'Admin') {
@@ -343,22 +344,68 @@ export default function DatabaseQuery() {
                         onClick={() => loadQueryTemplate(`SELECT site_code, job_number_sl6, sap_number, summary_issue, status FROM rpm_records_master WHERE rpm_cycle = '${selectedCycle}' ORDER BY site_code;`)}
                         className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
                       >
-                        สรุปปัญหาหน้างาน
+                        สรุปปัญหาหน้างานรอบ {selectedCycle}
                       </button>
                       <button
                         onClick={() => loadQueryTemplate(`SELECT r.site_code, r.rpm_cycle, a.* FROM power_main_ac a JOIN rpm_records_master r ON a.rpm_id = r.rpm_id WHERE r.rpm_cycle = '${selectedCycle}' ORDER BY r.site_code;`)}
                         className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
                       >
-                        ดูระบบไฟฟ้า AC
+                        ดูระบบไฟฟ้า AC รอบ {selectedCycle}
                       </button>
                       <button
                         onClick={() => loadQueryTemplate(`SELECT r.site_code, r.rpm_cycle, p.* FROM power_rectifier p JOIN rpm_records_master r ON p.rpm_id = r.rpm_id WHERE r.rpm_cycle = '${selectedCycle}' ORDER BY r.site_code;`)}
                         className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
                       >
-                        ดูตู้ Rectifier
+                        ดูตู้ Rectifier รอบ {selectedCycle}
                       </button>
                     </>
                   )}
+                </div>
+
+                <div className="w-full h-px my-1 bg-dark-border/40"></div>
+
+                <div className="flex items-center gap-2 flex-wrap w-full">
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-1">สอบถามข้อมูลตาม Site Grade:</span>
+                  <select
+                    value={selectedGrade}
+                    onChange={(e) => setSelectedGrade(e.target.value)}
+                    className="bg-dark-bg border border-dark-border text-[10px] rounded px-2 py-1 text-gray-300 font-mono focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="A">Grade A</option>
+                    <option value="B">Grade B</option>
+                    <option value="C">Grade C</option>
+                  </select>
+
+                  <button
+                    onClick={() => loadQueryTemplate(`SELECT * FROM sites WHERE site_grade = '${selectedGrade}' ORDER BY site_code;`)}
+                    className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-amber-400 border border-amber-500/20 transition-colors"
+                  >
+                    ดูข้อมูลสถานีเกรด {selectedGrade}
+                  </button>
+                  <button
+                    onClick={() => loadQueryTemplate(`SELECT r.*, s.site_name, s.site_grade FROM rpm_records_master r JOIN sites s ON r.site_code = s.site_code WHERE s.site_grade = '${selectedGrade}' ORDER BY r.site_code;`)}
+                    className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                  >
+                    ดูใบงานทั้งหมดเกรด {selectedGrade}
+                  </button>
+                  <button
+                    onClick={() => loadQueryTemplate(`SELECT r.site_code, s.site_name, s.site_grade, r.job_number_sl6, r.sap_number, r.summary_issue, r.status FROM rpm_records_master r JOIN sites s ON r.site_code = s.site_code WHERE s.site_grade = '${selectedGrade}' ORDER BY r.site_code;`)}
+                    className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                  >
+                    สรุปปัญหาเกรด {selectedGrade}
+                  </button>
+                  <button
+                    onClick={() => loadQueryTemplate(`SELECT r.site_code, s.site_grade, r.rpm_cycle, a.* FROM power_main_ac a JOIN rpm_records_master r ON a.rpm_id = r.rpm_id JOIN sites s ON r.site_code = s.site_code WHERE s.site_grade = '${selectedGrade}' ORDER BY r.site_code;`)}
+                    className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                  >
+                    ระบบไฟฟ้า AC เกรด {selectedGrade}
+                  </button>
+                  <button
+                    onClick={() => loadQueryTemplate(`SELECT r.site_code, s.site_grade, r.rpm_cycle, p.* FROM power_rectifier p JOIN rpm_records_master r ON p.rpm_id = r.rpm_id JOIN sites s ON r.site_code = s.site_code WHERE s.site_grade = '${selectedGrade}' ORDER BY r.site_code;`)}
+                    className="px-2 py-1 bg-indigo-950/20 hover:bg-indigo-900/30 rounded text-[10px] font-mono text-indigo-400 border border-indigo-500/20 transition-colors"
+                  >
+                    ตู้ Rectifier เกรด {selectedGrade}
+                  </button>
                 </div>
               </div>
             </div>
