@@ -257,12 +257,12 @@ function WorkOrderPanel() {
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
                 userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')
                   ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
-                  : totalCompleted === 5
+                  : totalCompleted === 6
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-indigo-600/20'
               }`}
             >
-              {isSubmitted ? 'Submitted (ส่งแล้ว) ✓' : `Submit Work Order ${totalCompleted === 5 ? '✓' : ''}`}
+              {isSubmitted ? 'Submitted (ส่งแล้ว) ✓' : `Submit Work Order ${totalCompleted === 6 ? '✓' : ''}`}
             </button>
           </div>
         </div>
@@ -272,7 +272,7 @@ function WorkOrderPanel() {
           <div className="flex justify-between items-center">
             <span className="text-sm font-bold text-gray-300">ความคืบหน้าการกรอกข้อมูล (Work Order Progress)</span>
             <span className="text-sm font-extrabold text-indigo-400">
-              {progressPercent}% ({totalCompleted} จาก 5 ส่วน)
+              {progressPercent}% ({totalCompleted} จาก 6 ส่วน)
             </span>
           </div>
           <div className="w-full bg-dark-bg h-3 rounded-full overflow-hidden border border-dark-border/40">

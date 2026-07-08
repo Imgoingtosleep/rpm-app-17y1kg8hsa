@@ -467,7 +467,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.ac_cable_size.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                  ขนาดสายไฟ AC input
+                  ขนาดสายไฟ AC input {configsMap.ac_cable_size.isRequired && <span className="text-red-400">*</span>}
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={acCableSize} onChange={(e) => setAcCableSize(e.target.value)}>
                   <option value="">-- เลือก --</option>
@@ -480,7 +480,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.breaker_size.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                  ขนาดเมนเบรกเกอร์ (Breaker Size)
+                  ขนาดเมนเบรกเกอร์ (Breaker Size) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={breakerSize} onChange={(e) => setBreakerSize(e.target.value)}>
                   <option value="">-- เลือก --</option>
@@ -493,7 +493,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             {configsMap.surge_status.isEnabled ? (
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                  Surge Protection ที่ Rectifier
+                  Surge Protection ที่ Rectifier {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
                 </label>
                 <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeStatus} onChange={(e) => setSurgeStatus(e.target.value)}>
                   <option value="">-- เลือก --</option>
@@ -547,7 +547,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {configsMap.modules_all.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules All</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules All {configsMap.modules_all.isRequired && <span className="text-red-400">*</span>}</label>
                 <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesAll} onChange={(e) => setModulesAll(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_all.isRequired} />
               </div>
             ) : (
@@ -555,7 +555,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
             {configsMap.modules_fail.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules Fail</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Modules Fail {configsMap.modules_fail.isRequired && <span className="text-red-400">*</span>}</label>
                 <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={modulesFail} onChange={(e) => setModulesFail(e.target.value === '' ? '' : parseInt(e.target.value, 10))} required={configsMap.modules_fail.isRequired} />
               </div>
             ) : (
@@ -563,7 +563,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
             {configsMap.input_current_ac.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (Amp)</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">AC Input Current (Amp) {configsMap.input_current_ac.isRequired && <span className="text-red-400">*</span>}</label>
                 <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={inputCurrentAc} onChange={(e) => setInputCurrentAc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.input_current_ac.isRequired} />
               </div>
             ) : (
@@ -571,7 +571,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
             {configsMap.output_current_dc.isEnabled ? (
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (Amp)</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">DC Output Current (Amp) {configsMap.output_current_dc.isRequired && <span className="text-red-400">*</span>}</label>
                 <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={outputCurrentDc} onChange={(e) => setOutputCurrentDc(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.output_current_dc.isRequired} />
               </div>
             ) : (

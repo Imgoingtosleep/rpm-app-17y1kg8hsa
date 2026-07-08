@@ -250,7 +250,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
 
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-              จำนวน Rectifier UIH
+              จำนวน Rectifier UIH <span className="text-red-400">*</span>
             </label>
             <select
               disabled={isReadOnly}
