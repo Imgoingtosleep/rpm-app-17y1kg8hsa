@@ -336,11 +336,9 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชื่อผู้ตรวจสอบ (Inspector Name)</label>
                 <input 
                   type="text" 
-                  required
-                  placeholder="กรอกชื่อผู้ตรวจสอบ..."
-                  className="w-full bg-dark-accent/50 border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                  readOnly
+                  className="w-full bg-dark-accent/20 border border-dark-border rounded-lg p-3 text-sm text-gray-400 cursor-not-allowed outline-none select-none"
                   value={inspectorName}
-                  onChange={(e) => setInspectorName(e.target.value)}
                 />
               </div>
 
