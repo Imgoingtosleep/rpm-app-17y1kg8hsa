@@ -127,14 +127,12 @@ export default function StartPage() {
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col items-center text-center">
-          {/* Logo Icon */}
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-extrabold text-white text-3xl shadow-xl shadow-indigo-500/20 mb-6">
-            R
-          </div>
+          <span className="font-black text-6xl bg-gradient-to-r from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent tracking-tighter mb-4">UIH</span>
           
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">RPM Portal</h2>
-          <p className="text-sm text-gray-400 mt-2 max-w-xs">
-            ระบบตรวจสอบบำรุงรักษาตู้อุปกรณ์ไฟฟ้าและระบบโครงสร้างสถานีโทรคมนาคม (Power Monitor System)
+          <h2 className="text-4xl font-black bg-gradient-to-r from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent tracking-tight">RPM Portal</h2>
+          <span className="text-[10px] text-indigo-400 font-extrabold tracking-[0.2em] uppercase mt-2.5 block">Power Monitor System</span>
+          <p className="text-xs text-gray-400 mt-4 max-w-xs leading-relaxed">
+            ระบบตรวจสอบบำรุงรักษาตู้อุปกรณ์ไฟฟ้าและระบบโครงสร้างสถานีโทรคมนาคม
           </p>
         </div>
 

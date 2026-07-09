@@ -57,12 +57,10 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
           {/* Logo / Header */}
           <div className="p-6 border-b border-dark-border flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-md">
-                R
-              </div>
+              <span className="font-black text-xl text-white tracking-tight">UIH</span>
               <div>
-                <h1 className="font-bold text-lg leading-none text-white tracking-wide">RPM Portal</h1>
-                <span className="text-[10px] text-gray-500 font-semibold tracking-wider uppercase">Power Monitor</span>
+                <h1 className="font-extrabold text-base leading-none bg-gradient-to-r from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent tracking-tight">RPM Portal</h1>
+                <span className="text-[9px] text-indigo-400 font-extrabold tracking-widest uppercase mt-1 block">Power Monitor</span>
               </div>
             </div>
             {/* Close Button on Mobile */}
