@@ -114,7 +114,12 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
     // Fetch sites
     fetch('/api/sites')
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch sites from database');
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+          }
+          throw new Error('ไม่สามารถดึงข้อมูลสถานีจากฐานข้อมูลได้ (HTTP ' + res.status + ')');
+        }
         return res.json();
       })
       .then(data => {

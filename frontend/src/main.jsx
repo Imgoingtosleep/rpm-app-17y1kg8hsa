@@ -22,7 +22,18 @@ window.fetch = async (url, options = {}) => {
   } catch (e) {
     console.error('Fetch interceptor error:', e);
   }
-  return originalFetch(url, options);
+  const res = await originalFetch(url, options);
+  if (res.status === 401 || res.status === 403) {
+    // If request to auth endpoint fails, don't loop redirect
+    if (!url.includes('/api/auth/')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
+    }
+  }
+  return res;
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
