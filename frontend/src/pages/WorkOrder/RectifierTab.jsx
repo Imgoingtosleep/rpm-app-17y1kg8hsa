@@ -465,6 +465,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
         setSurgeRectImg([]);
         setFileInputKey(Date.now());
         fetchRectifiers();
+        window.dispatchEvent(new Event('rectifierSaved'));
         if (onComplete) onComplete();
       } else {
         const errorData = await res.json();

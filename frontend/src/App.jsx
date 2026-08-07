@@ -183,6 +183,8 @@ function WorkOrderPanel() {
     };
 
     checkBatteryType();
+    window.addEventListener('rectifierSaved', checkBatteryType);
+    return () => window.removeEventListener('rectifierSaved', checkBatteryType);
   }, [rpmId, activeTab, site_code]);
 
   const allTabs = [

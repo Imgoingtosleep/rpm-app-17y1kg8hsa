@@ -674,6 +674,24 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
 });
 
 // 6. Battery tests
+router.get('/workorder/:rpm_id/all-batteries', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query(
+      `SELECT bt.*, rb.bank_name, rb.brand, rb.capacity, pr.rect_no, pr.battery_type
+       FROM battery_tests bt 
+       JOIN rectifier_banks rb ON bt.bank_id = rb.bank_id 
+       JOIN power_rectifier pr ON rb.rect_id = pr.rect_id
+       WHERE pr.rpm_id = $1 
+       ORDER BY pr.rect_no, rb.bank_name, bt.cell_no;`,
+      [rpm_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   const { rect_id } = req.params;
   try {

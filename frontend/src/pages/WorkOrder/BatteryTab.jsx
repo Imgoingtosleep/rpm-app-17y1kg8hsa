@@ -89,7 +89,9 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // 2. Resolve active rect_id when selectedRect name changes
   useEffect(() => {
-    const found = rectifiers.find(r => r.rect_no === selectedRect);
+    const normalizeRectName = (str) => str ? str.replace(/[^0-9]/g, '') : '';
+    const selectedNum = normalizeRectName(selectedRect);
+    const found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || rectifiers.find(r => r.rect_no === selectedRect);
     if (found) {
       setActiveRectId(found.rect_id);
     } else {
@@ -199,10 +201,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         // Find abnormal threshold for selected brand
         const match = BATTERY_MODELS.find(m => m.brand === brand);
         const limitIr = match ? match.abnormalIr : 10.0; // Fallback to 10.0 mΩ
+        const warningIr = match ? match.abnormalIr * 0.9 : 9.0; // 90% threshold for warning
 
-        // Evaluation logic: Fail if voltage < 12.0V or IR > threshold
+        // Evaluation logic: Fail if voltage < 12.0V or IR > threshold, Warning if IR >= 90%
         if ((!isNaN(vVal) && vVal < 12.0) || (!isNaN(irVal) && irVal > limitIr)) {
           updatedCell.status = 'Fail';
+        } else if (!isNaN(irVal) && irVal >= warningIr) {
+          updatedCell.status = 'Warning';
         } else {
           updatedCell.status = 'Good';
         }
@@ -222,6 +227,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       const nextCells = { ...prev };
       const match = BATTERY_MODELS.find(m => m.brand === brand);
       const limitIr = match ? match.abnormalIr : 10.0;
+      const warningIr = match ? match.abnormalIr * 0.9 : 9.0;
 
       [1, 2, 3, 4].forEach(num => {
         if (!nextCells[num]) return;
@@ -232,6 +238,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         let newStatus = 'Good';
         if ((!isNaN(vVal) && vVal < 12.0) || (!isNaN(irVal) && irVal > limitIr)) {
           newStatus = 'Fail';
+        } else if (!isNaN(irVal) && irVal >= warningIr) {
+          newStatus = 'Warning';
         }
         
         if (cell.status !== newStatus) {
@@ -357,10 +365,89 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     }
   };
 
-  // Resolve active rectifier object and its battery_type
-  const activeRectObj = rectifiers.find(r => r.rect_no === selectedRect);
-  const rectBatteryType = activeRectObj ? activeRectObj.battery_type : 'VRLA AGM';
-  const isLithiumMode = rectBatteryType === 'Lithium';
+  // Resolve active rectifier object and its battery_type with normalized comparison
+  const normalizeRectName = (str) => {
+    if (!str) return '';
+    return str.replace(/[^0-9]/g, '');
+  };
+
+  const selectedNum = normalizeRectName(selectedRect);
+  const activeRectObj = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || rectifiers.find(r => r.rect_no === selectedRect);
+  const isLithiumMode = activeRectObj ? activeRectObj.battery_type === 'Lithium' : false;
+
+  const [allWorkorderBatteries, setAllWorkorderBatteries] = useState([]);
+
+  // Fetch all batteries across all rectifiers for top warning/failed summary banner
+  const fetchAllWorkorderBatteries = () => {
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/all-batteries`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAllWorkorderBatteries(data);
+        }
+      })
+      .catch(err => console.error("Error fetching all workorder batteries:", err));
+  };
+
+  useEffect(() => {
+    fetchAllWorkorderBatteries();
+  }, [rpmId, activeRectId, batteries]);
+
+  // Filter failed or warning batteries across current workorder & current active cells
+  const abnormalBatterySummary = (() => {
+    const normalize = (str) => String(str || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const summaryMap = new Map();
+
+    // 1. First add saved records from DB across all rectifiers & banks
+    allWorkorderBatteries.forEach(b => {
+      const rKey = normalize(b.rect_no || selectedRect);
+      const bKey = normalize(b.bank_name || bankNo);
+      const cKey = parseInt(b.cell_no, 10);
+      const key = `${rKey}_${bKey}_${cKey}`;
+
+      summaryMap.set(key, {
+        rectNo: b.rect_no || selectedRect,
+        bankName: b.bank_name || bankNo,
+        cellNo: cKey,
+        status: b.status,
+        ir: b.internal_resistance,
+        voltage: b.voltage
+      });
+    });
+
+    // 2. Override with current live unsaved form state (cells)
+    const curRectKey = normalize(selectedRect);
+    const curBankKey = normalize(bankNo);
+
+    [1, 2, 3, 4].forEach(num => {
+      const c = cells[num];
+      if (!c) return;
+
+      const key = `${curRectKey}_${curBankKey}_${num}`;
+      const hasValue = (c.ir !== '' && c.ir !== null && c.ir !== undefined) || (c.voltage !== '' && c.voltage !== null && c.voltage !== undefined);
+
+      if (hasValue) {
+        summaryMap.set(key, {
+          rectNo: selectedRect,
+          bankName: bankNo,
+          cellNo: num,
+          status: c.status || 'Good',
+          ir: c.ir,
+          voltage: c.voltage
+        });
+      }
+    });
+
+    const failList = [];
+    const warningList = [];
+    summaryMap.forEach(item => {
+      if (item.status === 'Fail') failList.push(item);
+      else if (item.status === 'Warning') warningList.push(item);
+    });
+
+    return { failList, warningList };
+  })();
 
   return (
     <div className="p-8 space-y-6">
@@ -368,6 +455,62 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         <h3 className="text-xl font-bold text-white">4. ผลทดสอบแบตเตอรี่ (Battery Tests)</h3>
         <p className="text-gray-400 text-sm mt-1">บันทึกข้อมูลแรงดันไฟฟ้า ความต้านทานภายใน และรูปภาพแยกรายลูก</p>
       </div>
+
+      {/* Top Banner Alert for Failed Batteries */}
+      {abnormalBatterySummary.failList.length > 0 && (
+        <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-4 space-y-2 shadow-lg">
+          <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+            <span className="text-lg">❌</span>
+            <span>รายการแบตเตอรี่เสีย / เสื่อมสภาพ (Battery Fail List) - {abnormalBatterySummary.failList.length} ลูก</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+            {abnormalBatterySummary.failList.map((item, idx) => (
+              <div 
+                key={idx} 
+                className="p-2.5 rounded-lg border text-xs flex items-center justify-between font-medium bg-red-950/40 border-red-500/50 text-red-300"
+              >
+                <div>
+                  <span className="font-bold border-b border-current pb-0.5">{item.rectNo}</span> | <span className="font-semibold">{item.bankName}</span> | <span className="font-extrabold text-white">ลูกที่ {item.cellNo}</span>
+                  <div className="text-[10px] opacity-80 mt-0.5">
+                    Volt: {item.voltage || '-'} V | IR: {item.ir || '-'} mΩ
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white">
+                  Fail (เสีย)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top Banner Alert for Warning Batteries */}
+      {abnormalBatterySummary.warningList.length > 0 && (
+        <div className="bg-amber-950/30 border border-amber-500/50 rounded-xl p-4 space-y-2 shadow-lg">
+          <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+            <span className="text-lg">⚠️</span>
+            <span>รายการแบตเตอรี่เฝ้าระวัง 90% (Battery Warning List) - {abnormalBatterySummary.warningList.length} ลูก</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+            {abnormalBatterySummary.warningList.map((item, idx) => (
+              <div 
+                key={idx} 
+                className="p-2.5 rounded-lg border text-xs flex items-center justify-between font-medium bg-amber-950/40 border-amber-500/50 text-amber-300"
+              >
+                <div>
+                  <span className="font-bold border-b border-current pb-0.5">{item.rectNo}</span> | <span className="font-semibold">{item.bankName}</span> | <span className="font-extrabold text-white">ลูกที่ {item.cellNo}</span>
+                  <div className="text-[10px] opacity-80 mt-0.5">
+                    Volt: {item.voltage || '-'} V | IR: {item.ir || '-'} mΩ
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-black">
+                  Warning (เตือน)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-dark-bg/50 p-4 rounded-lg border border-dark-border">
         <div>
@@ -396,18 +539,14 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
               value={bankNo}
               onChange={(e) => setBankNo(e.target.value)}
             >
-              <option>Bank 1</option>
-              <option>Bank 2</option>
-              <option>Bank 3</option>
-              <option>Bank 4</option>
-              <option>Bank 5</option>
-              <option>Bank 6</option>
-              <option>Bank 7</option>
-              <option>Bank 8</option>
-              <option>Bank 9</option>
-              <option>Bank 10</option>
-              <option>Bank 11</option>
-              <option>Bank 12</option>
+              {(() => {
+                const rawQty = activeRectObj ? parseInt(activeRectObj.battery_qty_bank, 10) : NaN;
+                const availableQty = (!isNaN(rawQty) && rawQty > 0) ? rawQty : 12;
+                const count = Math.min(Math.max(availableQty, 1), 12);
+                return Array.from({ length: count }, (_, i) => `Bank ${i + 1}`).map((bName) => (
+                  <option key={bName} value={bName}>{bName}</option>
+                ));
+              })()}
             </select>
           </div>
         )}
@@ -632,7 +771,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         (() => {
                           const match = BATTERY_MODELS.find(m => m.brand === brand);
                           if (match && cell.ir !== '') {
-                            return parseFloat(cell.ir) > match.abnormalIr ? 'border-red-500/60 focus:border-red-500' : 'border-emerald-500/40 focus:border-emerald-500';
+                            const irVal = parseFloat(cell.ir);
+                            if (irVal > match.abnormalIr) return 'border-red-500/60 focus:border-red-500';
+                            if (irVal >= match.abnormalIr * 0.9) return 'border-amber-500/60 focus:border-amber-500';
+                            return 'border-emerald-500/40 focus:border-emerald-500';
                           }
                           return 'border-dark-border focus:border-indigo-500';
                         })()
@@ -644,15 +786,17 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                     {(() => {
                       const match = BATTERY_MODELS.find(m => m.brand === brand);
                       if (match && cell.ir !== '') {
-                        const isAbnormal = parseFloat(cell.ir) > match.abnormalIr;
-                        return (
-                          <p className={`text-[9px] mt-1 font-semibold ${isAbnormal ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {isAbnormal 
-                              ? `สูงเกินเกณฑ์ (> ${match.abnormalIr} mΩ)` 
-                              : `ปกติ (≤ ${match.abnormalIr} mΩ)`
-                            }
-                          </p>
-                        );
+                        const irVal = parseFloat(cell.ir);
+                        const isAbnormal = irVal > match.abnormalIr;
+                        const isWarning = !isAbnormal && irVal >= match.abnormalIr * 0.9;
+                        
+                        if (isAbnormal) {
+                          return <p className="text-[9px] mt-1 font-semibold text-red-400">สูงเกินเกณฑ์ (&gt; {match.abnormalIr} mΩ)</p>;
+                        }
+                        if (isWarning) {
+                          return <p className="text-[9px] mt-1 font-semibold text-amber-400">เฝ้าระวัง 90% (≥ {(match.abnormalIr * 0.9).toFixed(2)} mΩ)</p>;
+                        }
+                        return <p className="text-[9px] mt-1 font-semibold text-emerald-400">ปกติ (&lt; {(match.abnormalIr * 0.9).toFixed(2)} mΩ)</p>;
                       }
                       return null;
                     })()}
@@ -670,11 +814,16 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         value={status}
                         onChange={(e) => handleCellChange(num, 'status', e.target.value)}
                         className={`w-full bg-dark-bg border border-dark-border rounded p-2 text-xs font-bold outline-none ${
-                          status === 'Good' ? 'text-emerald-400 focus:border-emerald-500' : 'text-red-400 focus:border-red-500'
+                          status === 'Good' 
+                            ? 'text-emerald-400 focus:border-emerald-500' 
+                            : status === 'Warning' 
+                            ? 'text-amber-400 focus:border-amber-500' 
+                            : 'text-red-400 focus:border-red-500'
                         }`}
                       >
-                        <option value="Good" className="text-emerald-400 bg-dark-bg">Good</option>
-                        <option value="Fail" className="text-red-400 bg-dark-bg">Fail</option>
+                        <option value="Good" className="text-emerald-400 bg-dark-bg">Good (ปกติ)</option>
+                        <option value="Warning" className="text-amber-400 bg-dark-bg">Warning (เตือน 90%)</option>
+                        <option value="Fail" className="text-red-400 bg-dark-bg">Fail (เสื่อม/เสีย)</option>
                       </select>
                     </div>
                     <div className="col-span-2 sm:col-span-1">
