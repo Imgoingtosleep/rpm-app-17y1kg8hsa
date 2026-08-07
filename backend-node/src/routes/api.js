@@ -160,23 +160,65 @@ router.post('/sites/bulk', async (req, res) => {
 
   const client = await db.pool.connect();
   try {
+    // Fetch all existing site codes from DB
+    const existingRes = await client.query('SELECT site_code FROM sites');
+    const existingSet = new Set(existingRes.rows.map(r => r.site_code.toUpperCase()));
+
+    const duplicateCodesInDB = new Set();
+    const batchDuplicates = new Set();
+    const batchSeen = new Set();
+
+    for (const site of sites) {
+      if (!site.site_code || !site.site_name) continue;
+      const codeUpper = site.site_code.toUpperCase().trim();
+
+      // Check duplicate with database
+      if (existingSet.has(codeUpper)) {
+        duplicateCodesInDB.add(codeUpper);
+      }
+
+      // Check duplicate within the CSV itself
+      if (batchSeen.has(codeUpper)) {
+        batchDuplicates.add(codeUpper);
+      } else {
+        batchSeen.add(codeUpper);
+      }
+    }
+
+    const allDuplicates = Array.from(new Set([...duplicateCodesInDB, ...batchDuplicates]));
+
+    if (allDuplicates.length > 0) {
+      return res.status(400).json({ 
+        error: `พบ Site Code ซ้ำกันในระบบหรือในไฟล์ CSV จำนวน ${allDuplicates.length} รายการ ไม่อนุญาตให้นำเข้าข้อมูล กรุณาลบรหัสสถานีที่ซ้ำออกจากไฟล์ CSV ก่อน`,
+        duplicateCodes: allDuplicates
+      });
+    }
+
     await client.query('BEGIN');
     for (const site of sites) {
       const { site_code, site_name, site_grade, site_type } = site;
-      if (!site_code || !site_name) continue; // Skip invalid records
+      if (!site_code || !site_name) continue;
       
+      const codeUpper = site_code.toUpperCase().trim();
       await client.query(
         `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (site_code) DO UPDATE SET site_name = EXCLUDED.site_name;`,
-        [site_code.toUpperCase().trim(), site_name.trim(), site_grade || 'A', site_type || 'Indoor']
+         VALUES ($1, $2, $3, $4);`,
+        [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
       );
     }
+
     await client.query('COMMIT');
-    res.json({ message: `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${sites.length} สถานี` });
+    res.json({ 
+      message: `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${sites.length} สถานี`,
+      total: sites.length
+    });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
+    if (err.code === '23505') {
+      res.status(400).json({ error: 'พบ Site Code ซ้ำในระบบ กรุณาตรวจสอบไฟล์ CSV อีกครั้ง' });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
   } finally {
     client.release();
   }

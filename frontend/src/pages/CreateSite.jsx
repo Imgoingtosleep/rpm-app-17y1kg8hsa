@@ -50,11 +50,15 @@ export default function CreateSite() {
       });
 
       if (res.ok) {
-        alert('สร้างสถานีใหม่เรียบร้อยแล้ว!');
+        alert(`เพิ่มสถานีใหม่ (${siteCode.toUpperCase()}) เรียบร้อยแล้ว!`);
         navigate('/select-site');
       } else {
         const errData = await res.json();
-        alert('เกิดข้อผิดพลาด: ' + errData.error);
+        if (errData.error && errData.error.includes('มีอยู่แล้วในระบบ')) {
+          alert(`⚠️ ไม่สามารถเพิ่มได้!\n\nรหัสสถานี "${siteCode.toUpperCase()}" มีอยู่แล้วในระบบฐานข้อมูล`);
+        } else {
+          alert('เกิดข้อผิดพลาด: ' + (errData.error || 'ไม่สามารถเพิ่มสถานีได้'));
+        }
       }
     } catch (err) {
       alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
@@ -137,11 +141,15 @@ export default function CreateSite() {
 
         if (res.ok) {
           const result = await res.json();
-          alert(result.message || 'นำเข้าข้อมูลสถานีเรียบร้อย!');
+          alert(`✅ นำเข้าข้อมูลเรียบร้อยแล้ว!\nจำนวนทั้งหมด ${result.total} รายการ`);
           navigate('/select-site');
         } else {
           const errData = await res.json();
-          alert('เกิดข้อผิดพลาดในการนำเข้า: ' + errData.error);
+          if (errData.duplicateCodes && errData.duplicateCodes.length > 0) {
+            alert(`🚫 ไม่สามารถนำเข้าข้อมูลได้ (ยกเลิกการนำเข้าทั้งหมด!)\n\nพบ Site Code ซ้ำในระบบหรือในไฟล์ CSV จำนวน ${errData.duplicateCodes.length} รายการ ดังนี้:\n👉 ${errData.duplicateCodes.join(', ')}\n\n⚠️ กรุณาลบรหัสสถานีที่ซ้ำออกจากไฟล์ CSV ก่อน แล้วลองนำเข้าใหม่อีกครั้ง`);
+          } else {
+            alert('เกิดข้อผิดพลาดในการนำเข้า: ' + (errData.error || 'ไม่สามารถนำเข้าข้อมูลได้'));
+          }
         }
       } catch (err) {
         alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');

@@ -1,0 +1,28 @@
+# Core Framework & Web APIs
+Flask>=3.0.2
+FastAPI>=0.110.0
+uvicorn>=0.28.0
+requests>=2.31.0
+
+# Database & ORM (PostgreSQL)
+psycopg2-binary>=2.9.9
+SQLAlchemy>=2.0.28
+
+# Data Processing & Analysis
+pandas>=2.2.1
+numpy>=1.26.4
+openpyxl>=3.1.2
+
+# Image Processing & OCR
+pillow>=10.2.0
+opencv-python-headless>=4.9.0.80
+pytesseract>=0.3.10
+
+# PDF Generation & Handling
+reportlab>=4.1.0
+PyPDF2>=3.0.1
+
+# Environment & Utilities
+python-dotenv>=1.0.1
+pydantic>=2.6.4
+gunicorn>=21.2.0
