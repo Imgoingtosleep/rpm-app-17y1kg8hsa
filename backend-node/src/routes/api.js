@@ -1274,7 +1274,7 @@ router.delete('/storage/delete', async (req, res) => {
 // 15. Manage Users & Roles API (Admin only)
 router.get('/users', async (req, res) => {
   try {
-    const result = await db.query('SELECT user_id, email, name, role, created_at FROM users ORDER BY user_id DESC;');
+    const result = await db.query('SELECT user_id, email, name, role, area, subarea, created_at FROM users ORDER BY user_id DESC;');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1282,7 +1282,7 @@ router.get('/users', async (req, res) => {
 });
 
 router.post('/users/update-role', async (req, res) => {
-  const { userId, role, requesterEmail } = req.body;
+  const { userId, role, area, subarea } = req.body;
   if (!userId || !role) {
     return res.status(400).json({ error: 'Missing userId or role' });
   }
@@ -1303,11 +1303,11 @@ router.post('/users/update-role', async (req, res) => {
 
     // 2. Perform update
     const updateResult = await db.query(
-      'UPDATE users SET role = $1 WHERE user_id = $2 RETURNING user_id, email, name, role;',
-      [role, userId]
+      'UPDATE users SET role = $1, area = $2, subarea = $3 WHERE user_id = $4 RETURNING user_id, email, name, role, area, subarea;',
+      [role, area || null, subarea || null, userId]
     );
 
-    res.json({ message: 'ปรับปรุงสิทธิ์เรียบร้อยแล้ว', user: updateResult.rows[0] });
+    res.json({ message: 'ปรับปรุงสิทธิ์และพื้นที่เรียบร้อยแล้ว', user: updateResult.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

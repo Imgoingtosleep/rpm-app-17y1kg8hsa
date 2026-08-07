@@ -26,11 +26,52 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   const [editArea, setEditArea] = useState('');
   const [editSubarea, setEditSubarea] = useState('');
 
-  // Extract unique areas and subareas
-  const uniqueAreas = ['All', ...Array.from(new Set(sites.map(s => s.rawArea).filter(Boolean)))];
+  // Retrieve user object from localStorage
+  const getUserObj = () => {
+    try {
+      const user = localStorage.getItem('user');
+      if (user) {
+        return JSON.parse(user);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return { role: 'Viewer' };
+  };
+
+  const parseUserList = (rawVal) => {
+    if (!rawVal) return [];
+    if (Array.isArray(rawVal)) return rawVal;
+    if (typeof rawVal === 'string' && rawVal.startsWith('[')) {
+      try { return JSON.parse(rawVal); } catch (e) {}
+    }
+    return typeof rawVal === 'string' ? rawVal.split(',').map(s => s.trim()).filter(Boolean) : [];
+  };
+
+  const userObj = getUserObj();
+  const userRole = userObj.role || 'Viewer';
+  const isAdmin = userRole === 'Admin';
+  const isTeamLead = userRole === 'Team Lead';
+  const userAreas = parseUserList(userObj.area);
+  const userSubareas = parseUserList(userObj.subarea);
+
+  // Filter allowed sites based on logged in user's role and assigned Multi-Areas & Subareas
+  const allowedUserSites = sites.filter(site => {
+    if (isAdmin) return true;
+    if (userAreas.length > 0 && !userAreas.includes('All') && !userAreas.includes(site.rawArea)) {
+      return false;
+    }
+    if (userSubareas.length > 0 && !userSubareas.includes('All') && !userSubareas.includes(site.rawSubarea)) {
+      return false;
+    }
+    return true;
+  });
+
+  // Extract unique areas and subareas restricted to user's assigned scope
+  const uniqueAreas = ['All', ...Array.from(new Set(allowedUserSites.map(s => s.rawArea).filter(Boolean)))];
   
   const availableSubareas = ['All', ...Array.from(new Set(
-    sites
+    allowedUserSites
       .filter(s => selectedArea === 'All' || s.rawArea === selectedArea)
       .map(s => s.rawSubarea)
       .filter(Boolean)
@@ -202,42 +243,37 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
       });
   }, []);
 
-  // Retrieve user role from localStorage
-  const getUserRole = () => {
-    try {
-      const user = localStorage.getItem('user');
-      if (user) {
-        const parsed = JSON.parse(user);
-        return parsed.role || 'Viewer';
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return 'Viewer';
-  };
-
-  const isAdmin = getUserRole() === 'Admin';
-
-  const filteredSites = sites.filter(site => {
+  const filteredSites = allowedUserSites.filter(site => {
     const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           site.code.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
-    // Filter by Area
+    // Filter by UI dropdown selection
     if (selectedArea !== 'All' && site.rawArea !== selectedArea) {
       return false;
     }
-
-    // Filter by Subarea
     if (selectedSubarea !== 'All' && site.rawSubarea !== selectedSubarea) {
       return false;
     }
 
-    // Admin can see all sites
-    if (isAdmin) return true;
+    // Role-based Area & Subarea restriction
+    if (isAdmin) {
+      return true; // Admin sees all
+    }
 
-    // Inspector can only see sites that have an active work order in the selected cycle
-    return activeWorkOrders.some(wo => wo.site_code === site.code && wo.rpm_cycle === rpmCycle);
+    if (userAreas.length > 0 && !userAreas.includes('All')) {
+      if (!userAreas.includes(site.rawArea)) return false;
+    }
+
+    if (userSubareas.length > 0 && !userSubareas.includes('All')) {
+      if (!userSubareas.includes(site.rawSubarea)) return false;
+    }
+
+    // Team Lead sees all sites in assigned areas/subareas
+    if (isTeamLead) return true;
+
+    // Inspector and Viewer can see sites with active workorders or within assigned areas
+    return true;
   });
 
   const handleSubmit = (e) => {
