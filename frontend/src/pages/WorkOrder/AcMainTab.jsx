@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Input fields state
@@ -21,22 +22,22 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
 
   // Existing image paths from server
   const [existingPaths, setExistingPaths] = useState({
-    meter: null,
-    cable: null,
-    changeOver: null,
-    surge: null,
-    mdb: null,
-    ground: null,
+    meter: [],
+    cable: [],
+    changeOver: [],
+    surge: [],
+    mdb: [],
+    ground: [],
   });
 
   // File uploads
   const [images, setImages] = useState({
-    meter: null,
-    cable: null,
-    changeOver: null,
-    surge: null,
-    mdb: null,
-    ground: null,
+    meter: [],
+    cable: [],
+    changeOver: [],
+    surge: [],
+    mdb: [],
+    ground: [],
   });
 
   const [fileInputKey, setFileInputKey] = useState(Date.now());
@@ -72,27 +73,30 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
           setCur3(data.current_p3 !== null && data.current_p3 !== undefined ? parseFloat(data.current_p3) : '');
           setGroundResistance(data.ground_resistance || '');
 
+          const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
+
           setExistingPaths({
-            meter: data.meter_ac_img || null,
-            cable: data.cable_img || null,
-            changeOver: data.change_over_img || null,
-            surge: data.surge_img || null,
-            mdb: data.mdb_temp_img || null,
-            ground: data.ground_img || null,
+            meter: toArray(data.meter_ac_img),
+            cable: toArray(data.cable_img),
+            changeOver: toArray(data.change_over_img),
+            surge: toArray(data.surge_img),
+            mdb: toArray(data.mdb_temp_img),
+            ground: toArray(data.ground_img),
           });
         }
       })
       .catch(err => console.error("Error fetching AC details:", err));
   }, [rpmId]);
 
-  const handleFileChange = (field, fileList) => {
-    let files = Array.from(fileList);
-    const existingCount = existingPaths[field] ? (Array.isArray(existingPaths[field]) ? existingPaths[field].length : 1) : 0;
-    if (existingCount + files.length > 10) {
-      alert(`คุณไม่สามารถอัปโหลดรูปภาพเกิน 10 รูปได้ในฟิลด์นี้ (มีรูปภาพเดิมอยู่ ${existingCount} รูป และรูปภาพใหม่ ${files.length} รูป)`);
-      return;
-    }
-    setImages(prev => ({ ...prev, [field]: files }));
+  const handleFilesChange = (field, fileList) => {
+    setImages(prev => ({ ...prev, [field]: fileList }));
+  };
+
+  const handleExistingRemove = (field, pathToRemove) => {
+    setExistingPaths(prev => {
+      const current = prev[field] || [];
+      return { ...prev, [field]: current.filter(p => p !== pathToRemove) };
+    });
   };
 
   const getFieldConfig = (name) => {
@@ -203,7 +207,9 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     const checkFile = (configName, uploadKey, originalName) => {
       const cfg = configsMap[configName];
       if (cfg.isEnabled && cfg.isRequired) {
-        if (!images[uploadKey] && !existingPaths[uploadKey]) {
+        const hasNew = images[uploadKey] && images[uploadKey].length > 0;
+        const hasExisting = existingPaths[uploadKey] && existingPaths[uploadKey].length > 0;
+        if (!hasNew && !hasExisting) {
           alert(`กรุณาอัปโหลดรูปภาพประกอบสำหรับ ${originalName}`);
           return false;
         }
@@ -241,9 +247,9 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
           images[uploadKey].forEach(file => {
             formData.append(fieldName, file);
           });
-        } else if (existingPaths[uploadKey]) {
-          const pathVal = Array.isArray(existingPaths[uploadKey]) ? existingPaths[uploadKey] : [existingPaths[uploadKey]];
-          pathVal.forEach(p => formData.append(`${fieldName}_path`, p));
+        }
+        if (existingPaths[uploadKey] && existingPaths[uploadKey].length > 0) {
+          existingPaths[uploadKey].forEach(p => formData.append(`${fieldName}_path`, p));
         }
       }
     };
@@ -263,12 +269,12 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
       if (res.ok) {
         alert('บันทึกระบบไฟฟ้า AC และข้อมูลรูปภาพเรียบร้อยแล้ว!');
         setImages({
-          meter: null,
-          cable: null,
-          changeOver: null,
-          surge: null,
-          mdb: null,
-          ground: null,
+          meter: [],
+          cable: [],
+          changeOver: [],
+          surge: [],
+          mdb: [],
+          ground: [],
         });
         setFileInputKey(Date.now());
         if (onComplete) onComplete();
@@ -282,10 +288,16 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-6">
+      {isReadOnly && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2">
+          <span>คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ระบบจะปิดการใช้งานฟิลด์ป้อนข้อมูล ปุ่มบันทึกข้อมูล และการอัปโหลดไฟล์ในหน้านี้ทั้งหมด</span>
+        </div>
+      )}
+
       <div>
-        <h3 className="text-xl font-bold text-white">2. ระบบไฟเมน AC (Power Main AC)</h3>
-        <p className="text-gray-400 text-sm mt-1">กรอกข้อมูลระบบไฟฟ้าและอัปโหลดภาพประกอบรายงาน</p>
+        <h3 className="text-xl font-bold text-white">2. ระบบไฟฟ้า AC (Main AC Power System)</h3>
+        <p className="text-gray-400 text-sm mt-1">บันทึกขนาดมิเตอร์, แรงดันกระแสไฟฟ้า และวัดค่าความต้านทานกราวด์</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
@@ -417,7 +429,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#1 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt) {configsMap.voltage_p1.isRequired && <span className="text-red-400">*</span>}
+                      Phase#1 แรงดันไฟฟ้า {configsMap.voltage_p1.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={v1} onChange={(e) => setV1(e.target.value === '' ? '' : parseInt(e.target.value))} required={configsMap.voltage_p1.isRequired} />
                   </div>
@@ -427,7 +439,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p2.isEnabled ? (
                   <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#2 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt) {configsMap.voltage_p2.isRequired && <span className="text-red-400">*</span>}
+                      Phase#2 แรงดันไฟฟ้า {configsMap.voltage_p2.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : v2} onChange={(e) => setV2(e.target.value === '' ? '' : parseInt(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.voltage_p2.isRequired} />
                   </div>
@@ -437,7 +449,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.voltage_p3.isEnabled ? (
                   <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#3 แรงดันไฟฟ้ารวมทั้ง SiteUIH หรือแรงดัน Rectifier (Volt) {configsMap.voltage_p3.isRequired && <span className="text-red-400">*</span>}
+                      Phase#3 แรงดันไฟฟ้า {configsMap.voltage_p3.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : v3} onChange={(e) => setV3(e.target.value === '' ? '' : parseInt(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.voltage_p3.isRequired} />
                   </div>
@@ -450,7 +462,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p1.isEnabled ? (
                   <div>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#1 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp) {configsMap.current_p1.isRequired && <span className="text-red-400">*</span>}
+                      Phase#1 กระแสโหลด {configsMap.current_p1.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" step="0.1" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cur1} onChange={(e) => setCur1(e.target.value === '' ? '' : parseFloat(e.target.value))} required={configsMap.current_p1.isRequired} />
                   </div>
@@ -460,7 +472,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p2.isEnabled ? (
                   <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#2 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp) {configsMap.current_p2.isRequired && <span className="text-red-400">*</span>}
+                      Phase#2 กระแสโหลด {configsMap.current_p2.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" step="0.1" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : cur2} onChange={(e) => setCur2(e.target.value === '' ? '' : parseFloat(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.current_p2.isRequired} />
                   </div>
@@ -470,7 +482,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                 {configsMap.current_p3.isEnabled ? (
                   <div className={phaseQty === '1 Phase' ? 'opacity-30' : ''}>
                     <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
-                      Phase#3 กระแสโหลดรวมทั้ง SiteUIH หรือกระแส Rectifier (Amp) {configsMap.current_p3.isRequired && <span className="text-red-400">*</span>}
+                      Phase#3 กระแสโหลด {configsMap.current_p3.isRequired && <span className="text-red-400">*</span>}
                     </label>
                     <input type="number" min="0" step="0.1" disabled={phaseQty === '1 Phase'} className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50" value={phaseQty === '1 Phase' ? '' : cur3} onChange={(e) => setCur3(e.target.value === '' ? '' : parseFloat(e.target.value))} required={phaseQty !== '1 Phase' && configsMap.current_p3.isRequired} />
                   </div>
@@ -483,56 +495,81 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
 
           <hr className="border-dark-border" />
 
-          {/* Uploads Section */}
+          {/* Uploads Section with ImagePreviewManager */}
           <div>
             <h4 className="font-bold text-white mb-4">อัปโหลดรูปภาพระบบไฟ AC (จัดเก็บลงตารางตาม Diagram)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {configsMap.meter_ac_size.isEnabled && (
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-300 mb-2">
                       1. ภาพหน้าปัดมิเตอร์ (meter_ac_img) {configsMap.meter_ac_size.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`meter-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('meter', e.target.files)} />
-                    {existingPaths.meter && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.meter) ? existingPaths.meter.join(', ') : existingPaths.meter}</p>}
+                    <ImagePreviewManager
+                      files={images.meter}
+                      existingPaths={existingPaths.meter}
+                      onFilesChange={(newFiles) => handleFilesChange('meter', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('meter', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
                 {configsMap.cable_status.isEnabled && (
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-300 mb-2">
                       2. ภาพสายไฟเมน (cable_img) {configsMap.cable_status.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`cable-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('cable', e.target.files)} />
-                    {existingPaths.cable && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.cable) ? existingPaths.cable.join(', ') : existingPaths.cable}</p>}
+                    <ImagePreviewManager
+                      files={images.cable}
+                      existingPaths={existingPaths.cable}
+                      onFilesChange={(newFiles) => handleFilesChange('cable', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('cable', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
                 {configsMap.change_over_switch.isEnabled && (
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-300 mb-2">
                       3. ภาพสวิตช์ Change Over (change_over_img) {configsMap.change_over_switch.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`changeOver-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('changeOver', e.target.files)} />
-                    {existingPaths.changeOver && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.changeOver) ? existingPaths.changeOver.join(', ') : existingPaths.changeOver}</p>}
+                    <ImagePreviewManager
+                      files={images.changeOver}
+                      existingPaths={existingPaths.changeOver}
+                      onFilesChange={(newFiles) => handleFilesChange('changeOver', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('changeOver', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
               </div>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {configsMap.surge_protection.isEnabled && (
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-300 mb-2">
                       4. ภาพอุปกรณ์กันไฟกระชาก (surge_img) {configsMap.surge_protection.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`surge-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surge', e.target.files)} />
-                    {existingPaths.surge && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.surge) ? existingPaths.surge.join(', ') : existingPaths.surge}</p>}
+                    <ImagePreviewManager
+                      files={images.surge}
+                      existingPaths={existingPaths.surge}
+                      onFilesChange={(newFiles) => handleFilesChange('surge', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('surge', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
                 {configsMap.mdb_temp.isEnabled && (
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">
+                    <label className="block text-xs font-semibold text-gray-300 mb-2">
                       5. ภาพเทอร์โมสแกน/อุณหภูมิตู้ MDB (mdb_temp_img) {configsMap.mdb_temp.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`mdb-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('mdb', e.target.files)} />
-                    {existingPaths.mdb && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.mdb) ? existingPaths.mdb.join(', ') : existingPaths.mdb}</p>}
+                    <ImagePreviewManager
+                      files={images.mdb}
+                      existingPaths={existingPaths.mdb}
+                      onFilesChange={(newFiles) => handleFilesChange('mdb', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('mdb', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
                 {configsMap.ground_resistance.isEnabled && (

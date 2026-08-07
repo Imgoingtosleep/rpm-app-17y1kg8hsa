@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 const modelOptions = [
   'AC Plug',
@@ -71,9 +72,9 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   const [existingPaths, setExistingPaths] = useState({
-    breaker: null,
-    pdbTemp: null,
-    surgeRect: null,
+    breaker: [],
+    pdbTemp: [],
+    surgeRect: [],
   });
 
   const [rectifiers, setRectifiers] = useState([]);
@@ -120,6 +121,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   // Load rectifier details when rectNo select option changes or rectifier list updates
   useEffect(() => {
     const found = rectifiers.find(r => r.rect_no === rectNo);
+    const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
     if (found) {
       const modelVal = found.model || '';
       if (modelOptions.includes(modelVal)) {
@@ -151,9 +153,9 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       setBatteryQtyBank(found.battery_qty_bank ? String(found.battery_qty_bank) : '');
       
       setExistingPaths({
-        breaker: found.breaker_img || null,
-        pdbTemp: found.pdb_temp_img || null,
-        surgeRect: found.surge_rect_img || null,
+        breaker: toArray(found.breaker_img),
+        pdbTemp: toArray(found.pdb_temp_img),
+        surgeRect: toArray(found.surge_rect_img),
       });
     } else {
       setSelectedModel('');
@@ -698,29 +700,44 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {configsMap.breaker_size.isEnabled && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">
+                  <label className="block text-xs font-semibold text-gray-300 mb-2">
                     ภาพเบรกเกอร์ (breaker_img) {configsMap.breaker_size.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`breaker-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('breaker', e.target.files, setBreakerImg)} />
-                  {existingPaths.breaker && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.breaker) ? existingPaths.breaker.join(', ') : existingPaths.breaker}</p>}
+                  <ImagePreviewManager
+                    files={breakerImg}
+                    existingPaths={existingPaths.breaker}
+                    onFilesChange={setBreakerImg}
+                    onExistingRemove={(path) => setExistingPaths(prev => ({ ...prev, breaker: (prev.breaker || []).filter(p => p !== path) }))}
+                    isReadOnly={isReadOnly}
+                  />
                 </div>
               )}
               {configsMap.model.isEnabled && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">
+                  <label className="block text-xs font-semibold text-gray-300 mb-2">
                     ภาพเทอร์โมสแกน/ภายในตู้ (pdb_temp_img) {configsMap.model.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`pdbTemp-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('pdbTemp', e.target.files, setPdbTempImg)} />
-                  {existingPaths.pdbTemp && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.pdbTemp) ? existingPaths.pdbTemp.join(', ') : existingPaths.pdbTemp}</p>}
+                  <ImagePreviewManager
+                    files={pdbTempImg}
+                    existingPaths={existingPaths.pdbTemp}
+                    onFilesChange={setPdbTempImg}
+                    onExistingRemove={(path) => setExistingPaths(prev => ({ ...prev, pdbTemp: (prev.pdbTemp || []).filter(p => p !== path) }))}
+                    isReadOnly={isReadOnly}
+                  />
                 </div>
               )}
               {configsMap.surge_status.isEnabled && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">
+                  <label className="block text-xs font-semibold text-gray-300 mb-2">
                     ภาพอุปกรณ์กันฟ้าตู้ Rect (surge_rect_img) {configsMap.surge_status.isRequired && <span className="text-red-400">*</span>}
                   </label>
-                  <input key={`surgeRect-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('surgeRect', e.target.files, setSurgeRectImg)} />
-                  {existingPaths.surgeRect && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.surgeRect) ? existingPaths.surgeRect.join(', ') : existingPaths.surgeRect}</p>}
+                  <ImagePreviewManager
+                    files={surgeRectImg}
+                    existingPaths={existingPaths.surgeRect}
+                    onFilesChange={setSurgeRectImg}
+                    onExistingRemove={(path) => setExistingPaths(prev => ({ ...prev, surgeRect: (prev.surgeRect || []).filter(p => p !== path) }))}
+                    isReadOnly={isReadOnly}
+                  />
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 const BATTERY_MODELS = [
   { brand: "Narada รุ่น AG12V100F(100AH)", capacity: "100AH", specIr: 6.36, abnormalIr: 13 },
@@ -37,10 +38,10 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // State for cells 1 to 4
   const [cells, setCells] = useState({
-    1: { voltage: '', ir: '', file: null, existingPath: null },
-    2: { voltage: '', ir: '', file: null, existingPath: null },
-    3: { voltage: '', ir: '', file: null, existingPath: null },
-    4: { voltage: '', ir: '', file: null, existingPath: null }
+    1: { voltage: '', ir: '', file: [], existingPath: [] },
+    2: { voltage: '', ir: '', file: [], existingPath: [] },
+    3: { voltage: '', ir: '', file: [], existingPath: [] },
+    4: { voltage: '', ir: '', file: [], existingPath: [] }
   });
 
   const [fileInputKey, setFileInputKey] = useState(Date.now());
@@ -117,13 +118,14 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   // 4. Update UI cells state when active batteries list or bank selection changes
   useEffect(() => {
     const isDifferentBankOrRect = bankNo !== loadedBankRect.bank || activeRectId !== loadedBankRect.rect;
+    const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
 
     setCells(prev => {
       const nextCells = isDifferentBankOrRect ? {
-        1: { voltage: '', ir: '', file: null, existingPath: null },
-        2: { voltage: '', ir: '', file: null, existingPath: null },
-        3: { voltage: '', ir: '', file: null, existingPath: null },
-        4: { voltage: '', ir: '', file: null, existingPath: null }
+        1: { voltage: '', ir: '', file: [], existingPath: [] },
+        2: { voltage: '', ir: '', file: [], existingPath: [] },
+        3: { voltage: '', ir: '', file: [], existingPath: [] },
+        4: { voltage: '', ir: '', file: [], existingPath: [] }
       } : { ...prev };
 
       // Filter batteries for selected bank
@@ -133,7 +135,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         if (nextCells[cellNo]) {
           nextCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
           nextCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
-          nextCells[cellNo].existingPath = bat.battery_img || null;
+          nextCells[cellNo].existingPath = toArray(bat.battery_img);
           nextCells[cellNo].status = bat.status || 'Good';
         }
       });
@@ -285,8 +287,9 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
     // Check if image required
     if (configsMap.status.isEnabled && configsMap.status.isRequired) {
-      const hasImg = (cell.file && cell.file.length > 0) || cell.existingPath;
-      if (!hasImg) {
+      const hasNew = cell.file && cell.file.length > 0;
+      const hasExisting = cell.existingPath && cell.existingPath.length > 0;
+      if (!hasNew && !hasExisting) {
         alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
         return;
       }
@@ -329,9 +332,9 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         cell.file.forEach(f => {
           formData.append('battery_img', f);
         });
-      } else if (cell.existingPath) {
-        const pathVal = Array.isArray(cell.existingPath) ? cell.existingPath : [cell.existingPath];
-        pathVal.forEach(p => formData.append('battery_img_path', p));
+      }
+      if (cell.existingPath && cell.existingPath.length > 0) {
+        cell.existingPath.forEach(p => formData.append('battery_img_path', p));
       }
     }
 
@@ -478,8 +481,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                 if (info) {
                   return (
                     <div className="mt-2 text-[10px] bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg flex justify-between text-indigo-300">
-                      <span>🔋 <strong>Spec IR:</strong> {info.specIr} mΩ</span>
-                      <span>⚠️ <strong>ผิดปกติ (Fail) เมื่อ:</strong> &gt; {info.abnormalIr} mΩ</span>
+                      <span><strong>Spec IR:</strong> {info.specIr} mΩ</span>
+                      <span><strong>ผิดปกติ (Fail) เมื่อ:</strong> &gt; {info.abnormalIr} mΩ</span>
                     </div>
                   );
                 }
@@ -617,8 +620,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         return (
                           <p className={`text-[9px] mt-1 font-semibold ${isAbnormal ? 'text-red-400' : 'text-emerald-400'}`}>
                             {isAbnormal 
-                              ? `⚠️ สูงเกินเกณฑ์ (> ${match.abnormalIr} mΩ)` 
-                              : `✓ ปกติ (≤ ${match.abnormalIr} mΩ)`
+                              ? `สูงเกินเกณฑ์ (> ${match.abnormalIr} mΩ)` 
+                              : `ปกติ (≤ ${match.abnormalIr} mΩ)`
                             }
                           </p>
                         );
@@ -646,17 +649,24 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                         <option value="Fail" className="text-red-400 bg-dark-bg">Fail</option>
                       </select>
                     </div>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <label className="block text-[10px] uppercase text-gray-500 mb-1">
                         รูปถ่าย (battery_img) {configsMap.status.isRequired && <span className="text-red-400">*</span>}
                       </label>
-                      <input 
-                        key={`${num}-${fileInputKey}`}
-                        type="file" 
-                        multiple
-                        disabled={isReadOnly}
-                        className="w-full text-[10px] text-gray-400 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300 disabled:opacity-50"
-                        onChange={(e) => handleCellChange(num, 'file', Array.from(e.target.files))}
+                      <ImagePreviewManager
+                        files={cell.file || []}
+                        existingPaths={cell.existingPath || []}
+                        onFilesChange={(newFiles) => handleCellChange(num, 'file', newFiles)}
+                        onExistingRemove={(path) => {
+                          setCells(prev => ({
+                            ...prev,
+                            [num]: {
+                              ...prev[num],
+                              existingPath: (prev[num].existingPath || []).filter(p => p !== path)
+                            }
+                          }));
+                        }}
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                   </>

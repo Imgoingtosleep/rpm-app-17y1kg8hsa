@@ -1,34 +1,35 @@
 import React, { useState, useEffect } from 'react';
+import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
   // Facility parameters config
   const [params, setParams] = useState({
-    alarm_door: { status: '', file: null },
-    alarm_ac_fail: { status: '', file: null },
-    alarm_low_bat: { status: '', file: null },
-    alarm_high_temp: { status: '', file: null },
-    alarm_smoke: { status: '', file: null },
-    alarm_air_fail: { status: '', file: null },
+    alarm_door: { status: '', file: [] },
+    alarm_ac_fail: { status: '', file: [] },
+    alarm_low_bat: { status: '', file: [] },
+    alarm_high_temp: { status: '', file: [] },
+    alarm_smoke: { status: '', file: [] },
+    alarm_air_fail: { status: '', file: [] },
 
-    vent_ac_fan: { status: '', file: null },
-    vent_ac_fan_hood: { status: '', file: null },
-    vent_dc_fan: { status: '', file: null },
-    vent_dc_fan_hood: { status: '', file: null },
-    vent_air_cond: { status: '', file: null },
+    vent_ac_fan: { status: '', file: [] },
+    vent_ac_fan_hood: { status: '', file: [] },
+    vent_dc_fan: { status: '', file: [] },
+    vent_dc_fan_hood: { status: '', file: [] },
+    vent_air_cond: { status: '', file: [] },
 
-    vent_filter_door: { status: '', file: null },
-    vent_filter_window: { status: '', file: null },
-    vent_equip_fan: { status: '', file: null },
-    vent_filter_equip: { status: '', file: null },
-    air_owner: { status: '', file: null },
-    control_air_type: { status: '', file: null },
-    control_air_status: { status: '', file: null },
+    vent_filter_door: { status: '', file: [] },
+    vent_filter_window: { status: '', file: [] },
+    vent_equip_fan: { status: '', file: [] },
+    vent_filter_equip: { status: '', file: [] },
+    air_owner: { status: '', file: [] },
+    control_air_type: { status: '', file: [] },
+    control_air_status: { status: '', file: [] },
 
-    fac_site_sign: { status: '', file: null },
-    fac_outdoor_clean: { status: '', file: null },
-    fac_indoor_clean: { status: '', file: null },
-    fac_lighting: { status: '', file: null },
-    fac_grass_cut: { status: '', file: null },
+    fac_site_sign: { status: '', file: [] },
+    fac_outdoor_clean: { status: '', file: [] },
+    fac_indoor_clean: { status: '', file: [] },
+    fac_lighting: { status: '', file: [] },
+    fac_grass_cut: { status: '', file: [] },
   });
 
   const [existingPaths, setExistingPaths] = useState({});
@@ -62,9 +63,10 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
           });
 
           const newExisting = {};
+          const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
           Object.keys(params).forEach(key => {
             if (data[`${key}_img`]) {
-              newExisting[key] = data[`${key}_img`];
+              newExisting[key] = toArray(data[`${key}_img`]);
             }
           });
           setExistingPaths(newExisting);
@@ -81,18 +83,20 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     }));
   };
 
-  const handleFileChange = (key, fileList) => {
+  const handleFilesChange = (key, updatedFiles) => {
     if (isReadOnly) return;
-    let files = Array.from(fileList);
-    const existingCount = existingPaths[key] ? (Array.isArray(existingPaths[key]) ? existingPaths[key].length : 1) : 0;
-    if (existingCount + files.length > 10) {
-      alert(`คุณไม่สามารถอัปโหลดรูปภาพเกิน 10 รูปได้ในฟิลด์นี้ (มีรูปภาพเดิมอยู่ ${existingCount} รูป และรูปภาพใหม่ ${files.length} รูป)`);
-      return;
-    }
     setParams(prev => ({
       ...prev,
-      [key]: { ...prev[key], file: files }
+      [key]: { ...prev[key], file: updatedFiles }
     }));
+  };
+
+  const handleExistingRemove = (key, pathToRemove) => {
+    if (isReadOnly) return;
+    setExistingPaths(prev => {
+      const current = prev[key] || [];
+      return { ...prev, [key]: current.filter(p => p !== pathToRemove) };
+    });
   };
 
   const labelMap = {
@@ -210,8 +214,9 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
         return;
       }
 
-      const hasImg = (item.file && item.file.length > 0) || existingPaths[key];
-      if (isRequired && !hasImg) {
+      const hasNew = item.file && item.file.length > 0;
+      const hasExisting = existingPaths[key] && existingPaths[key].length > 0;
+      if (isRequired && !hasNew && !hasExisting) {
         alert(`กรุณาอัปโหลดรูปภาพสำหรับหัวข้อ "${friendlyName}" ก่อนทำการบันทึก!`);
         return;
       }
@@ -228,9 +233,9 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
         item.file.forEach(f => {
           formData.append(`${key}_img`, f);
         });
-      } else if (existingPaths[key]) {
-        const pathVal = Array.isArray(existingPaths[key]) ? existingPaths[key] : [existingPaths[key]];
-        pathVal.forEach(p => formData.append(`${key}_img_path`, p));
+      }
+      if (existingPaths[key] && existingPaths[key].length > 0) {
+        existingPaths[key].forEach(p => formData.append(`${key}_img_path`, p));
       }
     });
 
@@ -276,7 +281,6 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     const item = params[key];
     const defaultOpts = dropdownOptions[key] || ['ปกติ', 'ผิดปกติ', 'ไม่มีระบบนี้'];
     
-    const cfg = fieldConfigs.find(c => c.field_name === key);
     const extraOpts = cfg && cfg.dropdown_options ? cfg.dropdown_options : [];
     const excluded = extraOpts.filter(o => o.startsWith('__EXCLUDE__:')).map(o => o.replace('__EXCLUDE__:', ''));
     const added = extraOpts.filter(o => !o.startsWith('__EXCLUDE__:'));
@@ -307,33 +311,15 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
             </select>
           </div>
 
-          {/* Image Uploader */}
+          {/* Image Uploader with Preview & Remove */}
           <div className="flex-1 min-w-[200px]">
-            {isReadOnly ? (
-              existingPaths[key] ? (
-                <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 font-medium">
-                  <span>มีรูปภาพอัปโหลดไว้แล้ว:</span>
-                  <a href={`/storage/${existingPaths[key]}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-emerald-300">
-                    ดูรูปภาพ
-                  </a>
-                </div>
-              ) : (
-                <span className="text-[10px] text-gray-500 italic">ไม่มีรูปภาพประกอบ</span>
-              )
-            ) : (
-              <div className="flex flex-col gap-1">
-                <input
-                  key={`${key}-${fileInputKey}`}
-                  type="file"
-                  multiple
-                  className="w-full text-[10px] text-gray-500 file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:bg-dark-accent file:text-gray-300"
-                  onChange={(e) => handleFileChange(key, e.target.files)}
-                />
-                {existingPaths[key] && (
-                  <span className="text-[9px] text-gray-400">รูปภาพเดิม: <a href={`/storage/${existingPaths[key]}`} target="_blank" rel="noopener noreferrer" className="underline">{existingPaths[key]}</a></span>
-                )}
-              </div>
-            )}
+            <ImagePreviewManager
+              files={item.file || []}
+              existingPaths={existingPaths[key] || []}
+              onFilesChange={(newFiles) => handleFilesChange(key, newFiles)}
+              onExistingRemove={(path) => handleExistingRemove(key, path)}
+              isReadOnly={isReadOnly}
+            />
           </div>
         </div>
       </div>
@@ -344,7 +330,6 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     <div className="p-8 space-y-6">
       {isReadOnly && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <span>⚠️</span>
           <span>คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ระบบจะปิดการใช้งานฟิลด์ป้อนข้อมูล ปุ่มบันทึกข้อมูล และการอัปโหลดไฟล์ในหน้านี้ทั้งหมด</span>
         </div>
       )}
