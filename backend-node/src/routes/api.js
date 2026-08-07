@@ -1317,6 +1317,44 @@ router.get('/auth/version', (req, res) => {
   res.json({ version: '1.0.2' });
 });
 
+// RPM Cycles Management APIs
+router.get('/rpm-cycles', async (req, res) => {
+  try {
+    const result = await db.query('SELECT cycle_id, cycle_name, created_at FROM rpm_cycles ORDER BY cycle_name ASC;');
+    res.json(result.rows.map(r => r.cycle_name));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/rpm-cycles', async (req, res) => {
+  const { cycle_name } = req.body;
+  if (!cycle_name || !cycle_name.trim()) {
+    return res.status(400).json({ error: 'กรุณาระบุชื่อรอบการตรวจ' });
+  }
+  try {
+    const result = await db.query(
+      'INSERT INTO rpm_cycles (cycle_name) VALUES ($1) ON CONFLICT (cycle_name) DO UPDATE SET cycle_name = EXCLUDED.cycle_name RETURNING *;',
+      [cycle_name.trim()]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/rpm-cycles/:cycle_name', async (req, res) => {
+  const { cycle_name } = req.params;
+  try {
+    // Delete only from the active choices list table `rpm-cycles`
+    // Historical workorders in `rpm_records_master` with this rpm_cycle remain 100% untouched and safe
+    await db.query('DELETE FROM rpm_cycles WHERE cycle_name = $1;', [cycle_name]);
+    res.json({ message: `ลบตัวเลือกรอบการตรวจ ${cycle_name} ออกจากตัวเลือกเปิดงานใหม่เรียบร้อยแล้ว (ข้อมูลประวัติเดิมยังคงอยู่สมบูรณ์ 100%)` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Database Query APIs
 router.get('/query/cycles', async (req, res) => {
   try {

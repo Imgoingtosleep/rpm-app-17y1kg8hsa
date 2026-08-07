@@ -243,6 +243,70 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
       });
   }, []);
 
+  const [rpmCyclesList, setRpmCyclesList] = useState(['2026-R1', '2026-R2', '2026-R3']);
+  const [newCycleInput, setNewCycleInput] = useState('');
+  const [showCycleModal, setShowCycleModal] = useState(false);
+
+  const fetchRpmCycles = () => {
+    fetch('/api/rpm-cycles')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRpmCyclesList(data);
+          if (!data.includes(rpmCycle)) {
+            setRpmCycle(data[0]);
+          }
+        }
+      })
+      .catch(err => console.error("Error fetching rpm cycles:", err));
+  };
+
+  const handleAddCycle = async (e) => {
+    e.preventDefault();
+    if (!newCycleInput.trim()) return;
+    try {
+      const res = await fetch('/api/rpm-cycles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycle_name: newCycleInput.trim() })
+      });
+      if (res.ok) {
+        alert(`เพิ่มรอบการตรวจ ${newCycleInput.trim()} เรียบร้อยแล้ว`);
+        setNewCycleInput('');
+        fetchRpmCycles();
+      } else {
+        const data = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + data.error);
+      }
+    } catch (err) {
+      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    }
+  };
+
+  const handleDeleteCycle = async (cycleName) => {
+    if (!window.confirm(`คุณต้องการลบตัวเลือกรอบการตรวจ "${cycleName}" ใช่หรือไม่?\n\n*หมายเหตุ: ข้อมูลประวัติใบงานเดิมในรอบนี้จะไม่ถูกลบหรือได้รับผลกระทบใดๆ ทั้งสิ้น*`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/rpm-cycles/${encodeURIComponent(cycleName)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        alert(`ลบตัวเลือกรอบการตรวจ ${cycleName} เรียบร้อยแล้ว`);
+        fetchRpmCycles();
+      } else {
+        const data = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + data.error);
+      }
+    } catch (err) {
+      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    }
+  };
+
+  useEffect(() => {
+    fetchRpmCycles();
+  }, []);
+
   const filteredSites = allowedUserSites.filter(site => {
     const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           site.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -438,17 +502,29 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-3">
-                  2. เลือกรอบการตรวจ (RPM Cycle) {!selectedSite && <span className="text-amber-400 font-normal border-b border-amber-400/50 text-[10px] ml-1">(กรุณาเลือกสถานีก่อน)</span>}
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['2026-R1', '2026-R2', '2026-R3'].map((cycle) => (
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-xs font-semibold uppercase text-gray-400">
+                    2. เลือกรอบการตรวจ (RPM Cycle) {!selectedSite && <span className="text-amber-400 font-normal border-b border-amber-400/50 text-[10px] ml-1">(กรุณาเลือกสถานีก่อน)</span>}
+                  </label>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCycleModal(true)}
+                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1"
+                    >
+                      <span>⚙️</span> จัดการรอบการตรวจ
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {rpmCyclesList.map((cycle) => (
                     <button
                       key={cycle}
                       type="button"
                       disabled={!selectedSite}
                       onClick={() => setRpmCycle(cycle)}
-                      className={`py-2.5 px-3 text-sm font-semibold rounded-lg border text-center transition-all ${
+                      className={`w-full py-2.5 px-2 text-xs font-semibold rounded-lg border text-center transition-all ${
                         !selectedSite
                           ? 'bg-dark-accent/20 border-dark-border/40 text-gray-600 cursor-not-allowed'
                           : rpmCycle === cycle
@@ -520,6 +596,89 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 Open Work Order &rarr;
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* RPM Cycle Management Modal */}
+      {showCycleModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-dark-card border border-dark-border p-6 rounded-2xl shadow-2xl space-y-5">
+            <div className="flex justify-between items-center border-b border-dark-border pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white">จัดการรอบการตรวจ (RPM Cycles)</h3>
+                <p className="text-xs text-gray-400 mt-0.5">เพิ่มตัวเลือกใหม่ หรือ ลบตัวเลือกที่ไม่ใช้ออก</p>
+              </div>
+              <button
+                onClick={() => setShowCycleModal(false)}
+                className="text-gray-400 hover:text-white text-xl font-bold p-1 rounded-lg hover:bg-dark-accent"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Add New Cycle Form */}
+            <form onSubmit={handleAddCycle} className="space-y-2">
+              <label className="block text-xs font-bold uppercase text-indigo-400">+ เพิ่มรอบการตรวจใหม่</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="เช่น 2027-R1..."
+                  value={newCycleInput}
+                  onChange={(e) => setNewCycleInput(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-xs text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shrink-0 transition-all shadow-md"
+                >
+                  เพิ่มรอบ
+                </button>
+              </div>
+            </form>
+
+            {/* Active Cycles List */}
+            <div className="space-y-2 pt-2 border-t border-dark-border/60">
+              <label className="block text-xs font-bold uppercase text-gray-400">รายการรอบการตรวจปัจจุบัน</label>
+              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                {rpmCyclesList.map((cycle) => (
+                  <div
+                    key={cycle}
+                    className="flex justify-between items-center p-3 bg-dark-bg/60 border border-dark-border/80 rounded-xl hover:border-gray-700 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
+                      <span className="text-xs font-bold text-gray-200 font-mono">{cycle}</span>
+                    </div>
+                    {rpmCyclesList.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCycle(cycle)}
+                        className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1"
+                      >
+                        <span>🗑️</span> ลบตัวเลือก
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-gray-500 italic">จำเป็นต้องมีอย่างน้อย 1 ตัวเลือก</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-300 leading-relaxed">
+              *การลบตัวเลือกรอบการตรวจจะไม่ส่งผลกระทบต่อประวัติข้อมูลใบงานเดิมที่เคยบันทึกไว้ในรอบนั้นๆ*
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCycleModal(false)}
+                className="px-5 py-2 bg-dark-accent hover:bg-dark-accent/80 border border-dark-border text-gray-200 font-bold rounded-lg text-xs transition-all"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}
