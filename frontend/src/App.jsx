@@ -64,12 +64,18 @@ function WorkOrderPanel() {
       .then(data => {
         const dbSite = data.find(s => s.site_code === site_code);
         if (dbSite) {
+          let loc = `${dbSite.site_type || 'N/A'} - Grade ${dbSite.site_grade || '-'}`;
+          if (dbSite.area || dbSite.subarea) {
+            loc += ` | ${[dbSite.area, dbSite.subarea].filter(Boolean).join(' / ')}`;
+          }
+
           setSelectedSite({
-            
             id: dbSite.site_id,
             name: `${dbSite.site_name} (${dbSite.site_code})`,
             code: dbSite.site_code,
-            location: `${dbSite.site_type || 'N/A'} - Grade ${dbSite.site_grade || '-'}`,
+            location: loc,
+            area: dbSite.area || '',
+            subarea: dbSite.subarea || '',
             status: 'Active'
           });
         } else {

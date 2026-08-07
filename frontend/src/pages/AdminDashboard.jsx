@@ -58,6 +58,8 @@ export default function AdminDashboard() {
     const matchesSearch = 
       wo.site_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.site_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (wo.area && wo.area.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (wo.subarea && wo.subarea.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (wo.job_number_sl6 && wo.job_number_sl6.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (wo.sap_number && wo.sap_number.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -109,7 +111,7 @@ export default function AdminDashboard() {
           </svg>
           <input 
             type="text" 
-            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, Job หรือ SAP No..."
+            placeholder="ค้นหาด้วยรหัส, ชื่อสถานี, Area/Subarea, Job หรือ SAP No..."
             className="bg-transparent border-0 outline-none w-full text-sm text-gray-200 placeholder-gray-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,6 +175,7 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="bg-dark-accent/40 border-b border-dark-border text-xs text-gray-400 font-semibold uppercase">
                   <th className="p-4">รหัส / ชื่อสถานี</th>
+                  <th className="p-4">พื้นที่ (Area / Sub-Area)</th>
                   <th className="p-4">รอบตรวจ</th>
                   <th className="p-4">SL6 / SAP Number</th>
                   <th className="p-4">วันที่ตรวจสอบ</th>
@@ -195,6 +198,10 @@ export default function AdminDashboard() {
                             <p className="text-[10px] text-gray-500">{wo.site_type} - เกรด {wo.site_grade}</p>
                           </div>
                         </div>
+                      </td>
+                      <td className="p-4 text-xs">
+                        <p className="text-gray-300 font-semibold">{wo.area || '-'}</p>
+                        <p className="text-gray-500 text-[10px]">{wo.subarea || '-'}</p>
                       </td>
                       <td className="p-4 font-semibold text-gray-200">{wo.rpm_cycle || '-'}</td>
                       <td className="p-4 font-mono text-xs">

@@ -15,17 +15,41 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   const [jobNo, setJobNo] = useState('');
   const [sapNo, setSapNo] = useState('');
 
-  // Editing states for site_grade and site_type
+  const [selectedArea, setSelectedArea] = useState('All');
+  const [selectedSubarea, setSelectedSubarea] = useState('All');
+
+  // Editing states for site_grade, site_type, area, subarea
   const [isEditingSite, setIsEditingSite] = useState(false);
   const [editSiteName, setEditSiteName] = useState('');
   const [editSiteGrade, setEditSiteGrade] = useState('A');
   const [editSiteType, setEditSiteType] = useState('Indoor');
+  const [editArea, setEditArea] = useState('');
+  const [editSubarea, setEditSubarea] = useState('');
+
+  // Extract unique areas and subareas
+  const uniqueAreas = ['All', ...Array.from(new Set(sites.map(s => s.rawArea).filter(Boolean)))];
+  
+  const availableSubareas = ['All', ...Array.from(new Set(
+    sites
+      .filter(s => selectedArea === 'All' || s.rawArea === selectedArea)
+      .map(s => s.rawSubarea)
+      .filter(Boolean)
+  ))];
+
+  // Auto-reset subarea filter if selectedArea changes and subarea is no longer valid
+  useEffect(() => {
+    if (selectedSubarea !== 'All' && !availableSubareas.includes(selectedSubarea)) {
+      setSelectedSubarea('All');
+    }
+  }, [selectedArea, availableSubareas, selectedSubarea]);
 
   const handleStartEdit = () => {
     if (!selectedSite) return;
     setEditSiteName(selectedSite.rawName || '');
     setEditSiteGrade(selectedSite.rawGrade || 'A');
     setEditSiteType(selectedSite.rawType || 'Indoor');
+    setEditArea(selectedSite.rawArea || '');
+    setEditSubarea(selectedSite.rawSubarea || '');
     setIsEditingSite(true);
   };
 
@@ -45,7 +69,9 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
         body: JSON.stringify({
           site_name: editSiteName.trim(),
           site_grade: editSiteGrade,
-          site_type: editSiteType
+          site_type: editSiteType,
+          area: editArea.trim() || null,
+          subarea: editSubarea.trim() || null
         })
       });
       
@@ -57,16 +83,26 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
       const updatedSite = await res.json();
       alert('แก้ไขข้อมูลสถานีสำเร็จแล้ว!');
       
+      const formatLoc = (type, grade, area, subarea) => {
+        let loc = `${type || 'N/A'} - Grade ${grade || '-'}`;
+        if (area || subarea) {
+          loc += ` | ${[area, subarea].filter(Boolean).join(' / ')}`;
+        }
+        return loc;
+      };
+
       // Update local state list
       setSites(prev => prev.map(s => {
         if (s.id === updatedSite.site_id) {
           return {
             ...s,
             name: `${updatedSite.site_name} (${updatedSite.site_code})`,
-            location: `${updatedSite.site_type || 'N/A'} - Grade ${updatedSite.site_grade || '-'}`,
+            location: formatLoc(updatedSite.site_type, updatedSite.site_grade, updatedSite.area, updatedSite.subarea),
             rawName: updatedSite.site_name,
             rawGrade: updatedSite.site_grade || 'A',
-            rawType: updatedSite.site_type || 'Indoor'
+            rawType: updatedSite.site_type || 'Indoor',
+            rawArea: updatedSite.area || '',
+            rawSubarea: updatedSite.subarea || ''
           };
         }
         return s;
@@ -76,10 +112,12 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
       setSelectedSite(prev => ({
         ...prev,
         name: `${updatedSite.site_name} (${updatedSite.site_code})`,
-        location: `${updatedSite.site_type || 'N/A'} - Grade ${updatedSite.site_grade || '-'}`,
+        location: formatLoc(updatedSite.site_type, updatedSite.site_grade, updatedSite.area, updatedSite.subarea),
         rawName: updatedSite.site_name,
         rawGrade: updatedSite.site_grade || 'A',
-        rawType: updatedSite.site_type || 'Indoor'
+        rawType: updatedSite.site_type || 'Indoor',
+        rawArea: updatedSite.area || '',
+        rawSubarea: updatedSite.subarea || ''
       }));
       
       setIsEditingSite(false);
@@ -91,7 +129,7 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   useEffect(() => {
     // Reset selected site when changing search or cycle
     setSelectedSite(null);
-  }, [searchTerm, rpmCycle]);
+  }, [searchTerm, rpmCycle, selectedArea, selectedSubarea]);
 
   useEffect(() => {
     if (selectedSite && rpmCycle) {
@@ -123,16 +161,25 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
         return res.json();
       })
       .then(data => {
-        const mapped = data.map(site => ({
-          id: site.site_id,
-          name: `${site.site_name} (${site.site_code})`,
-          code: site.site_code,
-          location: `${site.site_type || 'N/A'} - Grade ${site.site_grade || '-'}`,
-          status: 'Active',
-          rawName: site.site_name,
-          rawGrade: site.site_grade || 'A',
-          rawType: site.site_type || 'Indoor'
-        }));
+        const mapped = data.map(site => {
+          let loc = `${site.site_type || 'N/A'} - Grade ${site.site_grade || '-'}`;
+          if (site.area || site.subarea) {
+            loc += ` | ${[site.area, site.subarea].filter(Boolean).join(' / ')}`;
+          }
+
+          return {
+            id: site.site_id,
+            name: `${site.site_name} (${site.site_code})`,
+            code: site.site_code,
+            location: loc,
+            status: 'Active',
+            rawName: site.site_name,
+            rawGrade: site.site_grade || 'A',
+            rawType: site.site_type || 'Indoor',
+            rawArea: site.area || '',
+            rawSubarea: site.subarea || ''
+          };
+        });
         setSites(mapped);
       })
       .catch(err => {
@@ -175,6 +222,16 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
     const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           site.code.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
+
+    // Filter by Area
+    if (selectedArea !== 'All' && site.rawArea !== selectedArea) {
+      return false;
+    }
+
+    // Filter by Subarea
+    if (selectedSubarea !== 'All' && site.rawSubarea !== selectedSubarea) {
+      return false;
+    }
 
     // Admin can see all sites
     if (isAdmin) return true;
@@ -250,17 +307,44 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Site Selection List */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-dark-card border border-dark-border rounded-xl p-4 flex items-center gap-3">
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input 
-                type="text" 
-                placeholder="Search by site code or name..."
-                className="bg-transparent border-0 outline-none w-full text-sm text-gray-200 placeholder-gray-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="bg-dark-card border border-dark-border rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+              <div className="flex items-center gap-3 bg-dark-bg/60 border border-dark-border rounded-lg px-3 py-2 flex-1">
+                <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input 
+                  type="text" 
+                  placeholder="Search by site code or name..."
+                  className="bg-transparent border-0 outline-none w-full text-sm text-gray-200 placeholder-gray-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              {/* Area & Subarea Cascading Filters */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedArea}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                  className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer min-w-[110px]"
+                >
+                  <option value="All">ทุกเขต (All Area)</option>
+                  {uniqueAreas.filter(a => a !== 'All').map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedSubarea}
+                  onChange={(e) => setSelectedSubarea(e.target.value)}
+                  className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer min-w-[120px]"
+                >
+                  <option value="All">ทุกพื้นที่ย่อย (All Subarea)</option>
+                  {availableSubareas.filter(s => s !== 'All').map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {filteredSites.length === 0 ? (
@@ -414,6 +498,30 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 value={editSiteName}
                 onChange={(e) => setEditSiteName(e.target.value)}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เขต/พื้นที่หลัก (Area)</label>
+                <input
+                  type="text"
+                  placeholder="เช่น ภาคเหนือ"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                  value={editArea}
+                  onChange={(e) => setEditArea(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">พื้นที่ย่อย (Sub-Area)</label>
+                <input
+                  type="text"
+                  placeholder="เช่น เชียงใหม่"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                  value={editSubarea}
+                  onChange={(e) => setEditSubarea(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -199,23 +199,29 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       </div>
 
       <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">รอบการตรวจ (RPM Cycle)</label>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เขต/พื้นที่หลัก (Area)</label>
+            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-amber-400 font-semibold truncate">
+              {site?.area || 'ไม่ได้ระบุ'}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">พื้นที่ย่อย (Sub-Area)</label>
+            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-amber-400 font-semibold truncate">
+              {site?.subarea || 'ไม่ได้ระบุ'}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">รอบการตรวจ (Cycle)</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-indigo-400 font-semibold">
               {rpmCycle || 'ไม่ได้ระบุ'}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ผู้ตรวจสอบ (Inspector)</label>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ผู้ตรวจสอบ</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold truncate">
               {inspector || 'ไม่ได้ระบุ'}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เวลาเปิด Job (Job Created At)</label>
-            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-emerald-400 font-medium truncate">
-              {jobOpenedAt || 'กำลังโหลด...'}
             </div>
           </div>
         </div>

@@ -8,6 +8,8 @@ export default function CreateSite() {
   const [siteName, setSiteName] = useState('');
   const [siteGrade, setSiteGrade] = useState('A');
   const [siteType, setSiteType] = useState('Indoor');
+  const [area, setArea] = useState('');
+  const [subarea, setSubarea] = useState('');
   
   // Job SL6 & SAP fields
   const [jobNumberSl6, setJobNumberSl6] = useState('');
@@ -57,6 +59,8 @@ export default function CreateSite() {
           site_name: siteName.trim(),
           site_grade: siteGrade,
           site_type: siteType,
+          area: area.trim() || null,
+          subarea: subarea.trim() || null,
           job_number_sl6: jobNumberSl6.trim() || null,
           sap_number: sapNumber.trim() || null,
           rpm_cycle: rpmCycle.trim() || '2026-R1'
@@ -98,6 +102,8 @@ export default function CreateSite() {
       const siteNameIdx = headers.indexOf('site_name');
       const siteGradeIdx = headers.indexOf('site_grade');
       const siteTypeIdx = headers.indexOf('site_type');
+      const areaIdx = headers.indexOf('area');
+      const subareaIdx = headers.indexOf('subarea');
       
       const sl6Idx = headers.indexOf('job_number_sl6');
       const sapIdx = headers.indexOf('sap_number');
@@ -124,6 +130,9 @@ export default function CreateSite() {
         const rawType = siteTypeIdx !== -1 && siteTypeIdx < columns.length && columns[siteTypeIdx] ? columns[siteTypeIdx].trim() : 'Indoor';
         const site_type = rawType.toLowerCase() === 'outdoor' ? 'Outdoor' : 'Indoor';
 
+        const areaVal = areaIdx !== -1 && areaIdx < columns.length && columns[areaIdx] ? columns[areaIdx].trim() : null;
+        const subareaVal = subareaIdx !== -1 && subareaIdx < columns.length && columns[subareaIdx] ? columns[subareaIdx].trim() : null;
+
         const job_number_sl6 = sl6Idx !== -1 && sl6Idx < columns.length && columns[sl6Idx] ? columns[sl6Idx].trim() : null;
         const sap_number = sapIdx !== -1 && sapIdx < columns.length && columns[sapIdx] ? columns[sapIdx].trim() : null;
         const rpm_cycle = cycleIdx !== -1 && cycleIdx < columns.length && columns[cycleIdx] ? columns[cycleIdx].trim() : '2026-R1';
@@ -134,6 +143,8 @@ export default function CreateSite() {
             site_name,
             site_grade,
             site_type,
+            area: areaVal,
+            subarea: subareaVal,
             job_number_sl6,
             sap_number,
             rpm_cycle
@@ -207,6 +218,29 @@ export default function CreateSite() {
                 className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เขต/พื้นที่หลัก (Area)</label>
+              <input
+                type="text"
+                placeholder="เช่น ภาคเหนือ, BKK-N, Area 1"
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">พื้นที่ย่อย (Sub-Area)</label>
+              <input
+                type="text"
+                placeholder="เช่น เชียงใหม่, Zone A-1, Sub 2"
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
+                value={subarea}
+                onChange={(e) => setSubarea(e.target.value)}
               />
             </div>
           </div>

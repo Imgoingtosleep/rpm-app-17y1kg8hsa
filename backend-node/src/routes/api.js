@@ -99,7 +99,7 @@ router.get('/sites', async (req, res) => {
 });
 
 router.post('/sites', async (req, res) => {
-  const { site_code, site_name, site_grade, site_type, job_number_sl6, sap_number, rpm_cycle } = req.body;
+  const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number, rpm_cycle } = req.body;
   if (!site_code || !site_name) {
     return res.status(400).json({ error: 'site_code และ site_name จำเป็นต้องระบุข้อมูล' });
   }
@@ -118,9 +118,9 @@ router.post('/sites', async (req, res) => {
 
     // Insert site
     const siteResult = await client.query(
-      `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
-       VALUES ($1, $2, $3, $4) RETURNING *;`,
-      [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
+      `INSERT INTO sites (site_code, site_name, site_grade, site_type, area, subarea) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
+      [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor', area ? area.trim() : null, subarea ? subarea.trim() : null]
     );
 
     // If job SL6 or SAP provided, check duplicate and create work order
@@ -155,7 +155,7 @@ router.post('/sites', async (req, res) => {
 // Update a site (Admin only)
 router.put('/sites/:site_id', async (req, res) => {
   const { site_id } = req.params;
-  const { site_name, site_grade, site_type } = req.body;
+  const { site_name, site_grade, site_type, area, subarea } = req.body;
   
   if (!site_name || !site_grade || !site_type) {
     return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -169,9 +169,9 @@ router.put('/sites/:site_id', async (req, res) => {
   try {
     const result = await db.query(
       `UPDATE sites 
-       SET site_name = $1, site_grade = $2, site_type = $3 
-       WHERE site_id = $4 RETURNING *;`,
-      [site_name, site_grade, site_type, siteIdInt]
+       SET site_name = $1, site_grade = $2, site_type = $3, area = $4, subarea = $5 
+       WHERE site_id = $6 RETURNING *;`,
+      [site_name, site_grade, site_type, area ? area.trim() : null, subarea ? subarea.trim() : null, siteIdInt]
     );
 
     if (result.rows.length === 0) {
@@ -256,14 +256,14 @@ router.post('/sites/bulk', async (req, res) => {
 
     await client.query('BEGIN');
     for (const site of sites) {
-      const { site_code, site_name, site_grade, site_type, job_number_sl6, sap_number, rpm_cycle } = site;
+      const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number, rpm_cycle } = site;
       if (!site_code || !site_name) continue;
       
       const codeUpper = site_code.toUpperCase().trim();
       await client.query(
-        `INSERT INTO sites (site_code, site_name, site_grade, site_type, created_at) 
-         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);`,
-        [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
+        `INSERT INTO sites (site_code, site_name, site_grade, site_type, area, subarea, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP);`,
+        [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor', area ? area.trim() : null, subarea ? subarea.trim() : null]
       );
 
       if (job_number_sl6 && sap_number) {
@@ -1144,7 +1144,7 @@ router.post('/workorder/:rpm_id/submit', async (req, res) => {
 router.get('/workorders/all', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT m.*, s.site_name, s.site_type, s.site_grade 
+      `SELECT m.*, s.site_name, s.site_type, s.site_grade, s.area, s.subarea 
        FROM rpm_records_master m
        JOIN sites s ON m.site_code = s.site_code
        ORDER BY m.created_at DESC;`
