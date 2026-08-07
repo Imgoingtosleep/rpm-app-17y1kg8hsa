@@ -168,9 +168,9 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   };
 
   useEffect(() => {
-    // Reset selected site when changing search or cycle
+    // Reset selected site when changing search term, area, or subarea
     setSelectedSite(null);
-  }, [searchTerm, rpmCycle, selectedArea, selectedSubarea]);
+  }, [searchTerm, selectedArea, selectedSubarea]);
 
   useEffect(() => {
     if (selectedSite && rpmCycle) {
@@ -438,16 +438,21 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-3">รอบการตรวจ (RPM Cycle)</label>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-3">
+                  2. เลือกรอบการตรวจ (RPM Cycle) {!selectedSite && <span className="text-amber-400 font-normal border-b border-amber-400/50 text-[10px] ml-1">(กรุณาเลือกสถานีก่อน)</span>}
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {['2026-R1', '2026-R2', '2026-R3'].map((cycle) => (
                     <button
                       key={cycle}
                       type="button"
+                      disabled={!selectedSite}
                       onClick={() => setRpmCycle(cycle)}
                       className={`py-2.5 px-3 text-sm font-semibold rounded-lg border text-center transition-all ${
-                        rpmCycle === cycle
-                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/25'
+                        !selectedSite
+                          ? 'bg-dark-accent/20 border-dark-border/40 text-gray-600 cursor-not-allowed'
+                          : rpmCycle === cycle
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/25 font-bold'
                           : 'bg-dark-accent/40 border-dark-border text-gray-400 hover:text-gray-200 hover:border-gray-600'
                       }`}
                     >
