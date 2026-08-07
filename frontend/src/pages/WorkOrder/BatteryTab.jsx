@@ -517,16 +517,23 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
           <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ระบุตู้ Rectifier</label>
           <select 
             disabled={isReadOnly || rectifierQtyUih === 0}
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
+            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50 font-medium"
             value={selectedRect}
             onChange={(e) => setSelectedRect(e.target.value)}
           >
             {rectifierQtyUih === 0 ? (
               <option value="">ไม่มีตู้ Rectifier (0 ตู้)</option>
             ) : (
-              Array.from({ length: rectifierQtyUih }, (_, i) => `ตู้ที่ ${i + 1}`).map((name, idx) => (
-                <option key={idx} value={name}>{name}</option>
-              ))
+              Array.from({ length: rectifierQtyUih }, (_, i) => `ตู้ที่ ${i + 1}`).map((name, idx) => {
+                const normName = name.replace(/[^0-9]/g, '');
+                const matchedRect = rectifiers.find(r => (r.rect_no || '').replace(/[^0-9]/g, '') === normName) || rectifiers.find(r => r.rect_no === name);
+                const bType = matchedRect ? (matchedRect.battery_type || 'VRLA AGM') : 'VRLA AGM';
+                return (
+                  <option key={idx} value={name}>
+                    {name} ({bType})
+                  </option>
+                );
+              })
             )}
           </select>
         </div>
@@ -540,9 +547,15 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
               onChange={(e) => setBankNo(e.target.value)}
             >
               {(() => {
-                const rawQty = activeRectObj ? parseInt(activeRectObj.battery_qty_bank, 10) : NaN;
-                const availableQty = (!isNaN(rawQty) && rawQty > 0) ? rawQty : 12;
-                const count = Math.min(Math.max(availableQty, 1), 12);
+                let availableQty = 12;
+                if (activeRectObj) {
+                  if (activeRectObj.battery_type === 'VRLA AGM + Lithium' && activeRectObj.vrla_qty_bank) {
+                    availableQty = parseInt(activeRectObj.vrla_qty_bank, 10);
+                  } else if (activeRectObj.battery_qty_bank) {
+                    availableQty = parseInt(activeRectObj.battery_qty_bank, 10);
+                  }
+                }
+                const count = (!isNaN(availableQty) && availableQty > 0) ? Math.min(Math.max(availableQty, 1), 12) : 12;
                 return Array.from({ length: count }, (_, i) => `Bank ${i + 1}`).map((bName) => (
                   <option key={bName} value={bName}>{bName}</option>
                 ));

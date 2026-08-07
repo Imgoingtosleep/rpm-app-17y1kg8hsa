@@ -171,8 +171,8 @@ function WorkOrderPanel() {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
-            // Only show Battery Bank tab if any rectifier is explicitly set to VRLA AGM
-            const hasVrla = data.some(r => r.battery_type === 'VRLA AGM');
+            // Show Battery Bank tab if any rectifier has VRLA AGM or VRLA AGM + Lithium
+            const hasVrla = data.some(r => r.battery_type === 'VRLA AGM' || r.battery_type === 'VRLA AGM + Lithium');
             setHasVrlaBattery(hasVrla);
           } else {
             // Default to hidden when starting or no rectifiers added yet

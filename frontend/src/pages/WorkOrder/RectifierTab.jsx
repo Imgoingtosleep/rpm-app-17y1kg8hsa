@@ -49,6 +49,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [breakerPhase3, setBreakerPhase3] = useState('');
   const [batteryType, setBatteryType] = useState('');
   const [batteryQtyBank, setBatteryQtyBank] = useState('');
+  const [vrlaQtyBank, setVrlaQtyBank] = useState('');
   const [lithiumBanks, setLithiumBanks] = useState({});
   
   // Dynamic Rectifier Count based on master record
@@ -140,6 +141,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       setBreakerPhase3(found.breaker_phase3 || '');
       setBatteryType(found.battery_type || '');
       setBatteryQtyBank(found.battery_qty_bank ? String(found.battery_qty_bank) : '');
+      setVrlaQtyBank(found.vrla_qty_bank ? String(found.vrla_qty_bank) : '');
 
       // Parse JSON or comma-separated lists for per-bank Lithium values
       const parseList = (val) => {
@@ -421,6 +423,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     formData.append('battery_capacity_percent', JSON.stringify(listCapPercent));
     formData.append('battery_alarm', JSON.stringify(listAlarm));
     formData.append('battery_qty_bank', qtyNum);
+    formData.append('vrla_qty_bank', batteryType === 'VRLA AGM + Lithium' ? (parseInt(vrlaQtyBank, 10) || 1) : '');
 
     if (configsMap.breaker_size.isEnabled) {
       if (breakerImg && breakerImg.length > 0) {
@@ -714,10 +717,11 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
               {configsMap.battery_type.isEnabled ? (
                 <div>
                   <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่ {configsMap.battery_type.isRequired && <span className="text-red-400">*</span>}</label>
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
-                    <option value="">-- เลือก --</option>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none font-medium" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
+                    <option value="">-- เลือกชนิดแบตเตอรี่ --</option>
                     <option value="VRLA AGM">VRLA AGM</option>
                     <option value="Lithium">Lithium</option>
+                    <option value="VRLA AGM + Lithium">VRLA AGM + Lithium (ใช้งานผสม)</option>
                   </select>
                 </div>
               ) : (
@@ -725,12 +729,15 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
               )}
               {configsMap.battery_qty_bank.isEnabled ? (
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}</label>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    {batteryType === 'VRLA AGM + Lithium' ? 'จำนวน Lithium Bank Batt' : 'จำนวน Bank Batt'}{' '}
+                    {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}
+                  </label>
                   <input 
                     type="number" 
                     min="1"
                     max="12"
-                    className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" 
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none font-medium" 
                     value={batteryQtyBank} 
                     onChange={(e) => {
                       const val = e.target.value;
@@ -748,9 +755,44 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
               ) : (
                 <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">จำนวน Bank Batt (Disabled)</div>
               )}
+
+              {batteryType === 'VRLA AGM + Lithium' && configsMap.battery_qty_bank.isEnabled && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+                    จำนวน VRLA AGM Bank Batt {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}
+                  </label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    max="12"
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none font-medium" 
+                    value={vrlaQtyBank} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setVrlaQtyBank('');
+                        return;
+                      }
+                      let num = parseInt(val, 10);
+                      if (isNaN(num) || num < 1) num = 1;
+                      if (num > 12) num = 12;
+                      setVrlaQtyBank(num);
+                    }} 
+                  />
+                </div>
+              )}
             </div>
 
-            {batteryType === 'Lithium' && (
+            {batteryType === 'VRLA AGM + Lithium' && (
+              <div className="bg-amber-950/25 border border-amber-500/40 rounded-xl p-3.5 flex items-center gap-3 text-amber-300 text-xs">
+                <span className="text-base">💡</span>
+                <div>
+                  <span className="font-bold">คำแนะนำสำหรับแบตเตอรี่ใช้งานผสม (Hybrid Mode):</span> สำหรับฝั่งแบตเตอรี่ประเภท <span className="font-bold border-b border-amber-400">VRLA AGM</span> ให้สลับไปบันทึกผลทดสอบ Volt/IR และรูปถ่ายรายลูกที่แท็บ <span className="font-bold border-b border-amber-400">Battery Bank</span> ด้านบน
+                </div>
+              </div>
+            )}
+
+            {(batteryType === 'Lithium' || batteryType === 'VRLA AGM + Lithium') && (
               <div className="space-y-4">
                 {Array.from({ length: Math.max(parseInt(batteryQtyBank, 10) || 1, 1) }, (_, i) => i + 1).map((bNum) => {
                   const bVal = lithiumBanks[bNum] || { capacity: '', run: '', soh: '', soc: '', capacityPercent: '', alarm: '' };

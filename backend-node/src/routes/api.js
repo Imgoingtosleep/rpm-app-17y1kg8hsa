@@ -527,7 +527,7 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
     input_current_ac, output_current_dc, surge_status,
     breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
     lithium_capacity, battery_run, battery_soh, battery_soc,
-    battery_capacity_percent, battery_alarm, battery_qty_bank
+    battery_capacity_percent, battery_alarm, battery_qty_bank, vrla_qty_bank
   } = req.body;
 
   const getSiteCode = () => req.query.site_code || req.body.site_code || 'UNKNOWN';
@@ -627,8 +627,8 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           breaker_phase1 = $12, breaker_phase2 = $13, breaker_phase3 = $14, battery_type = $15,
           lithium_capacity = $16, battery_run = $17, battery_soh = $18, battery_soc = $19,
           battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22,
-          lithium_bank_imgs = $23
-        WHERE rect_id = $24 RETURNING *;`,
+          lithium_bank_imgs = $23, vrla_qty_bank = $24
+        WHERE rect_id = $25 RETURNING *;`,
         [
           model, ac_cable_size, breaker_size, breaker_img,
           toNumOrNull(modules_all), toNumOrNull(modules_fail), 
@@ -640,6 +640,7 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           battery_capacity_percent, battery_alarm,
           toNumOrNull(battery_qty_bank),
           JSON.stringify(lithiumBankImgs),
+          toNumOrNull(vrla_qty_bank),
           existing.rows[0].rect_id
         ]
       );
@@ -650,8 +651,8 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run, battery_soh, battery_soc,
-          battery_capacity_percent, battery_alarm, battery_qty_bank, lithium_bank_imgs
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *;`,
+          battery_capacity_percent, battery_alarm, battery_qty_bank, lithium_bank_imgs, vrla_qty_bank
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) RETURNING *;`,
         [
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
           toNumOrNull(modules_all), toNumOrNull(modules_fail),
@@ -662,7 +663,8 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           battery_soh, battery_soc,
           battery_capacity_percent, battery_alarm,
           toNumOrNull(battery_qty_bank),
-          JSON.stringify(lithiumBankImgs)
+          JSON.stringify(lithiumBankImgs),
+          toNumOrNull(vrla_qty_bank)
         ]
       );
     }
