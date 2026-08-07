@@ -501,11 +501,26 @@ router.get('/workorder/:rpm_id/rectifiers', async (req, res) => {
   }
 });
 
-router.post('/workorder/:rpm_id/rectifier', upload.fields([
-  { name: 'breaker_img', maxCount: 10 },
-  { name: 'pdb_temp_img', maxCount: 10 },
-  { name: 'surge_rect_img', maxCount: 10 }
-]), async (req, res) => {
+const handleRectifierUpload = (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      console.error("Multer Upload Error in Rectifier:", err);
+      return res.status(400).json({ error: `เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: ${err.message}` });
+    }
+    // Group uploaded files by fieldname to mimic req.files format from upload.fields
+    if (Array.isArray(req.files)) {
+      const filesMap = {};
+      req.files.forEach(file => {
+        if (!filesMap[file.fieldname]) filesMap[file.fieldname] = [];
+        filesMap[file.fieldname].push(file);
+      });
+      req.files = filesMap;
+    }
+    next();
+  });
+};
+
+router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, res) => {
   const { rpm_id } = req.params;
   const {
     rect_no, model, ac_cable_size, breaker_size, modules_all, modules_fail,
@@ -576,6 +591,32 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
     const pdb_temp_img = mergeImgs(existingRow, 'pdb_temp');
     const surge_rect_img = mergeImgs(existingRow, 'surge_rect');
 
+    // Collect per-bank Lithium images if present
+    const existingLithiumImgs = existingRow && existingRow.lithium_bank_imgs 
+      ? (typeof existingRow.lithium_bank_imgs === 'string' ? JSON.parse(existingRow.lithium_bank_imgs) : existingRow.lithium_bank_imgs)
+      : [];
+
+    const lithiumBankImgs = [];
+    const qtyNum = parseInt(battery_qty_bank, 10) || 1;
+    for (let i = 1; i <= qtyNum; i++) {
+      let bankPaths = [];
+      const prevBankImgs = Array.isArray(existingLithiumImgs[i - 1]) ? existingLithiumImgs[i - 1] : [];
+      
+      if (req.files && req.files[`lithium_bank_img_${i}`]) {
+        const newFiles = req.files[`lithium_bank_img_${i}`].map(f => `/storage/db_img/${getSiteCode()}/${getCycleDir()}/power_rectifier/${getCleanRectNo()}/bank_${i}/${f.filename}`);
+        bankPaths = [...prevBankImgs, ...newFiles];
+      } else {
+        bankPaths = [...prevBankImgs];
+      }
+
+      if (req.body[`lithium_bank_img_path_${i}`]) {
+        const bodyPaths = req.body[`lithium_bank_img_path_${i}`];
+        if (Array.isArray(bodyPaths)) bankPaths = bodyPaths;
+        else if (typeof bodyPaths === 'string') bankPaths = [bodyPaths];
+      }
+      lithiumBankImgs.push(bankPaths);
+    }
+
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
@@ -585,8 +626,9 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           pdb_temp_img = $9, surge_status = $10, surge_rect_img = $11,
           breaker_phase1 = $12, breaker_phase2 = $13, breaker_phase3 = $14, battery_type = $15,
           lithium_capacity = $16, battery_run = $17, battery_soh = $18, battery_soc = $19,
-          battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22
-        WHERE rect_id = $23 RETURNING *;`,
+          battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22,
+          lithium_bank_imgs = $23
+        WHERE rect_id = $24 RETURNING *;`,
         [
           model, ac_cable_size, breaker_size, breaker_img,
           toNumOrNull(modules_all), toNumOrNull(modules_fail), 
@@ -594,9 +636,10 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run,
-          toNumOrNull(battery_soh), toNumOrNull(battery_soc),
+          battery_soh, battery_soc,
           battery_capacity_percent, battery_alarm,
           toNumOrNull(battery_qty_bank),
+          JSON.stringify(lithiumBankImgs),
           existing.rows[0].rect_id
         ]
       );
@@ -607,8 +650,8 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run, battery_soh, battery_soc,
-          battery_capacity_percent, battery_alarm, battery_qty_bank
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING *;`,
+          battery_capacity_percent, battery_alarm, battery_qty_bank, lithium_bank_imgs
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) RETURNING *;`,
         [
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
           toNumOrNull(modules_all), toNumOrNull(modules_fail),
@@ -616,14 +659,16 @@ router.post('/workorder/:rpm_id/rectifier', upload.fields([
           pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run,
-          toNumOrNull(battery_soh), toNumOrNull(battery_soc),
+          battery_soh, battery_soc,
           battery_capacity_percent, battery_alarm,
-          toNumOrNull(battery_qty_bank)
+          toNumOrNull(battery_qty_bank),
+          JSON.stringify(lithiumBankImgs)
         ]
       );
     }
     res.json(result.rows[0]);
   } catch (err) {
+    console.error("Error saving rectifier to DB:", err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -42,6 +42,9 @@ const storage = multer.diskStorage({
     } else if (file.fieldname.startsWith('breaker') || file.fieldname.startsWith('pdb_temp') || file.fieldname.startsWith('surge_rect')) {
       // power_rectifier/rectifier_[no]/
       targetSubpath = path.join('power_rectifier', getCleanRectNo());
+    } else if (file.fieldname.startsWith('lithium_bank_img_')) {
+      const bankIdx = file.fieldname.replace('lithium_bank_img_', '');
+      targetSubpath = path.join('power_rectifier', getCleanRectNo(), `bank_${bankIdx}`);
     } else if (file.fieldname.startsWith('battery')) {
       // power_rectifier/rectifier_[no]/bank_[bank_no]/batt_[cell_no]/
       targetSubpath = path.join('power_rectifier', getCleanRectNo(), getCleanBankName(), `batt_${getCellNo()}`);
@@ -91,6 +94,9 @@ const storage = multer.diskStorage({
       targetSubpath = 'power_ac_main';
     } else if (file.fieldname.startsWith('breaker') || file.fieldname.startsWith('pdb_temp') || file.fieldname.startsWith('surge_rect')) {
       targetSubpath = path.join('power_rectifier', getCleanRectNo());
+    } else if (file.fieldname.startsWith('lithium_bank_img_')) {
+      const bankIdx = file.fieldname.replace('lithium_bank_img_', '');
+      targetSubpath = path.join('power_rectifier', getCleanRectNo(), `bank_${bankIdx}`);
     } else if (file.fieldname.startsWith('battery')) {
       targetSubpath = path.join('power_rectifier', getCleanRectNo(), getCleanBankName(), `batt_${getCellNo()}`);
     } else if (file.fieldname.startsWith('alarm')) {

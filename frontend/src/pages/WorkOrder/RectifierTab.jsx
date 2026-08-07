@@ -48,13 +48,8 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [breakerPhase2, setBreakerPhase2] = useState('');
   const [breakerPhase3, setBreakerPhase3] = useState('');
   const [batteryType, setBatteryType] = useState('');
-  const [lithiumCapacity, setLithiumCapacity] = useState('');
-  const [batteryRun, setBatteryRun] = useState('');
-  const [batterySoh, setBatterySoh] = useState('');
-  const [batterySoc, setBatterySoc] = useState('');
-  const [batteryCapacityPercent, setBatteryCapacityPercent] = useState('');
-  const [batteryAlarm, setBatteryAlarm] = useState('');
   const [batteryQtyBank, setBatteryQtyBank] = useState('');
+  const [lithiumBanks, setLithiumBanks] = useState({});
   
   // Dynamic Rectifier Count based on master record
   const [rectifierQtyUih, setRectifierQtyUih] = useState(rectifierQtyUihProp !== undefined ? rectifierQtyUihProp : 6);
@@ -144,13 +139,49 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       setBreakerPhase2(found.breaker_phase2 || '');
       setBreakerPhase3(found.breaker_phase3 || '');
       setBatteryType(found.battery_type || '');
-      setLithiumCapacity(found.lithium_capacity || '');
-      setBatteryRun(found.battery_run || '');
-      setBatterySoh(found.battery_soh !== null && found.battery_soh !== undefined ? found.battery_soh : '');
-      setBatterySoc(found.battery_soc !== null && found.battery_soc !== undefined ? found.battery_soc : '');
-      setBatteryCapacityPercent(found.battery_capacity_percent !== null && found.battery_capacity_percent !== undefined ? found.battery_capacity_percent : '');
-      setBatteryAlarm(found.battery_alarm || '');
       setBatteryQtyBank(found.battery_qty_bank ? String(found.battery_qty_bank) : '');
+
+      // Parse JSON or comma-separated lists for per-bank Lithium values
+      const parseList = (val) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'object') return val;
+        if (typeof val === 'string') {
+          if (val.trim().startsWith('[') || val.trim().startsWith('{')) {
+            try { return JSON.parse(val); } catch (e) {}
+          }
+          return val.split('|');
+        }
+        return [];
+      };
+
+      const capacities = parseList(found.lithium_capacity);
+      const runs = parseList(found.battery_run);
+      const sohs = parseList(found.battery_soh);
+      const socs = parseList(found.battery_soc);
+      const capPercents = parseList(found.battery_capacity_percent);
+      const alarms = parseList(found.battery_alarm);
+
+      const bankImgs = parseList(found.lithium_bank_imgs);
+
+      const qty = parseInt(found.battery_qty_bank, 10) || 1;
+      const initialLithiumMap = {};
+      for (let i = 1; i <= Math.max(qty, 12); i++) {
+        const idx = i - 1;
+        const bImgVal = bankImgs[idx];
+        const bImgList = Array.isArray(bImgVal) ? bImgVal : (bImgVal ? [bImgVal] : []);
+        initialLithiumMap[i] = {
+          capacity: capacities[idx] || '',
+          run: runs[idx] || '',
+          soh: sohs[idx] !== undefined && sohs[idx] !== null ? sohs[idx] : '',
+          soc: socs[idx] !== undefined && socs[idx] !== null ? socs[idx] : '',
+          capacityPercent: capPercents[idx] || '',
+          alarm: alarms[idx] || '',
+          files: [],
+          existingPath: bImgList
+        };
+      }
+      setLithiumBanks(initialLithiumMap);
       
       setExistingPaths({
         breaker: toArray(found.breaker_img),
@@ -172,13 +203,8 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       setBreakerPhase2('');
       setBreakerPhase3('');
       setBatteryType('');
-      setLithiumCapacity('');
-      setBatteryRun('');
-      setBatterySoh('');
-      setBatterySoc('');
-      setBatteryCapacityPercent('');
-      setBatteryAlarm('');
       setBatteryQtyBank('');
+      setLithiumBanks({});
       
       setExistingPaths({
         breaker: null,
@@ -290,33 +316,37 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       return;
     }
     if (batteryType === 'Lithium') {
-      if (configsMap.lithium_capacity.isEnabled && configsMap.lithium_capacity.isRequired && !lithiumCapacity) {
-        alert('กรุณาเลือก Lithium Capacity');
-        return;
-      }
-      if (configsMap.battery_run.isEnabled && configsMap.battery_run.isRequired && !batteryRun) {
-        alert('กรุณาเลือก Battery RUN');
-        return;
-      }
-      if (configsMap.battery_soh.isEnabled && configsMap.battery_soh.isRequired && (batterySoh === '' || batterySoh === null || batterySoh === undefined)) {
-        alert('กรุณากรอก Battery % SOH');
-        return;
-      }
-      if (configsMap.battery_soc.isEnabled && configsMap.battery_soc.isRequired && (batterySoc === '' || batterySoc === null || batterySoc === undefined)) {
-        alert('กรุณากรอก Battery % SOC');
-        return;
-      }
-      if (configsMap.battery_capacity_percent.isEnabled && configsMap.battery_capacity_percent.isRequired && (batteryCapacityPercent === '' || batteryCapacityPercent === null || batteryCapacityPercent === undefined)) {
-        alert('กรุณากรอก Battery เปอร์เซ็น Capacity');
-        return;
-      }
-      if (configsMap.battery_alarm.isEnabled && configsMap.battery_alarm.isRequired && !batteryAlarm) {
-        alert('กรุณาเลือก Battery Alarm Status');
-        return;
+      const qtyNum = parseInt(batteryQtyBank, 10) || 1;
+      for (let i = 1; i <= qtyNum; i++) {
+        const bVal = lithiumBanks[i] || {};
+        if (configsMap.lithium_capacity.isEnabled && configsMap.lithium_capacity.isRequired && !bVal.capacity) {
+          alert(`กรุณาเลือก Lithium Capacity สำหรับ Bank #${i}`);
+          return;
+        }
+        if (configsMap.battery_run.isEnabled && configsMap.battery_run.isRequired && !bVal.run) {
+          alert(`กรุณาเลือก Battery RUN สำหรับ Bank #${i}`);
+          return;
+        }
+        if (configsMap.battery_soh.isEnabled && configsMap.battery_soh.isRequired && (bVal.soh === '' || bVal.soh === null || bVal.soh === undefined)) {
+          alert(`กรุณากรอก Battery % SOH สำหรับ Bank #${i}`);
+          return;
+        }
+        if (configsMap.battery_soc.isEnabled && configsMap.battery_soc.isRequired && (bVal.soc === '' || bVal.soc === null || bVal.soc === undefined)) {
+          alert(`กรุณากรอก Battery % SOC สำหรับ Bank #${i}`);
+          return;
+        }
+        if (configsMap.battery_capacity_percent.isEnabled && configsMap.battery_capacity_percent.isRequired && (bVal.capacityPercent === '' || bVal.capacityPercent === null || bVal.capacityPercent === undefined)) {
+          alert(`กรุณากรอก Battery เปอร์เซ็น Capacity สำหรับ Bank #${i}`);
+          return;
+        }
+        if (configsMap.battery_alarm.isEnabled && configsMap.battery_alarm.isRequired && !bVal.alarm) {
+          alert(`กรุณาเลือก Battery Alarm Status สำหรับ Bank #${i}`);
+          return;
+        }
       }
     }
     if (configsMap.battery_qty_bank.isEnabled && configsMap.battery_qty_bank.isRequired && !batteryQtyBank) {
-      alert('กรุณาเลือก จำนวน Bank Batt');
+      alert('กรุณาเลือก/กรอก จำนวน Bank Batt');
       return;
     }
 
@@ -357,13 +387,40 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     formData.append('breaker_phase2', breakerPhase2);
     formData.append('breaker_phase3', breakerPhase3);
     formData.append('battery_type', batteryType);
-    formData.append('lithium_capacity', lithiumCapacity);
-    formData.append('battery_run', batteryRun);
-    formData.append('battery_soh', batterySoh);
-    formData.append('battery_soc', batterySoc);
-    formData.append('battery_capacity_percent', batteryCapacityPercent);
-    formData.append('battery_alarm', batteryAlarm);
-    formData.append('battery_qty_bank', parseInt(batteryQtyBank, 10));
+    const qtyNum = parseInt(batteryQtyBank, 10) || 1;
+    const listCapacity = [];
+    const listRun = [];
+    const listSoh = [];
+    const listSoc = [];
+    const listCapPercent = [];
+    const listAlarm = [];
+
+    for (let i = 1; i <= qtyNum; i++) {
+      const bData = lithiumBanks[i] || {};
+      listCapacity.push(bData.capacity || '');
+      listRun.push(bData.run || '');
+      listSoh.push(bData.soh !== undefined && bData.soh !== null ? bData.soh : '');
+      listSoc.push(bData.soc !== undefined && bData.soc !== null ? bData.soc : '');
+      listCapPercent.push(bData.capacityPercent || '');
+      listAlarm.push(bData.alarm || '');
+
+      if (bData.files && bData.files.length > 0) {
+        bData.files.forEach(file => {
+          formData.append(`lithium_bank_img_${i}`, file);
+        });
+      }
+      if (bData.existingPath && bData.existingPath.length > 0) {
+        bData.existingPath.forEach(p => formData.append(`lithium_bank_img_path_${i}`, p));
+      }
+    }
+
+    formData.append('lithium_capacity', JSON.stringify(listCapacity));
+    formData.append('battery_run', JSON.stringify(listRun));
+    formData.append('battery_soh', JSON.stringify(listSoh));
+    formData.append('battery_soc', JSON.stringify(listSoc));
+    formData.append('battery_capacity_percent', JSON.stringify(listCapPercent));
+    formData.append('battery_alarm', JSON.stringify(listAlarm));
+    formData.append('battery_qty_bank', qtyNum);
 
     if (configsMap.breaker_size.isEnabled) {
       if (breakerImg && breakerImg.length > 0) {
@@ -600,101 +657,6 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             )}
           </div>
 
-          <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-6">
-            <h4 className="font-bold text-white text-md border-b border-dark-border/60 pb-2">ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {configsMap.battery_type.isEnabled ? (
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่ {configsMap.battery_type.isRequired && <span className="text-red-400">*</span>}</label>
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
-                    <option value="">-- เลือก --</option>
-                    <option value="VRLA AGM">VRLA AGM</option>
-                    <option value="Lithium">Lithium</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">ชนิดแบตเตอรี่ (Disabled)</div>
-              )}
-              {configsMap.battery_qty_bank.isEnabled ? (
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}</label>
-                  <input type="number" className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryQtyBank} onChange={(e) => setBatteryQtyBank(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
-                </div>
-              ) : (
-                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">จำนวน Bank Batt (Disabled)</div>
-              )}
-            </div>
-
-            {batteryType === 'Lithium' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 bg-dark-bg/60 p-4 rounded-xl border border-dark-border/40">
-                {configsMap.lithium_capacity.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Lithium Capacity {configsMap.lithium_capacity.isRequired && <span className="text-red-400">*</span>}</label>
-                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={lithiumCapacity} onChange={(e) => setLithiumCapacity(e.target.value)}>
-                      <option value="">-- เลือก --</option>
-                      <option value="12AH">12AH</option>
-                      <option value="40AH">40AH</option>
-                      <option value="100AH">100AH</option>
-                      <option value="150AH">150AH</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Lithium Capacity (Disabled)</div>
-                )}
-                {configsMap.battery_run.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery RUN {configsMap.battery_run.isRequired && <span className="text-red-400">*</span>}</label>
-                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryRun} onChange={(e) => setBatteryRun(e.target.value)}>
-                      <option value="">-- เลือก --</option>
-                      <option value="ON (เขียว)">ON (เขียว)</option>
-                      <option value="OFF (ดับ)">OFF (ดับ)</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery RUN (Disabled)</div>
-                )}
-                {configsMap.battery_alarm.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery Alarm Status {configsMap.battery_alarm.isRequired && <span className="text-red-400">*</span>}</label>
-                    <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryAlarm} onChange={(e) => setBatteryAlarm(e.target.value)}>
-                      <option value="">-- เลือก --</option>
-                      <option value="Alarm LED (สีแดง) ดับ">Alarm LED (สีแดง) ดับ</option>
-                      <option value="Alarm LED (สีแดง) ติด">Alarm LED (สีแดง) ติด</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery Alarm Status (Disabled)</div>
-                )}
-                {configsMap.battery_soh.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOH (State of Health) {configsMap.battery_soh.isRequired && <span className="text-red-400">*</span>}</label>
-                    <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoh} onChange={(e) => setBatterySoh(e.target.value === '' ? '' : parseFloat(e.target.value))} />
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOH (Disabled)</div>
-                )}
-                {configsMap.battery_soc.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery % SOC (State of Charge) {configsMap.battery_soc.isRequired && <span className="text-red-400">*</span>}</label>
-                    <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batterySoc} onChange={(e) => setBatterySoc(e.target.value === '' ? '' : parseFloat(e.target.value))} />
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOC (Disabled)</div>
-                )}
-                {configsMap.battery_capacity_percent.isEnabled ? (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">Battery เปอร์เซ็น Capacity {configsMap.battery_capacity_percent.isRequired && <span className="text-red-400">*</span>}</label>
-                    <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryCapacityPercent} onChange={(e) => setBatteryCapacityPercent(e.target.value)} />
-                  </div>
-                ) : (
-                  <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % Capacity (Disabled)</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <hr className="border-dark-border" />
-
           <div>
             <h4 className="font-bold text-white mb-4">รูปถ่ายประจำตู้ Rectifier (ครบถ้วนตาม Diagram)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -741,6 +703,157 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                 </div>
               )}
             </div>
+          </div>
+
+          <hr className="border-dark-border" />
+
+          <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-6">
+            <h4 className="font-bold text-white text-md border-b border-dark-border/60 pb-2">ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {configsMap.battery_type.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ชนิดแบตเตอรี่ {configsMap.battery_type.isRequired && <span className="text-red-400">*</span>}</label>
+                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={batteryType} onChange={(e) => setBatteryType(e.target.value)}>
+                    <option value="">-- เลือก --</option>
+                    <option value="VRLA AGM">VRLA AGM</option>
+                    <option value="Lithium">Lithium</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">ชนิดแบตเตอรี่ (Disabled)</div>
+              )}
+              {configsMap.battery_qty_bank.isEnabled ? (
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">จำนวน Bank Batt {configsMap.battery_qty_bank.isRequired && <span className="text-red-400">*</span>}</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    max="12"
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" 
+                    value={batteryQtyBank} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setBatteryQtyBank('');
+                        return;
+                      }
+                      let num = parseInt(val, 10);
+                      if (isNaN(num) || num < 1) num = 1;
+                      if (num > 12) num = 12;
+                      setBatteryQtyBank(num);
+                    }} 
+                  />
+                </div>
+              ) : (
+                <div className="opacity-40 bg-dark-bg/20 p-3 border border-dark-border/40 rounded-lg text-xs text-gray-500 line-through">จำนวน Bank Batt (Disabled)</div>
+              )}
+            </div>
+
+            {batteryType === 'Lithium' && (
+              <div className="space-y-4">
+                {Array.from({ length: Math.max(parseInt(batteryQtyBank, 10) || 1, 1) }, (_, i) => i + 1).map((bNum) => {
+                  const bVal = lithiumBanks[bNum] || { capacity: '', run: '', soh: '', soc: '', capacityPercent: '', alarm: '' };
+                  const handleBankFieldChange = (field, val) => {
+                    setLithiumBanks(prev => ({
+                      ...prev,
+                      [bNum]: {
+                        ...(prev[bNum] || { capacity: '', run: '', soh: '', soc: '', capacityPercent: '', alarm: '' }),
+                        [field]: val
+                      }
+                    }));
+                  };
+
+                  return (
+                    <div key={bNum} className="bg-dark-bg/60 p-4 rounded-xl border border-dark-border/40 space-y-3">
+                      <div className="text-xs font-bold text-indigo-400 border-b border-dark-border/40 pb-1">
+                        ข้อมูล Lithium Bank #{bNum}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {configsMap.lithium_capacity.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Lithium Capacity {configsMap.lithium_capacity.isRequired && <span className="text-red-400">*</span>}</label>
+                            <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.capacity} onChange={(e) => handleBankFieldChange('capacity', e.target.value)}>
+                              <option value="">-- เลือก --</option>
+                              <option value="12AH">12AH</option>
+                              <option value="40AH">40AH</option>
+                              <option value="100AH">100AH</option>
+                              <option value="150AH">150AH</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Lithium Capacity (Disabled)</div>
+                        )}
+                        {configsMap.battery_run.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Battery RUN {configsMap.battery_run.isRequired && <span className="text-red-400">*</span>}</label>
+                            <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.run} onChange={(e) => handleBankFieldChange('run', e.target.value)}>
+                              <option value="">-- เลือก --</option>
+                              <option value="ON (เขียว)">ON (เขียว)</option>
+                              <option value="OFF (ดับ)">OFF (ดับ)</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery RUN (Disabled)</div>
+                        )}
+                        {configsMap.battery_alarm.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Battery Alarm Status {configsMap.battery_alarm.isRequired && <span className="text-red-400">*</span>}</label>
+                            <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.alarm} onChange={(e) => handleBankFieldChange('alarm', e.target.value)}>
+                              <option value="">-- เลือก --</option>
+                              <option value="Alarm LED (สีแดง) ดับ">Alarm LED (สีแดง) ดับ</option>
+                              <option value="Alarm LED (สีแดง) ติด">Alarm LED (สีแดง) ติด</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery Alarm Status (Disabled)</div>
+                        )}
+                        {configsMap.battery_soh.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Battery % SOH (State of Health) {configsMap.battery_soh.isRequired && <span className="text-red-400">*</span>}</label>
+                            <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.soh} onChange={(e) => handleBankFieldChange('soh', e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOH (Disabled)</div>
+                        )}
+                        {configsMap.battery_soc.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Battery % SOC (State of Charge) {configsMap.battery_soc.isRequired && <span className="text-red-400">*</span>}</label>
+                            <input type="number" step="any" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.soc} onChange={(e) => handleBankFieldChange('soc', e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % SOC (Disabled)</div>
+                        )}
+                        {configsMap.battery_capacity_percent.isEnabled ? (
+                          <div>
+                            <label className="block text-xs font-semibold uppercase text-gray-400 mb-1.5">Battery เปอร์เซ็น Capacity {configsMap.battery_capacity_percent.isRequired && <span className="text-red-400">*</span>}</label>
+                            <input type="text" className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" value={bVal.capacityPercent} onChange={(e) => handleBankFieldChange('capacityPercent', e.target.value)} />
+                          </div>
+                        ) : (
+                          <div className="opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Battery % Capacity (Disabled)</div>
+                        )}
+                      </div>
+
+                      {/* Image Upload Manager for each Lithium Bank */}
+                      <div className="pt-2 border-t border-dark-border/30">
+                        <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                          รูปถ่ายประจำ Lithium Bank #{bNum} (จำกัดสูงสุด 10 รูป)
+                        </label>
+                        <ImagePreviewManager
+                          files={bVal.files || []}
+                          existingPaths={bVal.existingPath || []}
+                          onFilesChange={(newFiles) => handleBankFieldChange('files', newFiles)}
+                          onExistingRemove={(path) => {
+                            const updatedExisting = (bVal.existingPath || []).filter(p => p !== path);
+                            handleBankFieldChange('existingPath', updatedExisting);
+                          }}
+                          isReadOnly={isReadOnly}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </fieldset>
 

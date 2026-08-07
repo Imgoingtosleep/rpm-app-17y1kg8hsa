@@ -161,8 +161,45 @@ function WorkOrderPanel() {
     }));
   };
 
-  const totalCompleted = Object.values(completedSections).filter(Boolean).length;
-  const progressPercent = Math.round((totalCompleted / 6) * 100);
+  const [hasVrlaBattery, setHasVrlaBattery] = useState(false);
+
+  // Check if any rectifier uses VRLA AGM battery
+  useEffect(() => {
+    if (!rpmId) return;
+    const checkBatteryType = () => {
+      fetch(`/api/workorder/${rpmId}/rectifiers`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            // Only show Battery Bank tab if any rectifier is explicitly set to VRLA AGM
+            const hasVrla = data.some(r => r.battery_type === 'VRLA AGM');
+            setHasVrlaBattery(hasVrla);
+          } else {
+            // Default to hidden when starting or no rectifiers added yet
+            setHasVrlaBattery(false);
+          }
+        })
+        .catch(err => console.error("Error checking rectifier battery types:", err));
+    };
+
+    checkBatteryType();
+  }, [rpmId, activeTab, site_code]);
+
+  const allTabs = [
+    { id: 'master', label: 'Master Site' },
+    { id: 'acmain', label: 'AC Main' },
+    { id: 'rectifier', label: 'Rectifier' },
+    { id: 'battery', label: 'Battery Bank' },
+    { id: 'facilities', label: 'Facilities' },
+    { id: 'summary', label: 'สรุปปัญหาหน้างาน' },
+  ];
+
+  // Default to HIDING Battery Bank tab unless VRLA AGM is selected
+  const tabList = hasVrlaBattery ? allTabs : allTabs.filter(t => t.id !== 'battery');
+
+  const totalRequiredSections = hasVrlaBattery ? 6 : 5;
+  const activeCompletedCount = tabList.filter(t => completedSections[t.id]).length;
+  const progressPercent = Math.round((activeCompletedCount / totalRequiredSections) * 100);
 
   const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
 
@@ -185,15 +222,6 @@ function WorkOrderPanel() {
         return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} onRectifierQtyChange={setRectifierQtyUih} />;
     }
   };
-
-  const tabList = [
-    { id: 'master', label: 'Master Site' },
-    { id: 'acmain', label: 'AC Main' },
-    { id: 'rectifier', label: 'Rectifier' },
-    { id: 'battery', label: 'Battery Bank' },
-    { id: 'facilities', label: 'Facilities' },
-    { id: 'summary', label: 'สรุปปัญหาหน้างาน' },
-  ];
 
   return (
     <MainLayout 
@@ -236,8 +264,8 @@ function WorkOrderPanel() {
             <button 
               disabled={userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')}
               onClick={async () => {
-                if (totalCompleted < 6) {
-                  alert('กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง 6 ส่วนก่อนส่งงานครับ!');
+                if (activeCompletedCount < totalRequiredSections) {
+                  alert(`กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง ${totalRequiredSections} ส่วนก่อนส่งงานครับ!`);
                   return;
                 }
                 if (!rpmId) {
@@ -265,12 +293,12 @@ function WorkOrderPanel() {
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
                 userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')
                   ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
-                  : totalCompleted === 6
+                  : activeCompletedCount === totalRequiredSections
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-indigo-600/20'
               }`}
             >
-              {isSubmitted ? 'Submitted (ส่งแล้ว) ✓' : `Submit Work Order ${totalCompleted === 6 ? '✓' : ''}`}
+              {isSubmitted ? 'Submitted (ส่งแล้ว) ✓' : `Submit Work Order ${activeCompletedCount === totalRequiredSections ? '✓' : ''}`}
             </button>
           </div>
         </div>
@@ -280,7 +308,7 @@ function WorkOrderPanel() {
           <div className="flex justify-between items-center">
             <span className="text-sm font-bold text-gray-300">ความคืบหน้าการกรอกข้อมูล (Work Order Progress)</span>
             <span className="text-sm font-extrabold text-indigo-400">
-              {progressPercent}% ({totalCompleted} จาก 6 ส่วน)
+              {progressPercent}% ({activeCompletedCount} จาก {totalRequiredSections} ส่วน)
             </span>
           </div>
           <div className="w-full bg-dark-bg h-3 rounded-full overflow-hidden border border-dark-border/40">

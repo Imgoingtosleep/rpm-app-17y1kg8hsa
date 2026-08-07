@@ -357,6 +357,11 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     }
   };
 
+  // Resolve active rectifier object and its battery_type
+  const activeRectObj = rectifiers.find(r => r.rect_no === selectedRect);
+  const rectBatteryType = activeRectObj ? activeRectObj.battery_type : 'VRLA AGM';
+  const isLithiumMode = rectBatteryType === 'Lithium';
+
   return (
     <div className="p-8 space-y-6">
       <div>
@@ -382,31 +387,54 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
             )}
           </select>
         </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลือก Bank</label>
-          <select 
-            disabled={isReadOnly}
-            className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
-            value={bankNo}
-            onChange={(e) => setBankNo(e.target.value)}
-          >
-            <option>Bank 1</option>
-            <option>Bank 2</option>
-            <option>Bank 3</option>
-            <option>Bank 4</option>
-            <option>Bank 5</option>
-            <option>Bank 6</option>
-            <option>Bank 7</option>
-            <option>Bank 8</option>
-            <option>Bank 9</option>
-            <option>Bank 10</option>
-            <option>Bank 11</option>
-            <option>Bank 12</option>
-          </select>
-        </div>
+        {!isLithiumMode && (
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลือก Bank</label>
+            <select 
+              disabled={isReadOnly}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
+              value={bankNo}
+              onChange={(e) => setBankNo(e.target.value)}
+            >
+              <option>Bank 1</option>
+              <option>Bank 2</option>
+              <option>Bank 3</option>
+              <option>Bank 4</option>
+              <option>Bank 5</option>
+              <option>Bank 6</option>
+              <option>Bank 7</option>
+              <option>Bank 8</option>
+              <option>Bank 9</option>
+              <option>Bank 10</option>
+              <option>Bank 11</option>
+              <option>Bank 12</option>
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* Battery Bank metadata */}
+      {isLithiumMode ? (
+        <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-6 text-center space-y-3">
+          <div className="text-indigo-300 font-bold text-base">
+            ตู้ Rectifier นี้ถูกตั้งค่าเป็นประเภทแบตเตอรี่ Lithium
+          </div>
+          <p className="text-gray-400 text-xs max-w-xl mx-auto">
+            สำหรับแบตเตอรี่ประเภท Lithium ข้อมูลสถานะ สเปก การทำงาน และ % SOH / % SOC จะถูกบันทึกรวบยอดอยู่ที่ส่วน "ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)" ในหน้าตู้ Rectifier เรียบร้อยแล้ว จึงไม่มีการแยกกรอก Bank หรือ Cell รายลูกในหน้านี้
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const rectTabBtn = document.querySelector('button[data-tab="rectifier"]');
+              if (rectTabBtn) rectTabBtn.click();
+            }}
+            className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-all shadow-md inline-block"
+          >
+            ไปที่หน้าตู้ Rectifier เพื่อตรวจสอบข้อมูล Lithium &rarr;
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Battery Bank metadata */}
       <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-4">
         <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -693,6 +721,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
           );
         })}
       </div>
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 }
