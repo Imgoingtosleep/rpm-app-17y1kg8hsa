@@ -20,7 +20,7 @@ const BATTERY_MODELS = [
   { brand: "Outdo OT12-12(12AH)", capacity: "12AH", specIr: 11.00, abnormalIr: 22 }
 ];
 
-export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
+export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
   const [rectifiers, setRectifiers] = useState([]);
@@ -45,6 +45,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [loadedBankRect, setLoadedBankRect] = useState({ bank: '', rect: null });
+  const [rectifierQtyUih, setRectifierQtyUih] = useState(rectifierQtyUihProp !== undefined ? rectifierQtyUihProp : 6);
+
+  useEffect(() => {
+    if (rectifierQtyUihProp !== undefined) {
+      setRectifierQtyUih(rectifierQtyUihProp);
+    }
+  }, [rectifierQtyUihProp]);
 
   // 1. Fetch rectifiers for current workorder
   useEffect(() => {
@@ -57,6 +64,16 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         }
       })
       .catch(err => console.error("Error fetching rectifiers:", err));
+
+    // Fetch master record for rectifier_qty_uih
+    fetch(`/api/workorder/${rpmId}/master`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.rectifier_qty_uih !== undefined && data.rectifier_qty_uih !== null) {
+          setRectifierQtyUih(parseInt(data.rectifier_qty_uih, 10));
+        }
+      })
+      .catch(err => console.error("Error fetching master record:", err));
 
     // Fetch configs
     fetch('/api/field-configs')
@@ -229,7 +246,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     const cfg = fieldConfigs.find(c => c.field_name === name);
     return {
       isEnabled: cfg ? cfg.is_enabled : true,
-      isRequired: cfg ? cfg.is_required : true
+      isRequired: cfg ? cfg.is_required : true,
+      dropdownOptions: cfg && cfg.dropdown_options ? cfg.dropdown_options : []
     };
   };
 
@@ -347,17 +365,18 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         <div>
           <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ระบุตู้ Rectifier</label>
           <select 
-            disabled={isReadOnly}
+            disabled={isReadOnly || rectifierQtyUih === 0}
             className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
             value={selectedRect}
             onChange={(e) => setSelectedRect(e.target.value)}
           >
-            <option>ตู้ที่ 1</option>
-            <option>ตู้ที่ 2</option>
-            <option>ตู้ที่ 3</option>
-            <option>ตู้ที่ 4</option>
-            <option>ตู้ที่ 5</option>
-            <option>ตู้ที่ 6</option>
+            {rectifierQtyUih === 0 ? (
+              <option value="">ไม่มีตู้ Rectifier (0 ตู้)</option>
+            ) : (
+              Array.from({ length: rectifierQtyUih }, (_, i) => `ตู้ที่ ${i + 1}`).map((name, idx) => (
+                <option key={idx} value={name}>{name}</option>
+              ))
+            )}
           </select>
         </div>
         <div>
@@ -411,9 +430,24 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                   disabled={isReadOnly}
                 >
                   <option value="">-- เลือกยี่ห้อ Bank --</option>
-                  {BATTERY_MODELS.map((model, idx) => (
-                    <option key={idx} value={model.brand}>{model.brand}</option>
-                  ))}
+                  {(() => {
+                    const extraOpts = configsMap.brand.dropdownOptions || [];
+                    const excluded = extraOpts.filter(o => o.startsWith('__EXCLUDE__:')).map(o => o.replace('__EXCLUDE__:', ''));
+                    const added = extraOpts.filter(o => !o.startsWith('__EXCLUDE__:'));
+
+                    const defaultFiltered = BATTERY_MODELS.filter(m => !excluded.includes(m.brand));
+
+                    return (
+                      <>
+                        {defaultFiltered.map((model, idx) => (
+                          <option key={idx} value={model.brand}>{model.brand}</option>
+                        ))}
+                        {added.map((customOpt, idx) => (
+                          <option key={`custom-${idx}`} value={customOpt}>{customOpt}</option>
+                        ))}
+                      </>
+                    );
+                  })()}
                   <option value="custom">อื่น ๆ (ระบุเอง)</option>
                 </select>
               ) : (

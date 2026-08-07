@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS field_configs (
     field_name VARCHAR(100) NOT NULL,
     is_required BOOLEAN DEFAULT TRUE,
     is_enabled BOOLEAN DEFAULT TRUE,
+    dropdown_options TEXT[], -- รายการตัวเลือกเพิ่มเติมสำหรับฟิลด์ Dropdown
     UNIQUE(tab_name, field_name)
 );
 

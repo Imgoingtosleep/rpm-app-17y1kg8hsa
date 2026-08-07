@@ -261,15 +261,15 @@ router.post('/sites/bulk', async (req, res) => {
       
       const codeUpper = site_code.toUpperCase().trim();
       await client.query(
-        `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
-         VALUES ($1, $2, $3, $4);`,
+        `INSERT INTO sites (site_code, site_name, site_grade, site_type, created_at) 
+         VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);`,
         [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
       );
 
       if (job_number_sl6 && sap_number) {
         await client.query(
-          `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status) 
-           VALUES ($1, $2, $3, $4, 'Pending');`,
+          `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, created_at) 
+           VALUES ($1, $2, $3, $4, 'Pending', CURRENT_TIMESTAMP);`,
           [codeUpper, job_number_sl6.trim(), sap_number.trim(), rpm_cycle || '2026-R1']
         );
       }
@@ -938,15 +938,18 @@ router.get('/field-configs', async (req, res) => {
 
 // 10. Update Field Config
 router.post('/field-configs/update', async (req, res) => {
-  const { tab_name, field_name, is_required, is_enabled } = req.body;
+  const { tab_name, field_name, is_required, is_enabled, dropdown_options } = req.body;
   try {
     const result = await db.query(
-      `INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled, dropdown_options)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (tab_name, field_name)
-       DO UPDATE SET is_required = EXCLUDED.is_required, is_enabled = EXCLUDED.is_enabled
+       DO UPDATE SET 
+         is_required = COALESCE(EXCLUDED.is_required, field_configs.is_required), 
+         is_enabled = COALESCE(EXCLUDED.is_enabled, field_configs.is_enabled),
+         dropdown_options = COALESCE(EXCLUDED.dropdown_options, field_configs.dropdown_options)
        RETURNING *;`,
-      [tab_name, field_name, is_required, is_enabled]
+      [tab_name, field_name, is_required, is_enabled, dropdown_options]
     );
     res.json(result.rows[0]);
   } catch (err) {

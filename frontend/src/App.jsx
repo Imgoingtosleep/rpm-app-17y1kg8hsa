@@ -158,23 +158,25 @@ function WorkOrderPanel() {
   const totalCompleted = Object.values(completedSections).filter(Boolean).length;
   const progressPercent = Math.round((totalCompleted / 6) * 100);
 
+  const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
+
   const renderTabContent = () => {
     const isReadOnly = userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin');
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} onRectifierQtyChange={setRectifierQtyUih} />;
       case 'acmain':
         return <AcMainTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
       case 'rectifier':
-        return <RectifierTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} />;
+        return <RectifierTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} rectifierQtyUihProp={rectifierQtyUih} />;
       case 'battery':
-        return <BatteryTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} />;
+        return <BatteryTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} rectifierQtyUihProp={rectifierQtyUih} />;
       case 'facilities':
         return <FacilitiesTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
       case 'summary':
         return <SummaryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('summary')} isReadOnly={isReadOnly} />;
       default:
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} />;
+        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} onRectifierQtyChange={setRectifierQtyUih} />;
     }
   };
 

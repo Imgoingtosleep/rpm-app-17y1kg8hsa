@@ -38,6 +38,8 @@ ALTER TABLE systems_and_facilities ADD COLUMN IF NOT EXISTS control_air_status_i
 
 ALTER TABLE rpm_records_master ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
 
+ALTER TABLE field_configs ADD COLUMN IF NOT EXISTS dropdown_options TEXT[];
+
 -- Increase precision of numeric fields to prevent numeric field overflow
 ALTER TABLE battery_tests ALTER COLUMN voltage TYPE NUMERIC(10,2);
 ALTER TABLE battery_tests ALTER COLUMN internal_resistance TYPE NUMERIC(10,2);

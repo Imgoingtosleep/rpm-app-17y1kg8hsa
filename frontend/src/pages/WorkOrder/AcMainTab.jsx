@@ -99,8 +99,18 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     const cfg = fieldConfigs.find(c => c.field_name === name);
     return {
       isEnabled: cfg ? cfg.is_enabled : true,
-      isRequired: cfg ? cfg.is_required : true
+      isRequired: cfg ? cfg.is_required : true,
+      dropdownOptions: cfg && cfg.dropdown_options ? cfg.dropdown_options : []
     };
+  };
+
+  const renderOptions = (fieldName, defaultOpts) => {
+    const extraOpts = configsMap[fieldName]?.dropdownOptions || [];
+    const excluded = extraOpts.filter(o => o.startsWith('__EXCLUDE__:')).map(o => o.replace('__EXCLUDE__:', ''));
+    const added = extraOpts.filter(o => !o.startsWith('__EXCLUDE__:'));
+
+    const allFiltered = Array.from(new Set([...defaultOpts, ...added])).filter(o => !excluded.includes(o));
+    return allFiltered.map(opt => <option key={opt} value={opt}>{opt}</option>);
   };
 
   const configsMap = {
@@ -291,11 +301,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={siteTemp} onChange={(e) => setSiteTemp(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="<25">&lt;25</option>
-                    <option value="25-30">25-30</option>
-                    <option value="30-35">30-35</option>
-                    <option value="35-40">35-40</option>
-                    <option value=">40">&gt;40</option>
+                    {renderOptions('site_temp', ['<25', '25-30', '30-35', '35-40', '>40'])}
                   </select>
                 </div>
               ) : (
@@ -309,11 +315,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={mdbTemp} onChange={(e) => setMdbTemp(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="<25">&lt;25</option>
-                    <option value="25-30">25-30</option>
-                    <option value="30-35">30-35</option>
-                    <option value="35-40">35-40</option>
-                    <option value=">40">&gt;40</option>
+                    {renderOptions('mdb_temp', ['<25', '25-30', '30-35', '35-40', '>40'])}
                   </select>
                 </div>
               ) : (
@@ -327,15 +329,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={groundResistance} onChange={(e) => setGroundResistance(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="<5">&lt;5</option>
-                    <option value="5-10">5-10</option>
-                    <option value=">10-20">&gt;10-20</option>
-                    <option value=">20-30">&gt;20-30</option>
-                    <option value=">30-40">&gt;30-40</option>
-                    <option value=">40-50">&gt;40-50</option>
-                    <option value=">50-60">&gt;50-60</option>
-                    <option value=">60">&gt;60</option>
-                    <option value="วัดค่าไม่ได้">วัดค่าไม่ได้</option>
+                    {renderOptions('ground_resistance', ['<5', '5-10', '>10-20', '>20-30', '>30-40', '>40-50', '>50-60', '>60', 'วัดค่าไม่ได้'])}
                   </select>
                 </div>
               ) : (
@@ -349,13 +343,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={meterSize} onChange={(e) => setMeterSize(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="1 phase 5/15">1 phase 5/15</option>
-                    <option value="1 phase 15/45">1 phase 15/45</option>
-                    <option value="1 phase 5/100">1 phase 5/100</option>
-                    <option value="3 phase 5/15">3 phase 5/15</option>
-                    <option value="3 phase 15/45">3 phase 15/45</option>
-                    <option value="DTAC site">DTAC site</option>
-                    <option value="LL">LL</option>
+                    {renderOptions('meter_ac_size', ['1 phase 5/15', '1 phase 15/45', '1 phase 5/100', '3 phase 5/15', '3 phase 15/45', 'DTAC site', 'LL'])}
                   </select>
                 </div>
               ) : (
@@ -369,10 +357,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={cableStatus} onChange={(e) => setCableStatus(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="ปกติ สภาพปลอดภัย">ปกติ สภาพปลอดภัย</option>
-                    <option value="Dtact site">Dtact site</option>
-                    <option value="หย่อน ชำรุด">หย่อน ชำรุด</option>
-                    <option value="รก ไม่สะอาด ต้องปรับปรุง">รก ไม่สะอาด ต้องปรับปรุง</option>
+                    {renderOptions('cable_status', ['ปกติ สภาพปลอดภัย', 'Dtact site', 'หย่อน ชำรุด', 'รก ไม่สะอาด ต้องปรับปรุง'])}
                   </select>
                 </div>
               ) : (
@@ -386,10 +371,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={changeOverSwitch} onChange={(e) => setChangeOverSwitch(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="มี/พร้อมใช้งาน">มี/พร้อมใช้งาน</option>
-                    <option value="มี/ไม่พร้อมใช้งาน">มี/ไม่พร้อมใช้งาน</option>
-                    <option value="มี/ชำรุดบางจุดต้องแก้ไข">มี/ชำรุดบางจุดต้องแก้ไข</option>
-                    <option value="ไม่มี">ไม่มี</option>
+                    {renderOptions('change_over_switch', ['มี/พร้อมใช้งาน', 'มี/ไม่พร้อมใช้งาน', 'มี/ชำรุดบางจุดต้องแก้ไข', 'ไม่มี'])}
                   </select>
                 </div>
               ) : (
@@ -403,9 +385,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                   </label>
                   <select className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none" value={surgeProtection} onChange={(e) => setSurgeProtection(e.target.value)}>
                     <option value="">-- เลือก --</option>
-                    <option value="มี ปกติ">มี ปกติ</option>
-                    <option value="มี ไม่ปกติ">มี ไม่ปกติ</option>
-                    <option value="ไม่มี">ไม่มี</option>
+                    {renderOptions('surge_protection', ['มี ปกติ', 'มี ไม่ปกติ', 'ไม่มี'])}
                   </select>
                 </div>
               ) : (
@@ -426,8 +406,7 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     onChange={(e) => setPhaseQty(e.target.value)}
                   >
                     <option value="">-- เลือก --</option>
-                    <option value="1 Phase">1 Phase</option>
-                    <option value="3 Phase">3 Phase</option>
+                    {renderOptions('ac_phase_qty', ['1 Phase', '3 Phase'])}
                   </select>
                 </div>
               ) : (

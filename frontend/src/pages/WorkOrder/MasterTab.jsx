@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly }) {
+export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly, onRectifierQtyChange }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [rectifierQtyUih, setRectifierQtyUih] = useState('');
+  const [jobOpenedAt, setJobOpenedAt] = useState('');
   const [localDate, setLocalDate] = useState(inspectionDate || '');
   const [localTime, setLocalTime] = useState(inspectionTime || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -65,13 +66,30 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
         if (resData.data) {
           setSl6Number(resData.data.job_number_sl6 || '');
           setSapNumber(resData.data.sap_number || '');
-          setRectifierQtyUih(resData.data.rectifier_qty_uih ? String(resData.data.rectifier_qty_uih) : '');
-          if (resData.data.inspection_date) {
-            setLocalDate(resData.data.inspection_date.split('T')[0]);
+          if (resData.data.created_at) {
+            try {
+              const createdDate = new Date(resData.data.created_at);
+              setJobOpenedAt(createdDate.toLocaleString('th-TH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) + ' น.');
+            } catch (e) {
+              setJobOpenedAt(resData.data.created_at);
+            }
           }
-          if (resData.data.inspection_time) {
-            setLocalTime(resData.data.inspection_time);
-          }
+          const qty = resData.data.rectifier_qty_uih !== undefined && resData.data.rectifier_qty_uih !== null ? resData.data.rectifier_qty_uih : 6;
+          setRectifierQtyUih(String(qty));
+          if (onRectifierQtyChange) onRectifierQtyChange(parseInt(qty, 10));
+          const now = new Date();
+          const defaultDate = now.toISOString().split('T')[0];
+          const defaultTime = now.toTimeString().split(' ')[0].substring(0, 5);
+
+          setLocalDate(resData.data.inspection_date ? resData.data.inspection_date.split('T')[0] : defaultDate);
+          setLocalTime(resData.data.inspection_time ? resData.data.inspection_time.substring(0, 5) : defaultTime);
+          
           if (resData.data.rpm_id && setRpmId) {
             setRpmId(resData.data.rpm_id);
           }
@@ -123,6 +141,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       });
       if (res.ok) {
         alert('บันทึกข้อมูลใบงานหลักสำเร็จ!');
+        if (onRectifierQtyChange) onRectifierQtyChange(parseInt(rectifierQtyUih, 10));
         if (onComplete) onComplete();
       } else {
         const errorData = await res.json();
@@ -180,7 +199,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       </div>
 
       <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">รอบการตรวจ (RPM Cycle)</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-indigo-400 font-semibold">
@@ -194,15 +213,54 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">วันที่ตรวจสอบ (Date)</label>
-            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold">
-              {formatDateTh(localDate)}
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เวลาเปิด Job (Job Created At)</label>
+            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-emerald-400 font-medium truncate">
+              {jobOpenedAt || 'กำลังโหลด...'}
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
           <div>
-            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เวลาที่ตรวจสอบ (Time)</label>
-            <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold">
-              {formatTimeTh(localTime)}
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+              วันที่เข้าตรวจสอบ (Inspection Date)
+            </label>
+            <input 
+              type="date"
+              disabled={isReadOnly}
+              className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+              value={localDate}
+              onChange={(e) => setLocalDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">
+              เวลาที่เข้าตรวจสอบ (Inspection Time)
+            </label>
+            <div className="flex gap-2">
+              <input 
+                type="time"
+                disabled={isReadOnly}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
+                value={localTime}
+                onChange={(e) => setLocalTime(e.target.value)}
+              />
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  title="ใช้วันที่และเวลาปัจจุบัน"
+                  onClick={() => {
+                    const now = new Date();
+                    const dStr = now.toISOString().split('T')[0];
+                    const tStr = now.toTimeString().split(' ')[0].substring(0, 5);
+                    setLocalDate(dStr);
+                    setLocalTime(tStr);
+                  }}
+                  className="px-2.5 py-1 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/30 rounded-lg text-xs font-semibold whitespace-nowrap transition-all"
+                >
+                  ตอนนี้
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -258,7 +316,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               value={rectifierQtyUih}
               onChange={(e) => setRectifierQtyUih(e.target.value)}
             >
-              <option value="">-- เลือกจำนวน --</option>
+              <option value="0">0 (ไม่มีตู้ Rectifier)</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>

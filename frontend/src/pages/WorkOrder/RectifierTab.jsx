@@ -30,7 +30,7 @@ const modelOptions = [
   'อื่นๆ'
 ];
 
-export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
+export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp }) {
   const [rectNo, setRectNo] = useState('ตู้ที่ 1');
   const [selectedModel, setSelectedModel] = useState('');
   const [customModel, setCustomModel] = useState('');
@@ -56,7 +56,13 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   const [batteryQtyBank, setBatteryQtyBank] = useState('');
   
   // Dynamic Rectifier Count based on master record
-  const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
+  const [rectifierQtyUih, setRectifierQtyUih] = useState(rectifierQtyUihProp !== undefined ? rectifierQtyUihProp : 6);
+
+  useEffect(() => {
+    if (rectifierQtyUihProp !== undefined) {
+      setRectifierQtyUih(rectifierQtyUihProp);
+    }
+  }, [rectifierQtyUihProp]);
 
   const [breakerImg, setBreakerImg] = useState([]);
   const [pdbTempImg, setPdbTempImg] = useState([]);
@@ -103,7 +109,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
       fetch(`/api/workorder/${rpmId}/master`)
         .then(res => res.json())
         .then(data => {
-          if (data && data.rectifier_qty_uih) {
+          if (data && data.rectifier_qty_uih !== undefined && data.rectifier_qty_uih !== null) {
             setRectifierQtyUih(parseInt(data.rectifier_qty_uih, 10));
           }
         })
@@ -187,7 +193,8 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
     const cfg = fieldConfigs.find(c => c.field_name === name);
     return {
       isEnabled: cfg ? cfg.is_enabled : true,
-      isRequired: cfg ? cfg.is_required : true
+      isRequired: cfg ? cfg.is_required : true,
+      dropdownOptions: cfg && cfg.dropdown_options ? cfg.dropdown_options : []
     };
   };
 
@@ -425,13 +432,18 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ระบุหมายเลขตู้ (rect_no)</label>
               <select 
-                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none"
+                disabled={isReadOnly || rectifierQtyUih === 0}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
                 value={rectNo}
                 onChange={(e) => setRectNo(e.target.value)}
               >
-                {Array.from({ length: rectifierQtyUih || 1 }, (_, i) => (
-                  <option key={i + 1} value={`ตู้ที่ ${i + 1}`}>ตู้ที่ {i + 1}</option>
-                ))}
+                {rectifierQtyUih === 0 ? (
+                  <option value="">ไม่มีตู้ Rectifier (0 ตู้)</option>
+                ) : (
+                  Array.from({ length: rectifierQtyUih }, (_, i) => (
+                    <option key={i + 1} value={`ตู้ที่ ${i + 1}`}>ตู้ที่ {i + 1}</option>
+                  ))
+                )}
               </select>
             </div>
             {configsMap.model.isEnabled ? (
@@ -445,7 +457,14 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                   onChange={(e) => setSelectedModel(e.target.value)}
                 >
                   <option value="">-- เลือก --</option>
-                  {modelOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  {(() => {
+                    const extraOpts = configsMap.model.dropdownOptions || [];
+                    const excluded = extraOpts.filter(o => o.startsWith('__EXCLUDE__:')).map(o => o.replace('__EXCLUDE__:', ''));
+                    const added = extraOpts.filter(o => !o.startsWith('__EXCLUDE__:'));
+                    const allFiltered = Array.from(new Set([...modelOptions, ...added])).filter(o => !excluded.includes(o));
+
+                    return allFiltered.map(opt => <option key={opt} value={opt}>{opt}</option>);
+                  })()}
                 </select>
                 {selectedModel === 'อื่นๆ' && (
                   <input

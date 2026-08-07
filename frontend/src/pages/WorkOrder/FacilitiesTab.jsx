@@ -274,7 +274,14 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     }
 
     const item = params[key];
-    const options = dropdownOptions[key] || ['ปกติ', 'ผิดปกติ', 'ไม่มีระบบนี้'];
+    const defaultOpts = dropdownOptions[key] || ['ปกติ', 'ผิดปกติ', 'ไม่มีระบบนี้'];
+    
+    const cfg = fieldConfigs.find(c => c.field_name === key);
+    const extraOpts = cfg && cfg.dropdown_options ? cfg.dropdown_options : [];
+    const excluded = extraOpts.filter(o => o.startsWith('__EXCLUDE__:')).map(o => o.replace('__EXCLUDE__:', ''));
+    const added = extraOpts.filter(o => !o.startsWith('__EXCLUDE__:'));
+
+    const options = Array.from(new Set([...defaultOpts, ...added])).filter(o => !excluded.includes(o));
 
     return (
       <div key={key} className="py-4 border-b border-dark-border/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
