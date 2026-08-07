@@ -99,23 +99,56 @@ router.get('/sites', async (req, res) => {
 });
 
 router.post('/sites', async (req, res) => {
-  const { site_code, site_name, site_grade, site_type } = req.body;
+  const { site_code, site_name, site_grade, site_type, job_number_sl6, sap_number, rpm_cycle } = req.body;
   if (!site_code || !site_name) {
     return res.status(400).json({ error: 'site_code และ site_name จำเป็นต้องระบุข้อมูล' });
   }
+
+  const client = await db.pool.connect();
   try {
-    const result = await db.query(
+    await client.query('BEGIN');
+    const codeUpper = site_code.toUpperCase().trim();
+
+    // Check site duplicate
+    const siteDupCheck = await client.query('SELECT site_code FROM sites WHERE UPPER(site_code) = $1', [codeUpper]);
+    if (siteDupCheck.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `รหัสสถานี ${codeUpper} มีอยู่แล้วในระบบ` });
+    }
+
+    // Insert site
+    const siteResult = await client.query(
       `INSERT INTO sites (site_code, site_name, site_grade, site_type) 
        VALUES ($1, $2, $3, $4) RETURNING *;`,
-      [site_code.toUpperCase(), site_name, site_grade || 'A', site_type || 'Indoor']
+      [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
     );
-    res.status(201).json(result.rows[0]);
+
+    // If job SL6 or SAP provided, check duplicate and create work order
+    if (job_number_sl6 && sap_number) {
+      const sl6DupCheck = await client.query('SELECT job_number_sl6 FROM rpm_records_master WHERE job_number_sl6 = $1', [job_number_sl6.trim()]);
+      if (sl6DupCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `เลขที่ใบงาน SL6 "${job_number_sl6.trim()}" มีอยู่แล้วในระบบ` });
+      }
+
+      await client.query(
+        `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status) 
+         VALUES ($1, $2, $3, $4, 'Pending');`,
+        [codeUpper, job_number_sl6.trim(), sap_number.trim(), rpm_cycle || '2026-R1']
+      );
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json(siteResult.rows[0]);
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint code
-      res.status(400).json({ error: `รหัสสถานี ${site_code} นี้มีอยู่แล้วในระบบ` });
+    await client.query('ROLLBACK');
+    if (err.code === '23505') {
+      res.status(400).json({ error: `รหัสสถานี ${site_code} หรือ เลขที่ SL6 ซ้ำกันในระบบ` });
     } else {
       res.status(500).json({ error: err.message });
     }
+  } finally {
+    client.release();
   }
 });
 
@@ -151,7 +184,7 @@ router.put('/sites/:site_id', async (req, res) => {
   }
 });
 
-// Bulk import sites
+// Bulk import sites & jobs
 router.post('/sites/bulk', async (req, res) => {
   const { sites } = req.body;
   if (!Array.isArray(sites) || sites.length === 0) {
@@ -160,43 +193,70 @@ router.post('/sites/bulk', async (req, res) => {
 
   const client = await db.pool.connect();
   try {
-    // Fetch all existing site codes from DB
-    const existingRes = await client.query('SELECT site_code FROM sites');
-    const existingSet = new Set(existingRes.rows.map(r => r.site_code.toUpperCase()));
+    // Fetch all existing site codes and SL6 numbers from DB
+    const existingSiteRes = await client.query('SELECT site_code FROM sites');
+    const existingSiteSet = new Set(existingSiteRes.rows.map(r => r.site_code.toUpperCase()));
 
-    const duplicateCodesInDB = new Set();
-    const batchDuplicates = new Set();
-    const batchSeen = new Set();
+    const existingSl6Res = await client.query('SELECT job_number_sl6 FROM rpm_records_master');
+    const existingSl6Set = new Set(existingSl6Res.rows.map(r => r.job_number_sl6));
+
+    const duplicateSiteCodes = new Set();
+    const duplicateSl6Numbers = new Set();
+    
+    const batchSiteSeen = new Set();
+    const batchSl6Seen = new Set();
 
     for (const site of sites) {
       if (!site.site_code || !site.site_name) continue;
       const codeUpper = site.site_code.toUpperCase().trim();
+      const sl6 = site.job_number_sl6 ? site.job_number_sl6.trim() : null;
 
-      // Check duplicate with database
-      if (existingSet.has(codeUpper)) {
-        duplicateCodesInDB.add(codeUpper);
+      // Check Site Code duplicate with DB
+      if (existingSiteSet.has(codeUpper)) {
+        duplicateSiteCodes.add(codeUpper);
+      }
+      // Check Site Code duplicate in CSV
+      if (batchSiteSeen.has(codeUpper)) {
+        duplicateSiteCodes.add(codeUpper);
+      } else {
+        batchSiteSeen.add(codeUpper);
       }
 
-      // Check duplicate within the CSV itself
-      if (batchSeen.has(codeUpper)) {
-        batchDuplicates.add(codeUpper);
-      } else {
-        batchSeen.add(codeUpper);
+      // Check SL6 duplicate if provided
+      if (sl6) {
+        if (existingSl6Set.has(sl6)) {
+          duplicateSl6Numbers.add(sl6);
+        }
+        if (batchSl6Seen.has(sl6)) {
+          duplicateSl6Numbers.add(sl6);
+        } else {
+          batchSl6Seen.add(sl6);
+        }
       }
     }
 
-    const allDuplicates = Array.from(new Set([...duplicateCodesInDB, ...batchDuplicates]));
+    const allSiteDups = Array.from(duplicateSiteCodes);
+    const allSl6Dups = Array.from(duplicateSl6Numbers);
 
-    if (allDuplicates.length > 0) {
+    if (allSiteDups.length > 0 || allSl6Dups.length > 0) {
+      let errorMsg = 'พบข้อมูลซ้ำไม่อนุญาตให้นำเข้า!';
+      if (allSiteDups.length > 0) {
+        errorMsg += `\n- รหัสสถานี (Site Code) ซ้ำ ${allSiteDups.length} รายการ: ${allSiteDups.join(', ')}`;
+      }
+      if (allSl6Dups.length > 0) {
+        errorMsg += `\n- เลขที่ใบงาน SL6 ซ้ำ ${allSl6Dups.length} รายการ: ${allSl6Dups.join(', ')}`;
+      }
+
       return res.status(400).json({ 
-        error: `พบ Site Code ซ้ำกันในระบบหรือในไฟล์ CSV จำนวน ${allDuplicates.length} รายการ ไม่อนุญาตให้นำเข้าข้อมูล กรุณาลบรหัสสถานีที่ซ้ำออกจากไฟล์ CSV ก่อน`,
-        duplicateCodes: allDuplicates
+        error: errorMsg,
+        duplicateCodes: allSiteDups,
+        duplicateSl6: allSl6Dups
       });
     }
 
     await client.query('BEGIN');
     for (const site of sites) {
-      const { site_code, site_name, site_grade, site_type } = site;
+      const { site_code, site_name, site_grade, site_type, job_number_sl6, sap_number, rpm_cycle } = site;
       if (!site_code || !site_name) continue;
       
       const codeUpper = site_code.toUpperCase().trim();
@@ -205,17 +265,25 @@ router.post('/sites/bulk', async (req, res) => {
          VALUES ($1, $2, $3, $4);`,
         [codeUpper, site_name.trim(), site_grade || 'A', site_type || 'Indoor']
       );
+
+      if (job_number_sl6 && sap_number) {
+        await client.query(
+          `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status) 
+           VALUES ($1, $2, $3, $4, 'Pending');`,
+          [codeUpper, job_number_sl6.trim(), sap_number.trim(), rpm_cycle || '2026-R1']
+        );
+      }
     }
 
     await client.query('COMMIT');
     res.json({ 
-      message: `นำเข้าข้อมูลเรียบร้อยแล้ว จำนวน ${sites.length} สถานี`,
+      message: `นำเข้าข้อมูลสถานีและใบงานเรียบร้อยแล้ว จำนวน ${sites.length} รายการ`,
       total: sites.length
     });
   } catch (err) {
     await client.query('ROLLBACK');
     if (err.code === '23505') {
-      res.status(400).json({ error: 'พบ Site Code ซ้ำในระบบ กรุณาตรวจสอบไฟล์ CSV อีกครั้ง' });
+      res.status(400).json({ error: 'พบ Site Code หรือ SL6 No. ซ้ำในระบบ กรุณาตรวจสอบไฟล์ CSV อีกครั้ง' });
     } else {
       res.status(500).json({ error: err.message });
     }
