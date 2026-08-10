@@ -14,6 +14,8 @@ export default function ManageUsers() {
   const [editRole, setEditRole] = useState('');
   const [selectedAreas, setSelectedAreas] = useState([]); // Array of strings
   const [selectedSubareas, setSelectedSubareas] = useState([]); // Array of strings
+  const [areaSearchTerm, setAreaSearchTerm] = useState('');
+  const [subareaSearchTerm, setSubareaSearchTerm] = useState('');
 
   useEffect(() => {
     try {
@@ -21,8 +23,8 @@ export default function ManageUsers() {
       if (stored) {
         const parsed = JSON.parse(stored);
         setCurrentUser(parsed);
-        if (parsed.role !== 'Admin') {
-          alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)');
+        if (parsed.role !== 'Admin' && parsed.role !== 'Team Lead') {
+          alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin และ Team Lead เท่านั้น)');
           navigate('/select-site');
         }
       } else {
@@ -34,7 +36,7 @@ export default function ManageUsers() {
   }, [navigate]);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'Admin') {
+    if (currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Team Lead')) {
       fetchUsers();
       fetchSites();
     }
@@ -77,42 +79,66 @@ export default function ManageUsers() {
   };
 
   // Dynamic unique Areas and Subareas list from sites database
-  const availableAreasList = Array.from(new Set(sites.map(s => s.rawArea).filter(Boolean))).sort();
+  const availableAreasList = ['All', ...Array.from(new Set(sites.map(s => s.area || s.rawArea).filter(Boolean))).sort()];
   
-  const availableSubareasList = Array.from(new Set(
+  const availableSubareasList = ['All', ...Array.from(new Set(
     sites
-      .filter(s => selectedAreas.length === 0 || selectedAreas.includes('All') || selectedAreas.includes(s.rawArea))
-      .map(s => s.rawSubarea)
+      .filter(s => selectedAreas.length === 0 || selectedAreas.includes('All') || selectedAreas.includes(s.area || s.rawArea))
+      .map(s => s.subarea || s.rawSubarea)
       .filter(Boolean)
-  )).sort();
+  )).sort()];
+
+  const filteredAreasList = availableAreasList.filter(a => 
+    a === 'All' || a.toLowerCase().includes(areaSearchTerm.toLowerCase().trim())
+  );
+
+  const filteredSubareasList = availableSubareasList.filter(s => 
+    s === 'All' || s.toLowerCase().includes(subareaSearchTerm.toLowerCase().trim())
+  );
 
   const handleStartEdit = (user) => {
-    if (user.role === 'Admin') {
+    if (currentUser?.role === 'Team Lead') {
+      if (user.role !== 'Inspector' && user.role !== 'Viewer') {
+        alert('สิทธิ์ Team Lead สามารถจัดการและมอบหมายพื้นที่ได้เฉพาะ Inspector และ Viewer เท่านั้น');
+        return;
+      }
+    } else if (user.role === 'Admin') {
       alert('คุณไม่สามารถแก้ไขสิทธิ์ของบัญชีผู้ดูแลระบบ (Admin) ได้');
       return;
     }
+
     setEditingUserId(user.user_id);
     setEditRole(user.role || 'Inspector');
     setSelectedAreas(parseList(user.area));
     setSelectedSubareas(parseList(user.subarea));
+    setAreaSearchTerm('');
+    setSubareaSearchTerm('');
   };
 
   const toggleAreaSelect = (areaName) => {
     setSelectedAreas(prev => {
-      if (prev.includes(areaName)) {
-        return prev.filter(a => a !== areaName);
+      if (areaName === 'All') {
+        return prev.includes('All') ? [] : ['All'];
+      }
+      const filtered = prev.filter(a => a !== 'All');
+      if (filtered.includes(areaName)) {
+        return filtered.filter(a => a !== areaName);
       } else {
-        return [...prev, areaName];
+        return [...filtered, areaName];
       }
     });
   };
 
   const toggleSubareaSelect = (subareaName) => {
     setSelectedSubareas(prev => {
-      if (prev.includes(subareaName)) {
-        return prev.filter(s => s !== subareaName);
+      if (subareaName === 'All') {
+        return prev.includes('All') ? [] : ['All'];
+      }
+      const filtered = prev.filter(s => s !== 'All');
+      if (filtered.includes(subareaName)) {
+        return filtered.filter(s => s !== subareaName);
       } else {
-        return [...prev, subareaName];
+        return [...filtered, subareaName];
       }
     });
   };
@@ -129,7 +155,7 @@ export default function ManageUsers() {
           role: editRole,
           area: selectedAreas.length > 0 ? JSON.stringify(selectedAreas) : null,
           subarea: selectedSubareas.length > 0 ? JSON.stringify(selectedSubareas) : null,
-          requesterEmail: currentUser.email
+          requesterEmail: currentUser?.email
         })
       });
 
@@ -160,7 +186,13 @@ export default function ManageUsers() {
 
   const renderBadgeList = (rawVal, defaultLabel) => {
     const list = parseList(rawVal);
-    if (list.length === 0) return <span className="text-gray-500 italic">{defaultLabel}</span>;
+    if (list.length === 0 || list.includes('All') || list.includes('all')) {
+      return (
+        <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30 text-[11px] font-bold text-indigo-400">
+          ทุกพื้นที่ (All)
+        </span>
+      );
+    }
     return (
       <div className="flex flex-wrap gap-1">
         {list.map((item, idx) => (
@@ -296,13 +328,13 @@ export default function ManageUsers() {
                               onChange={(e) => setEditRole(e.target.value)}
                               className="bg-dark-bg border border-indigo-500 rounded px-2.5 py-1 text-xs text-white outline-none font-medium"
                             >
-                              <option value="Admin">Admin</option>
-                              <option value="Team Lead">Team Lead (TL)</option>
+                              {currentUser?.role === 'Admin' && <option value="Admin">Admin</option>}
+                              {currentUser?.role === 'Admin' && <option value="Team Lead">Team Lead (TL)</option>}
                               <option value="Inspector">Inspector</option>
                               <option value="Viewer">Viewer</option>
                             </select>
                           ) : (
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
                               u.role === 'Admin' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
                               u.role === 'Team Lead' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
                               u.role === 'Inspector' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
@@ -316,8 +348,15 @@ export default function ManageUsers() {
                           {isEditing ? (
                             <div className="space-y-1.5 max-w-xs">
                               <div className="text-[10px] text-gray-400 font-semibold uppercase">เลือก Area ใหญ่ (เลือกได้หลายรายการ):</div>
+                              <input
+                                type="text"
+                                placeholder="ค้นหา Area..."
+                                value={areaSearchTerm}
+                                onChange={(e) => setAreaSearchTerm(e.target.value)}
+                                className="w-full bg-dark-bg border border-dark-border text-gray-200 text-xs px-2.5 py-1 rounded outline-none focus:border-amber-500 transition-all placeholder-gray-500"
+                              />
                               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 bg-dark-bg border border-dark-border rounded">
-                                {availableAreasList.map(aName => {
+                                {filteredAreasList.map(aName => {
                                   const isSelected = selectedAreas.includes(aName);
                                   return (
                                     <button
@@ -326,7 +365,7 @@ export default function ManageUsers() {
                                       onClick={() => toggleAreaSelect(aName)}
                                       className={`px-2 py-0.5 rounded text-xs font-medium border transition-all ${
                                         isSelected 
-                                          ? 'bg-amber-500/30 text-amber-300 border-amber-500/60' 
+                                          ? 'bg-amber-500/30 text-amber-300 border-amber-500/60 font-bold' 
                                           : 'bg-dark-card text-gray-400 border-dark-border hover:border-gray-500'
                                       }`}
                                     >
@@ -344,8 +383,15 @@ export default function ManageUsers() {
                           {isEditing ? (
                             <div className="space-y-1.5 max-w-xs">
                               <div className="text-[10px] text-gray-400 font-semibold uppercase">เลือก Sub-Area ย่อย (เลือกได้หลายรายการ):</div>
+                              <input
+                                type="text"
+                                placeholder="ค้นหา Subarea..."
+                                value={subareaSearchTerm}
+                                onChange={(e) => setSubareaSearchTerm(e.target.value)}
+                                className="w-full bg-dark-bg border border-dark-border text-gray-200 text-xs px-2.5 py-1 rounded outline-none focus:border-indigo-500 transition-all placeholder-gray-500"
+                              />
                               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto p-1.5 bg-dark-bg border border-dark-border rounded">
-                                {availableSubareasList.map(sName => {
+                                {filteredSubareasList.map(sName => {
                                   const isSelected = selectedSubareas.includes(sName);
                                   return (
                                     <button
@@ -354,7 +400,7 @@ export default function ManageUsers() {
                                       onClick={() => toggleSubareaSelect(sName)}
                                       className={`px-2 py-0.5 rounded text-xs font-medium border transition-all ${
                                         isSelected 
-                                          ? 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60' 
+                                          ? 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60 font-bold' 
                                           : 'bg-dark-card text-gray-400 border-dark-border hover:border-gray-500'
                                       }`}
                                     >
@@ -372,6 +418,8 @@ export default function ManageUsers() {
                         <td className="px-5 py-3.5 text-center">
                           {isAdminProtected ? (
                             <span className="text-xs text-gray-500 italic">Admin (Protected)</span>
+                          ) : currentUser?.role === 'Team Lead' && (u.role === 'Admin' || u.role === 'Team Lead') ? (
+                            <span className="text-xs text-gray-500 italic">ไม่มีสิทธิ์แก้ไข</span>
                           ) : isEditing ? (
                             <div className="flex items-center justify-center gap-2">
                               <button

@@ -296,7 +296,7 @@ router.post('/sites/bulk', async (req, res) => {
 router.post('/workorder/start', async (req, res) => {
   const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih } = req.body;
   try {
-    // Check if master record exists for this specific site and cycle
+    // 1. Check if master record exists for this specific site and cycle
     const existing = await db.query(
       'SELECT * FROM rpm_records_master WHERE site_code = $1 AND rpm_cycle = $2 ORDER BY created_at DESC LIMIT 1;',
       [site_code, rpm_cycle]
@@ -306,10 +306,33 @@ router.post('/workorder/start', async (req, res) => {
       return res.json({ message: 'Loaded existing record', data: existing.rows[0], isNew: false });
     }
 
-    // Create a new master record
+    // 2. Check if an unassigned imported record exists for this site (where rpm_cycle IS NULL or '')
+    const unassigned = await db.query(
+      "SELECT * FROM rpm_records_master WHERE site_code = $1 AND (rpm_cycle IS NULL OR rpm_cycle = '') ORDER BY created_at ASC LIMIT 1;",
+      [site_code]
+    );
+
+    if (unassigned.rows.length > 0) {
+      const targetId = unassigned.rows[0].rpm_id;
+      const updated = await db.query(
+        `UPDATE rpm_records_master 
+         SET rpm_cycle = $1, 
+             job_number_sl6 = COALESCE($2, job_number_sl6), 
+             sap_number = COALESCE($3, sap_number), 
+             inspection_date = COALESCE($4, inspection_date), 
+             inspection_time = COALESCE($5, inspection_time)
+         WHERE rpm_id = $6 RETURNING *;`,
+        [rpm_cycle || null, job_number_sl6 || null, sap_number || null, inspection_date || null, inspection_time || null, targetId]
+      );
+      return res.json({ message: 'Linked unassigned imported record', data: updated.rows[0], isNew: false });
+    }
+
+    // 3. Create a new master record if no existing or unassigned record exists
+    const finalSl6 = job_number_sl6 || `SL6-${site_code}-${Date.now()}`;
+    const finalSap = sap_number || `SAP-${site_code}-${Date.now()}`;
     const newRecord = await db.query(
       'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;',
-      [site_code, job_number_sl6 || `SL6-${site_code}-${Date.now()}`, sap_number || `SAP-${site_code}-${Date.now()}`, rpm_cycle || null, inspection_date || null, inspection_time || null, rectifier_qty_uih || null]
+      [site_code, finalSl6, finalSap, rpm_cycle || null, inspection_date || null, inspection_time || null, rectifier_qty_uih || null]
     );
 
     res.status(201).json({ message: 'Started new work order', data: newRecord.rows[0], isNew: true });
@@ -1298,13 +1321,22 @@ router.get('/users', async (req, res) => {
 });
 
 router.post('/users/update-role', async (req, res) => {
-  const { userId, role, area, subarea } = req.body;
+  const { userId, role, area, subarea, requesterEmail } = req.body;
   if (!userId || !role) {
     return res.status(400).json({ error: 'Missing userId or role' });
   }
 
   try {
-    // 1. Check target user current role
+    // 1. Fetch requester role if email provided
+    let requesterRole = 'Admin';
+    if (requesterEmail) {
+      const reqRes = await db.query('SELECT role FROM users WHERE email = $1;', [requesterEmail.trim()]);
+      if (reqRes.rows.length > 0) {
+        requesterRole = reqRes.rows[0].role;
+      }
+    }
+
+    // 2. Check target user current role
     const targetResult = await db.query('SELECT role, email FROM users WHERE user_id = $1;', [userId]);
     if (targetResult.rows.length === 0) {
       return res.status(404).json({ error: 'ไม่พบผู้ใช้ที่ระบุ' });
@@ -1317,7 +1349,17 @@ router.post('/users/update-role', async (req, res) => {
       return res.status(403).json({ error: 'คุณไม่สามารถแก้ไขสิทธิ์ของบัญชีผู้ดูแลระบบ (Admin) ได้' });
     }
 
-    // 2. Perform update
+    // Team Lead constraints
+    if (requesterRole === 'Team Lead') {
+      if (targetUser.role !== 'Inspector' && targetUser.role !== 'Viewer') {
+        return res.status(403).json({ error: 'สิทธิ์ Team Lead สามารถจัดการสิทธิ์และพื้นที่ได้เฉพาะ Inspector และ Viewer เท่านั้น' });
+      }
+      if (role !== 'Inspector' && role !== 'Viewer') {
+        return res.status(403).json({ error: 'สิทธิ์ Team Lead ไม่สามารถปรับเปลี่ยนตำแหน่งเป็น Admin หรือ Team Lead ได้' });
+      }
+    }
+
+    // 3. Perform update
     const updateResult = await db.query(
       'UPDATE users SET role = $1, area = $2, subarea = $3 WHERE user_id = $4 RETURNING user_id, email, name, role, area, subarea;',
       [role, area || null, subarea || null, userId]

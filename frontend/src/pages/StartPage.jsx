@@ -102,24 +102,24 @@ export default function StartPage() {
         email: 'wichai.tl@rpm.com',
         avatar: 'TL',
         role: 'Team Lead',
-        area: 'All',
-        subarea: 'All'
+        area: '["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี"]',
+        subarea: null
       },
       Inspector: {
         name: 'Somchai Inspector (Demo)',
         email: 'somchai.ins@rpm.com',
         avatar: 'SI',
         role: 'Inspector',
-        area: 'All',
-        subarea: 'All'
+        area: '["กรุงเทพมหานคร","เชียงใหม่"]',
+        subarea: '["นนทบุรี"]'
       },
       Viewer: {
         name: 'Guest Viewer (Demo)',
         email: 'guest.view@rpm.com',
         avatar: 'GV',
         role: 'Viewer',
-        area: 'All',
-        subarea: 'All'
+        area: '["ยโสธร","อุบลราชธานี"]',
+        subarea: null
       }
     };
 
@@ -203,7 +203,7 @@ export default function StartPage() {
               </button>
               <button
                 onClick={() => handleMockLogin('Team Lead')}
-                className="py-2.5 px-3 bg-amber-600/10 hover:bg-amber-600 border border-amber-500/30 text-amber-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center"
+                className="py-2.5 px-3 bg-amber-600/10 hover:bg-amber-600 border border-amber-500/30 text-amber-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center whitespace-nowrap"
               >
                 สิทธิ์ Team Lead
               </button>

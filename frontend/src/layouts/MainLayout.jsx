@@ -86,14 +86,45 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
         const userSubareas = parseScopeList(currentUserData?.subarea);
         const isAdmin = currentUserData?.role === 'Admin';
 
+        const hasUserAreas = userAreas.length > 0 && !userAreas.includes('All');
+        const hasUserSubareas = userSubareas.length > 0 && !userSubareas.includes('All');
+
         const allowed = sites.filter(s => {
           if (isAdmin) return true;
-          if (userAreas.length > 0 && !userAreas.includes('All') && !userAreas.includes(s.area)) {
-            return false;
+
+          // If user has no specific area or subarea restrictions, show all sites
+          if (!hasUserAreas && !hasUserSubareas) return true;
+
+          if (hasUserAreas) {
+            // Must match one of the assigned userAreas
+            if (!userAreas.includes(s.area)) {
+              return false;
+            }
+
+            // s.area IS in userAreas
+            if (!hasUserSubareas) return true;
+
+            // Check if any of the user's assigned subareas belong to this s.area in DB
+            const subareasInThisArea = sites
+              .filter(st => st.area === s.area)
+              .map(st => st.subarea)
+              .filter(Boolean);
+
+            const hasMatchingSubareaForThisArea = subareasInThisArea.some(sub => userSubareas.includes(sub));
+
+            if (hasMatchingSubareaForThisArea) {
+              // Strict matching: require s.subarea to match userSubareas
+              return userSubareas.includes(s.subarea);
+            } else {
+              // Subarea filter does not apply to this area (e.g. Chiang Mai), allow all sites in this area
+              return true;
+            }
           }
-          if (userSubareas.length > 0 && !userSubareas.includes('All') && !userSubareas.includes(s.subarea)) {
-            return false;
+
+          if (hasUserSubareas) {
+            return userSubareas.includes(s.subarea) || userSubareas.includes(s.area);
           }
+
           return true;
         });
 
@@ -325,7 +356,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
                       ตั้งค่าฟิลด์กรอกข้อมูล
                     </button>
                   )}
-                  {user?.role === 'Admin' && (
+                  {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);

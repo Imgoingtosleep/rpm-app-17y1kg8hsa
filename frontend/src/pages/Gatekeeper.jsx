@@ -58,12 +58,43 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   // Filter allowed sites based on logged in user's role and assigned Multi-Areas & Subareas
   const allowedUserSites = sites.filter(site => {
     if (isAdmin) return true;
-    if (userAreas.length > 0 && !userAreas.includes('All') && !userAreas.includes(site.rawArea)) {
-      return false;
+
+    const hasUserAreas = userAreas.length > 0 && !userAreas.includes('All');
+    const hasUserSubareas = userSubareas.length > 0 && !userSubareas.includes('All');
+
+    // If user has no specific area or subarea restrictions, show all sites
+    if (!hasUserAreas && !hasUserSubareas) return true;
+
+    if (hasUserAreas) {
+      // Must match one of the assigned userAreas
+      if (!userAreas.includes(site.rawArea)) {
+        return false;
+      }
+
+      // site.rawArea IS in userAreas
+      if (!hasUserSubareas) return true;
+
+      // Check if any of the user's assigned subareas belong to this site.rawArea in DB
+      const subareasInThisArea = sites
+        .filter(s => s.rawArea === site.rawArea)
+        .map(s => s.rawSubarea)
+        .filter(Boolean);
+
+      const hasMatchingSubareaForThisArea = subareasInThisArea.some(sub => userSubareas.includes(sub));
+
+      if (hasMatchingSubareaForThisArea) {
+        // Strict matching: require site.rawSubarea to match userSubareas
+        return userSubareas.includes(site.rawSubarea);
+      } else {
+        // Subarea filter does not apply to this area (e.g. Chiang Mai), allow all sites in this area
+        return true;
+      }
     }
-    if (userSubareas.length > 0 && !userSubareas.includes('All') && !userSubareas.includes(site.rawSubarea)) {
-      return false;
+
+    if (hasUserSubareas) {
+      return userSubareas.includes(site.rawSubarea) || userSubareas.includes(site.rawArea);
     }
+
     return true;
   });
 
@@ -174,7 +205,10 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
 
   useEffect(() => {
     if (selectedSite && rpmCycle) {
-      const match = activeWorkOrders.find(wo => wo.site_code === selectedSite.code && wo.rpm_cycle === rpmCycle);
+      let match = activeWorkOrders.find(wo => wo.site_code === selectedSite.code && wo.rpm_cycle === rpmCycle);
+      if (!match) {
+        match = activeWorkOrders.find(wo => wo.site_code === selectedSite.code && (!wo.rpm_cycle || wo.rpm_cycle.trim() === ''));
+      }
       if (match) {
         setJobNo(match.job_number_sl6 || '');
         setSapNo(match.sap_number || '');
@@ -320,23 +354,6 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
       return false;
     }
 
-    // Role-based Area & Subarea restriction
-    if (isAdmin) {
-      return true; // Admin sees all
-    }
-
-    if (userAreas.length > 0 && !userAreas.includes('All')) {
-      if (!userAreas.includes(site.rawArea)) return false;
-    }
-
-    if (userSubareas.length > 0 && !userSubareas.includes('All')) {
-      if (!userSubareas.includes(site.rawSubarea)) return false;
-    }
-
-    // Team Lead sees all sites in assigned areas/subareas
-    if (isTeamLead) return true;
-
-    // Inspector and Viewer can see sites with active workorders or within assigned areas
     return true;
   });
 
@@ -370,8 +387,19 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Select Site & Launch</h2>
-          <p className="text-gray-400 mt-1">Select a telecom/power station to initialize a work order checklist.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Select Site & Launch</h2>
+            <span className="px-3 py-1 bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-bold rounded-full text-xs flex items-center gap-1.5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+              {filteredSites.length === allowedUserSites.length 
+                ? `ทั้งหมด ${allowedUserSites.length} สถานี` 
+                : `แสดง ${filteredSites.length} จาก ${allowedUserSites.length} สถานี`
+              }
+            </span>
+          </div>
+          <p className="text-gray-400 mt-1 text-sm">
+            สิทธิ์การดูแลของคุณ: <span className="text-amber-400 font-semibold">{allowedUserSites.length} สถานี</span> | ในฐานข้อมูลทั้งหมด: <span className="text-gray-300 font-semibold">{sites.length} สถานี</span>
+          </p>
         </div>
         {isAdmin && (
           <div className="flex gap-3">
@@ -516,7 +544,7 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-xs font-semibold uppercase text-gray-400">
-                    2. เลือกรอบการตรวจ (RPM Cycle) {!selectedSite && <span className="text-amber-400 font-normal border-b border-amber-400/50 text-[10px] ml-1">(กรุณาเลือกสถานีก่อน)</span>}
+                    รอบการตรวจ (RPM Cycle) {!selectedSite && <span className="text-amber-400 font-normal border-b border-amber-400/50 text-[10px] ml-1">(กรุณาเลือกสถานีก่อน)</span>}
                   </label>
                   {isAdmin && (
                     <button
