@@ -1098,7 +1098,7 @@ export default function AdminDashboard() {
                               )}
 
                               {/* Admin Actions */}
-                              {isAdmin && (isSubmitted || isTLApproved) && (
+                              {isAdmin && wo.status !== 'Approved' && (
                                 <>
                                   <MenuItem tone="emerald" onClick={() => { setOpenMenuId(null); handleAdminApprove(wo.rpm_id); }}>
                                     Approve (จบงาน)
