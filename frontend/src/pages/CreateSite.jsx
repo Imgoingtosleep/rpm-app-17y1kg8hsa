@@ -14,7 +14,6 @@ export default function CreateSite() {
   // Job SL6 & SAP fields
   const [jobNumberSl6, setJobNumberSl6] = useState('');
   const [sapNumber, setSapNumber] = useState('');
-  const [rpmCycle, setRpmCycle] = useState('2026-R1');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,8 +61,7 @@ export default function CreateSite() {
           area: area.trim() || null,
           subarea: subarea.trim() || null,
           job_number_sl6: jobNumberSl6.trim() || null,
-          sap_number: sapNumber.trim() || null,
-          rpm_cycle: rpmCycle.trim() || '2026-R1'
+          sap_number: sapNumber.trim() || null
         }),
       });
 
@@ -107,7 +105,6 @@ export default function CreateSite() {
       
       const sl6Idx = headers.indexOf('job_number_sl6');
       const sapIdx = headers.indexOf('sap_number');
-      const cycleIdx = headers.indexOf('rpm_cycle');
 
       if (siteCodeIdx === -1 || siteNameIdx === -1) {
         alert('รูปแบบหัวข้อไฟล์ CSV ไม่ถูกต้อง (ต้องระบุคอลัมน์ site_code และ site_name เป็นอย่างน้อย)');
@@ -135,7 +132,6 @@ export default function CreateSite() {
 
         const job_number_sl6 = sl6Idx !== -1 && sl6Idx < columns.length && columns[sl6Idx] ? columns[sl6Idx].trim() : null;
         const sap_number = sapIdx !== -1 && sapIdx < columns.length && columns[sapIdx] ? columns[sapIdx].trim() : null;
-        const rpm_cycle = cycleIdx !== -1 && cycleIdx < columns.length && columns[cycleIdx] ? columns[cycleIdx].trim() : '2026-R1';
 
         if (site_code && site_name) {
           parsedSites.push({
@@ -146,8 +142,7 @@ export default function CreateSite() {
             area: areaVal,
             subarea: subareaVal,
             job_number_sl6,
-            sap_number,
-            rpm_cycle
+            sap_number
           });
         }
       }
@@ -274,7 +269,7 @@ export default function CreateSite() {
           {/* Job Section (Optional) */}
           <div className="pt-4 border-t border-dark-border/60">
             <h4 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">ข้อมูลใบงาน (Work Order Job - Optional)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">เลขที่ SL6 (Job SL6)</label>
                 <input
@@ -293,16 +288,6 @@ export default function CreateSite() {
                   className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
                   value={sapNumber}
                   onChange={(e) => setSapNumber(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">รอบการตรวจ (Cycle)</label>
-                <input
-                  type="text"
-                  placeholder="เช่น 2026-R1"
-                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors"
-                  value={rpmCycle}
-                  onChange={(e) => setRpmCycle(e.target.value)}
                 />
               </div>
             </div>
@@ -336,7 +321,7 @@ export default function CreateSite() {
             <div className="text-xs text-gray-400">
               <p>รองรับการนำเข้าสถานีพร้อมสร้าง Job SL6/SAP โดยระบุหัวข้อคอลัมน์แถวแรกใน CSV ดังนี้:</p>
               <code className="inline-block mt-2 bg-dark-accent/60 px-3 py-1.5 rounded font-mono text-indigo-400 font-semibold break-all">
-                site_code,site_name,site_grade,site_type,job_number_sl6,sap_number,rpm_cycle
+                site_code,site_name,site_grade,site_type,area,subarea,job_number_sl6,sap_number
               </code>
             </div>
             

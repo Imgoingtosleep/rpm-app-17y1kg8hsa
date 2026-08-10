@@ -70,16 +70,16 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   // Extract unique areas and subareas restricted to user's assigned scope
   const uniqueAreas = ['All', ...Array.from(new Set(allowedUserSites.map(s => s.rawArea).filter(Boolean)))];
   
-  const availableSubareas = ['All', ...Array.from(new Set(
+  const availableSubareas = selectedArea === 'All' ? [] : ['All', ...Array.from(new Set(
     allowedUserSites
-      .filter(s => selectedArea === 'All' || s.rawArea === selectedArea)
+      .filter(s => s.rawArea === selectedArea)
       .map(s => s.rawSubarea)
       .filter(Boolean)
   ))];
 
-  // Auto-reset subarea filter if selectedArea changes and subarea is no longer valid
+  // Auto-reset subarea filter if selectedArea is All or selectedSubarea is no longer valid
   useEffect(() => {
-    if (selectedSubarea !== 'All' && !availableSubareas.includes(selectedSubarea)) {
+    if (selectedArea === 'All' || (selectedSubarea !== 'All' && !availableSubareas.includes(selectedSubarea))) {
       setSelectedSubarea('All');
     }
   }, [selectedArea, availableSubareas, selectedSubarea]);
@@ -422,11 +422,11 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
               </div>
 
               {/* Area & Subarea Cascading Filters */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <select
                   value={selectedArea}
                   onChange={(e) => setSelectedArea(e.target.value)}
-                  className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer min-w-[110px]"
+                  className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer w-[170px] shrink-0 truncate"
                 >
                   <option value="All">ทุกเขต (All Area)</option>
                   {uniqueAreas.filter(a => a !== 'All').map(area => (
@@ -437,12 +437,24 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                 <select
                   value={selectedSubarea}
                   onChange={(e) => setSelectedSubarea(e.target.value)}
-                  className="bg-dark-bg border border-dark-border text-gray-200 text-xs font-semibold rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-all cursor-pointer min-w-[120px]"
+                  disabled={selectedArea === 'All'}
+                  title={selectedArea === 'All' ? 'กรุณาเลือก Area ก่อน' : 'เลือก Subarea'}
+                  className={`border text-xs font-semibold rounded-lg px-3 py-2 outline-none transition-all w-[170px] shrink-0 truncate ${
+                    selectedArea === 'All'
+                      ? 'bg-dark-bg/40 border-dark-border/40 text-gray-500 cursor-not-allowed opacity-60'
+                      : 'bg-dark-bg border-dark-border text-gray-200 focus:border-indigo-500 cursor-pointer'
+                  }`}
                 >
-                  <option value="All">ทุกพื้นที่ย่อย (All Subarea)</option>
-                  {availableSubareas.filter(s => s !== 'All').map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
+                  {selectedArea === 'All' ? (
+                    <option value="All">-- เลือก Area ก่อน --</option>
+                  ) : (
+                    <>
+                      <option value="All">ทุกพื้นที่ย่อย (All Subarea)</option>
+                      {availableSubareas.filter(s => s !== 'All').map(sub => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
             </div>

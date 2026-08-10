@@ -99,7 +99,7 @@ router.get('/sites', async (req, res) => {
 });
 
 router.post('/sites', async (req, res) => {
-  const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number, rpm_cycle } = req.body;
+  const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number } = req.body;
   if (!site_code || !site_name) {
     return res.status(400).json({ error: 'site_code และ site_name จำเป็นต้องระบุข้อมูล' });
   }
@@ -133,8 +133,8 @@ router.post('/sites', async (req, res) => {
 
       await client.query(
         `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status) 
-         VALUES ($1, $2, $3, $4, 'Pending');`,
-        [codeUpper, job_number_sl6.trim(), sap_number.trim(), rpm_cycle || '2026-R1']
+         VALUES ($1, $2, $3, NULL, 'Pending');`,
+        [codeUpper, job_number_sl6.trim(), sap_number.trim()]
       );
     }
 
@@ -256,7 +256,7 @@ router.post('/sites/bulk', async (req, res) => {
 
     await client.query('BEGIN');
     for (const site of sites) {
-      const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number, rpm_cycle } = site;
+      const { site_code, site_name, site_grade, site_type, area, subarea, job_number_sl6, sap_number } = site;
       if (!site_code || !site_name) continue;
       
       const codeUpper = site_code.toUpperCase().trim();
@@ -269,8 +269,8 @@ router.post('/sites/bulk', async (req, res) => {
       if (job_number_sl6 && sap_number) {
         await client.query(
           `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, created_at) 
-           VALUES ($1, $2, $3, $4, 'Pending', CURRENT_TIMESTAMP);`,
-          [codeUpper, job_number_sl6.trim(), sap_number.trim(), rpm_cycle || '2026-R1']
+           VALUES ($1, $2, $3, NULL, 'Pending', CURRENT_TIMESTAMP);`,
+          [codeUpper, job_number_sl6.trim(), sap_number.trim()]
         );
       }
     }
