@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
+    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Team Lead', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -165,10 +165,11 @@ CREATE TABLE IF NOT EXISTS field_configs (
 );
 
 -- Seed initial users
-INSERT INTO users (email, name, role) VALUES
-('admin@rpm.com', 'Anan Admin', 'Admin'),
-('inspector@rpm.com', 'John Inspector', 'Inspector'),
-('viewer@rpm.com', 'Jane Viewer', 'Viewer')
+INSERT INTO users (email, name, role, area, subarea) VALUES
+('admin.dev@rpm.com', 'Admin Developer (Demo)', 'Admin', 'All', 'All'),
+('wichai.tl@rpm.com', 'Wichai TeamLead (Demo)', 'Team Lead', 'All', 'All'),
+('somchai.ins@rpm.com', 'Somchai Inspector (Demo)', 'Inspector', 'All', 'All'),
+('guest.view@rpm.com', 'Guest Viewer (Demo)', 'Viewer', 'All', 'All')
 ON CONFLICT (email) DO NOTHING;
 
 -- Seed field configs for Master Site Tab

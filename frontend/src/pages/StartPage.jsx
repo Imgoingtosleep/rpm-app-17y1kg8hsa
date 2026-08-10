@@ -88,13 +88,52 @@ export default function StartPage() {
   }, []);
 
   const handleMockLogin = (role) => {
-    const mockUser = {
-      name: role === 'Admin' ? 'Admin Developer (Demo)' : 'Somchai Inspector (Demo)',
-      email: role === 'Admin' ? 'admin.dev@rpm.com' : 'somchai.ins@rpm.com',
-      avatar: role === 'Admin' ? 'AD' : 'SI',
-      role: role
+    const mockUsers = {
+      Admin: {
+        name: 'Admin Developer (Demo)',
+        email: 'admin.dev@rpm.com',
+        avatar: 'AD',
+        role: 'Admin',
+        area: 'All',
+        subarea: 'All'
+      },
+      'Team Lead': {
+        name: 'Wichai TeamLead (Demo)',
+        email: 'wichai.tl@rpm.com',
+        avatar: 'TL',
+        role: 'Team Lead',
+        area: 'All',
+        subarea: 'All'
+      },
+      Inspector: {
+        name: 'Somchai Inspector (Demo)',
+        email: 'somchai.ins@rpm.com',
+        avatar: 'SI',
+        role: 'Inspector',
+        area: 'All',
+        subarea: 'All'
+      },
+      Viewer: {
+        name: 'Guest Viewer (Demo)',
+        email: 'guest.view@rpm.com',
+        avatar: 'GV',
+        role: 'Viewer',
+        area: 'All',
+        subarea: 'All'
+      }
     };
+
+    const mockUser = mockUsers[role] || {
+      name: `${role} User (Demo)`,
+      email: `${role.toLowerCase()}@rpm.com`,
+      avatar: role.substring(0, 2).toUpperCase(),
+      role: role,
+      area: 'All',
+      subarea: 'All'
+    };
+
     localStorage.setItem('user', JSON.stringify(mockUser));
+    localStorage.setItem('token', 'demo-token-' + role.toLowerCase().replace(/\s+/g, '-'));
     localStorage.setItem('inspectorName', mockUser.name);
     navigate('/select-site');
   };
@@ -139,7 +178,7 @@ export default function StartPage() {
         <div className="mt-6 space-y-5">
           {errorMessage && (
             <div className="bg-red-900/20 border border-red-500/40 rounded-xl p-3 text-xs text-red-400 text-center">
-              ⚠️ {errorMessage}
+              {errorMessage}
             </div>
           )}
 
@@ -154,19 +193,31 @@ export default function StartPage() {
           </div>
 
           <div className="border-t border-dark-border/40 my-4 pt-4 space-y-3">
-            <span className="block text-[10px] text-gray-500 font-semibold text-center uppercase tracking-wider">หรือ ทดสอบระบบจำลอง (Demo Mode)</span>
-            <div className="grid grid-cols-2 gap-3">
+            <span className="block text-[10px] text-gray-500 font-semibold text-center uppercase tracking-wider">หรือ ทดสอบระบบจำลอง 4 สิทธิ์ (Demo Mode)</span>
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleMockLogin('Admin')}
-                className="py-2.5 px-4 bg-indigo-600/10 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98]"
+                className="py-2.5 px-3 bg-indigo-600/10 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center"
               >
-                📊 สิทธิ์ Admin
+                สิทธิ์ Admin
+              </button>
+              <button
+                onClick={() => handleMockLogin('Team Lead')}
+                className="py-2.5 px-3 bg-amber-600/10 hover:bg-amber-600 border border-amber-500/30 text-amber-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center"
+              >
+                สิทธิ์ Team Lead
               </button>
               <button
                 onClick={() => handleMockLogin('Inspector')}
-                className="py-2.5 px-4 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98]"
+                className="py-2.5 px-3 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center"
               >
-                📋 สิทธิ์ Inspector
+                สิทธิ์ Inspector
+              </button>
+              <button
+                onClick={() => handleMockLogin('Viewer')}
+                className="py-2.5 px-3 bg-sky-600/10 hover:bg-sky-600 border border-sky-500/30 text-sky-400 hover:text-white font-bold rounded-xl text-xs transition-all active:scale-[0.98] text-center"
+              >
+                สิทธิ์ Viewer
               </button>
             </div>
           </div>

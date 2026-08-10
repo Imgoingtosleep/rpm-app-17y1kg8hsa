@@ -1271,7 +1271,23 @@ router.delete('/storage/delete', async (req, res) => {
   }
 });
 
-// 15. Manage Users & Roles API (Admin only)
+// 15. Manage Users & Roles API
+router.get('/users/me', async (req, res) => {
+  try {
+    const userEmail = req.headers['x-user-email'];
+    if (!userEmail) {
+      return res.status(401).json({ error: 'Unauthenticated' });
+    }
+    const result = await db.query('SELECT user_id, email, name, role, area, subarea, created_at FROM users WHERE email = $1;', [userEmail]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/users', async (req, res) => {
   try {
     const result = await db.query('SELECT user_id, email, name, role, area, subarea, created_at FROM users ORDER BY user_id DESC;');

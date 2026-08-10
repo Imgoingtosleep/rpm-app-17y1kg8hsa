@@ -28,6 +28,17 @@ function generateToken(user) {
  */
 function verifyToken(token) {
   try {
+    if (token && typeof token === 'string' && token.startsWith('demo-token-')) {
+      const roleSlug = token.replace('demo-token-', '');
+      const demoUsersMap = {
+        admin: { name: 'Admin Developer (Demo)', email: 'admin.dev@rpm.com', role: 'Admin' },
+        'team-lead': { name: 'Wichai TeamLead (Demo)', email: 'wichai.tl@rpm.com', role: 'Team Lead' },
+        inspector: { name: 'Somchai Inspector (Demo)', email: 'somchai.ins@rpm.com', role: 'Inspector' },
+        viewer: { name: 'Guest Viewer (Demo)', email: 'guest.view@rpm.com', role: 'Viewer' }
+      };
+      return demoUsersMap[roleSlug] || { name: 'Demo User', email: 'demo@rpm.com', role: 'Viewer' };
+    }
+
     const parts = token.split('.');
     if (parts.length !== 2) return null;
     
