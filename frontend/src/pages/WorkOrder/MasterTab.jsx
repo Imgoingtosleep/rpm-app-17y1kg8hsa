@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly, onRectifierQtyChange }) {
+export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, inspectionDate, inspectionTime, onComplete, isReadOnly, onRectifierQtyChange, userRole, isSubmitted }) {
   const [sl6Number, setSl6Number] = useState('');
   const [sapNumber, setSapNumber] = useState('');
   const [rectifierQtyUih, setRectifierQtyUih] = useState('');
@@ -80,7 +80,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               setJobOpenedAt(resData.data.created_at);
             }
           }
-          const qty = resData.data.rectifier_qty_uih !== undefined && resData.data.rectifier_qty_uih !== null ? resData.data.rectifier_qty_uih : 6;
+          const qty = resData.data.rectifier_qty_uih !== undefined && resData.data.rectifier_qty_uih !== null ? resData.data.rectifier_qty_uih : 0;
           setRectifierQtyUih(String(qty));
           if (onRectifierQtyChange) onRectifierQtyChange(parseInt(qty, 10));
           const now = new Date();
@@ -320,7 +320,11 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
               disabled={isReadOnly}
               className="w-full bg-dark-bg border border-dark-border rounded-lg p-3 text-sm text-gray-200 focus:border-indigo-500 outline-none transition-colors disabled:opacity-50"
               value={rectifierQtyUih}
-              onChange={(e) => setRectifierQtyUih(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setRectifierQtyUih(val);
+                if (onRectifierQtyChange) onRectifierQtyChange(parseInt(val, 10));
+              }}
             >
               <option value="0">0 (ไม่มีตู้ Rectifier)</option>
               <option value="1">1</option>
@@ -346,7 +350,13 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              {isSubmitted 
+                ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Team Lead' 
+                ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Inspector'
+                ? 'โหมดดูข้อมูลใบงาน (Inspector) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
             </div>
           )}
         </div>

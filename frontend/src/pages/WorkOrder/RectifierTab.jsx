@@ -31,7 +31,7 @@ const modelOptions = [
   'อื่นๆ'
 ];
 
-export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp }) {
+export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp, userRole, isSubmitted }) {
   const [rectNo, setRectNo] = useState('ตู้ที่ 1');
   const [selectedModel, setSelectedModel] = useState('');
   const [customModel, setCustomModel] = useState('');
@@ -907,7 +907,11 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              {isSubmitted 
+                ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Team Lead' 
+                ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
             </div>
           )}
         </div>

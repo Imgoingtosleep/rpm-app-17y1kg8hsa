@@ -21,7 +21,7 @@ const BATTERY_MODELS = [
   { brand: "Outdo OT12-12(12AH)", capacity: "12AH", specIr: 11.00, abnormalIr: 22 }
 ];
 
-export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp }) {
+export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp, userRole, isSubmitted }) {
   const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
   const [bankNo, setBankNo] = useState('Bank 1');
   const [rectifiers, setRectifiers] = useState([]);
@@ -365,6 +365,53 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     }
   };
 
+  const handleSaveBankMeta = async () => {
+    if (!activeRectId) {
+      alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกข้อมูลกลุ่มแบตเตอรี่ครับ!');
+      return;
+    }
+
+    if (configsMap.brand.isEnabled && configsMap.brand.isRequired && !brand) {
+      alert('กรุณากรอก/เลือกยี่ห้อ Bank แบตเตอรี่!');
+      return;
+    }
+    if (configsMap.capacity.isEnabled && configsMap.capacity.isRequired && !capacity) {
+      alert('กรุณาเลือก Capacity แบตเตอรี่!');
+      return;
+    }
+    if (configsMap.installed_date.isEnabled && configsMap.installed_date.isRequired && !installedDate) {
+      alert('กรุณาเลือกวันที่ติดตั้งแบตเตอรี่!');
+      return;
+    }
+    if (configsMap.warrantee_date.isEnabled && configsMap.warrantee_date.isRequired && !warranteeDate) {
+      alert('กรุณาเลือกวันหมดประกันแบตเตอรี่!');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/rectifier/${activeRectId}/bank-meta`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bank_name: bankNo,
+          brand: configsMap.brand.isEnabled ? brand : '',
+          capacity: configsMap.capacity.isEnabled ? capacity : '',
+          installed_date: configsMap.installed_date.isEnabled ? installedDate : '',
+          warrantee_date: configsMap.warrantee_date.isEnabled ? warranteeDate : ''
+        })
+      });
+      if (res.ok) {
+        alert(`บันทึกข้อมูลกลุ่มแบตเตอรี่ ${bankNo} เรียบร้อยแล้ว!`);
+        fetchBatteries();
+      } else {
+        const err = await res.json();
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (err.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
   // Resolve active rectifier object and its battery_type with normalized comparison
   const normalizeRectName = (str) => {
     if (!str) return '';
@@ -588,7 +635,18 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         <>
           {/* Battery Bank metadata */}
       <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-4">
-        <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={handleSaveBankMeta}
+              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-bold transition-all shadow"
+            >
+              บันทึกข้อมูลกลุ่มแบตเตอรี่ ({bankNo})
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           {configsMap.brand.isEnabled ? (
             <div>

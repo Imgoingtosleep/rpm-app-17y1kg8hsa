@@ -269,7 +269,7 @@ router.post('/sites/bulk', async (req, res) => {
       if (job_number_sl6 && sap_number) {
         await client.query(
           `INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, created_at) 
-           VALUES ($1, $2, $3, NULL, 'Pending', CURRENT_TIMESTAMP);`,
+           VALUES ($1, $2, $3, NULL, 'Unopened', CURRENT_TIMESTAMP);`,
           [codeUpper, job_number_sl6.trim(), sap_number.trim()]
         );
       }
@@ -317,6 +317,7 @@ router.post('/workorder/start', async (req, res) => {
       const updated = await db.query(
         `UPDATE rpm_records_master 
          SET rpm_cycle = $1, 
+             status = 'Pending',
              job_number_sl6 = COALESCE($2, job_number_sl6), 
              sap_number = COALESCE($3, sap_number), 
              inspection_date = COALESCE($4, inspection_date), 
@@ -331,7 +332,7 @@ router.post('/workorder/start', async (req, res) => {
     const finalSl6 = job_number_sl6 || `SL6-${site_code}-${Date.now()}`;
     const finalSap = sap_number || `SAP-${site_code}-${Date.now()}`;
     const newRecord = await db.query(
-      'INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;',
+      "INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, inspection_date, inspection_time, rectifier_qty_uih) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7) RETURNING *;",
       [site_code, finalSl6, finalSap, rpm_cycle || null, inspection_date || null, inspection_time || null, rectifier_qty_uih || null]
     );
 
@@ -721,14 +722,56 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   const { rect_id } = req.params;
   try {
     const result = await db.query(
-      `SELECT bt.*, rb.bank_name, rb.brand, rb.capacity, rb.installed_date, rb.warrantee_date 
-       FROM battery_tests bt 
-       JOIN rectifier_banks rb ON bt.bank_id = rb.bank_id 
+      `SELECT 
+         rb.bank_id, 
+         rb.bank_name, 
+         rb.brand, 
+         rb.capacity, 
+         rb.installed_date, 
+         rb.warrantee_date,
+         bt.test_id,
+         bt.cell_no,
+         bt.voltage,
+         bt.internal_resistance,
+         bt.status,
+         bt.battery_img
+       FROM rectifier_banks rb 
+       LEFT JOIN battery_tests bt ON rb.bank_id = bt.bank_id 
        WHERE rb.rect_id = $1 
        ORDER BY rb.bank_name, bt.cell_no;`,
       [rect_id]
     );
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/rectifier/:rect_id/bank-meta', async (req, res) => {
+  const { rect_id } = req.params;
+  const { bank_name, brand, capacity, installed_date, warrantee_date } = req.body;
+  try {
+    let bankResult = await db.query(
+      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
+      [rect_id, bank_name || 'Bank 1']
+    );
+
+    let bank_id;
+    if (bankResult.rows.length > 0) {
+      bank_id = bankResult.rows[0].bank_id;
+      await db.query(
+        'UPDATE rectifier_banks SET brand = $1, capacity = $2, installed_date = $3, warrantee_date = $4 WHERE bank_id = $5;',
+        [brand || null, capacity || null, installed_date || null, warrantee_date || null, bank_id]
+      );
+    } else {
+      const newBank = await db.query(
+        'INSERT INTO rectifier_banks (rect_id, bank_name, brand, capacity, installed_date, warrantee_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING bank_id;',
+        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, installed_date || null, warrantee_date || null]
+      );
+      bank_id = newBank.rows[0].bank_id;
+    }
+
+    res.json({ message: 'บันทึกข้อมูลกลุ่มแบตเตอรี่เรียบร้อยแล้ว', bank_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1228,6 +1271,76 @@ router.post('/workorder/:rpm_id/submit', async (req, res) => {
   }
 });
 
+// Export detail for a single work order
+router.get('/workorder/:rpm_id/export-detail', async (req, res) => {
+  const userRole = req.headers['x-user-role'];
+  if (userRole !== 'Admin' && userRole !== 'Team Lead') {
+    return res.status(403).json({ error: 'การ Export ข้อมูลอนุญาตเฉพาะสิทธิ์ Admin และ Team Lead เท่านั้น' });
+  }
+  const { rpm_id } = req.params;
+  try {
+    const masterRes = await db.query(
+      `SELECT m.*, s.site_name, s.site_type, s.site_grade, s.area, s.subarea 
+       FROM rpm_records_master m
+       LEFT JOIN sites s ON m.site_code = s.site_code
+       WHERE m.rpm_id = $1`,
+      [rpm_id]
+    );
+    if (masterRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Work order not found' });
+    }
+    const master = masterRes.rows[0];
+
+    const acRes = await db.query('SELECT * FROM power_main_ac WHERE rpm_id = $1', [rpm_id]);
+    const acMain = acRes.rows.length > 0 ? acRes.rows[0] : null;
+
+    const rectRes = await db.query('SELECT * FROM power_rectifier WHERE rpm_id = $1 ORDER BY rect_no', [rpm_id]);
+    const rectifiers = rectRes.rows;
+
+    const batRes = await db.query(
+      `SELECT b.*, t.*, r.rect_no
+       FROM rectifier_banks b
+       LEFT JOIN battery_tests t ON b.bank_id = t.bank_id
+       JOIN power_rectifier r ON b.rect_id = r.rect_id
+       WHERE r.rpm_id = $1`,
+      [rpm_id]
+    );
+    const batteries = batRes.rows;
+
+    const facRes = await db.query('SELECT * FROM systems_and_facilities WHERE rpm_id = $1', [rpm_id]);
+    const facilities = facRes.rows.length > 0 ? facRes.rows[0] : null;
+
+    res.json({
+      master,
+      acMain,
+      rectifiers,
+      batteries,
+      facilities
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all work orders with detail counts
+router.get('/workorders/all-detail', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT m.*, s.site_name, s.site_type, s.site_grade, s.area, s.subarea,
+        (SELECT COUNT(*) FROM power_main_ac ac WHERE ac.rpm_id = m.rpm_id) as has_ac,
+        (SELECT COUNT(*) FROM power_rectifier r WHERE r.rpm_id = m.rpm_id) as rectifier_count,
+        (SELECT COUNT(*) FROM systems_and_facilities f WHERE f.rpm_id = m.rpm_id) as has_facilities
+       FROM rpm_records_master m
+       JOIN sites s ON m.site_code = s.site_code
+       WHERE m.rpm_cycle IS NOT NULL AND m.rpm_cycle != '' AND m.status != 'Unopened'
+       ORDER BY m.created_at DESC;`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all work orders with site info (for Admin review)
 router.get('/workorders/all', async (req, res) => {
   try {
@@ -1235,9 +1348,45 @@ router.get('/workorders/all', async (req, res) => {
       `SELECT m.*, s.site_name, s.site_type, s.site_grade, s.area, s.subarea 
        FROM rpm_records_master m
        JOIN sites s ON m.site_code = s.site_code
+       WHERE m.rpm_cycle IS NOT NULL AND m.rpm_cycle != '' AND m.status != 'Unopened'
        ORDER BY m.created_at DESC;`
     );
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TL Approve a work order
+router.post('/workorder/:rpm_id/tl-approve', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE rpm_records_master SET status = 'TL Approved' WHERE rpm_id = $1 RETURNING *;",
+      [rpm_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json({ message: 'TL Approved successfully', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reject a work order (send back to Inspector as Pending)
+router.post('/workorder/:rpm_id/reject', async (req, res) => {
+  const { rpm_id } = req.params;
+  const { reason } = req.body;
+  try {
+    const result = await db.query(
+      "UPDATE rpm_records_master SET status = 'Pending', summary_issue = COALESCE($2, summary_issue) WHERE rpm_id = $1 RETURNING *;",
+      [rpm_id, reason ? `[ตีกลับแก้ไขโดย TL/Admin]: ${reason}` : null]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json({ message: 'Work order rejected back to Inspector', data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

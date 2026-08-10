@@ -33,22 +33,29 @@ function WorkOrderPanel() {
   const [userRole, setUserRole] = useState('Viewer');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Track completed sections
-  const [completedSections, setCompletedSections] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`completed_${site_code}`);
-      return stored ? JSON.parse(stored) : { master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false };
-    } catch {
-      return { master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false };
+  // Track completed sections per site and per RPM cycle
+  const [completedSections, setCompletedSections] = useState({ master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false });
+
+  // Load completion state when site_code or rpmCycle changes
+  useEffect(() => {
+    const cycleKey = rpmCycle || localStorage.getItem('rpmCycle') || '';
+    if (site_code && cycleKey) {
+      try {
+        const stored = localStorage.getItem(`completed_${site_code}_${cycleKey}`);
+        setCompletedSections(stored ? JSON.parse(stored) : { master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false });
+      } catch {
+        setCompletedSections({ master: false, acmain: false, rectifier: false, battery: false, facilities: false, summary: false });
+      }
     }
-  });
+  }, [site_code, rpmCycle]);
 
   // Save completion state to local storage when it updates
   useEffect(() => {
-    if (site_code) {
-      localStorage.setItem(`completed_${site_code}`, JSON.stringify(completedSections));
+    const cycleKey = rpmCycle || localStorage.getItem('rpmCycle') || '';
+    if (site_code && cycleKey) {
+      localStorage.setItem(`completed_${site_code}_${cycleKey}`, JSON.stringify(completedSections));
     }
-  }, [completedSections, site_code]);
+  }, [completedSections, site_code, rpmCycle]);
 
   useEffect(() => {
     // Check if user is logged in
@@ -91,6 +98,9 @@ function WorkOrderPanel() {
     const storedCycle = localStorage.getItem('rpmCycle') || '';
     const storedDate = localStorage.getItem('inspectionDate') || '';
     const storedTime = localStorage.getItem('inspectionTime') || '';
+    const storedRpmId = localStorage.getItem('currentRpmId');
+    if (storedRpmId) setRpmId(Number(storedRpmId));
+
     setInspector(storedInspector);
     setRpmCycle(storedCycle);
     setInspectionDate(storedDate);
@@ -121,7 +131,7 @@ function WorkOrderPanel() {
         localStorage.removeItem('sapNo');
         if (resData.data && resData.data.rpm_id) {
           setRpmId(resData.data.rpm_id);
-          setIsSubmitted(resData.data.status === 'Submitted');
+          setIsSubmitted(resData.data.status === 'Submitted' || resData.data.status === 'TL Approved' || resData.data.status === 'Approved');
           if (resData.data.rpm_cycle) {
             setRpmCycle(resData.data.rpm_cycle);
             localStorage.setItem('rpmCycle', resData.data.rpm_cycle);
@@ -171,11 +181,9 @@ function WorkOrderPanel() {
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
-            // Show Battery Bank tab if any rectifier has VRLA AGM or VRLA AGM + Lithium
             const hasVrla = data.some(r => r.battery_type === 'VRLA AGM' || r.battery_type === 'VRLA AGM + Lithium');
             setHasVrlaBattery(hasVrla);
           } else {
-            // Default to hidden when starting or no rectifiers added yet
             setHasVrlaBattery(false);
           }
         })
@@ -187,6 +195,8 @@ function WorkOrderPanel() {
     return () => window.removeEventListener('rectifierSaved', checkBatteryType);
   }, [rpmId, activeTab, site_code]);
 
+  const [rectifierQtyUih, setRectifierQtyUih] = useState(0);
+
   const allTabs = [
     { id: 'master', label: 'Master Site' },
     { id: 'acmain', label: 'AC Main' },
@@ -196,34 +206,60 @@ function WorkOrderPanel() {
     { id: 'summary', label: 'สรุปปัญหาหน้างาน' },
   ];
 
-  // Default to HIDING Battery Bank tab unless VRLA AGM is selected
-  const tabList = hasVrlaBattery ? allTabs : allTabs.filter(t => t.id !== 'battery');
+  // Hide Rectifier and Battery Bank tabs if rectifierQtyUih === 0
+  const tabList = allTabs.filter(t => {
+    if (t.id === 'rectifier' && rectifierQtyUih === 0) return false;
+    if (t.id === 'battery' && (rectifierQtyUih === 0 || !hasVrlaBattery)) return false;
+    return true;
+  });
 
-  const totalRequiredSections = hasVrlaBattery ? 6 : 5;
+  const totalRequiredSections = tabList.length;
   const activeCompletedCount = tabList.filter(t => completedSections[t.id]).length;
   const progressPercent = Math.round((activeCompletedCount / totalRequiredSections) * 100);
 
-  const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
-
   const renderTabContent = () => {
-    const isReadOnly = userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin');
+    const isReadOnly = userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin' && userRole !== 'Team Lead');
+    const commonProps = {
+      site: selectedSite,
+      rpmId,
+      rpmCycle,
+      inspectionDate,
+      inspectionTime,
+      isReadOnly,
+      userRole,
+      isSubmitted,
+      onRectifierQtyChange: setRectifierQtyUih,
+      rectifierQtyUihProp: rectifierQtyUih
+    };
+
     switch (activeTab) {
       case 'master':
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} onRectifierQtyChange={setRectifierQtyUih} />;
+        return <MasterTab {...commonProps} setRpmId={setRpmId} inspector={inspector} onComplete={() => handleSectionComplete('master')} />;
       case 'acmain':
-        return <AcMainTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('acmain')} isReadOnly={isReadOnly} />;
+        return <AcMainTab {...commonProps} onComplete={() => handleSectionComplete('acmain')} />;
       case 'rectifier':
-        return <RectifierTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('rectifier')} isReadOnly={isReadOnly} rectifierQtyUihProp={rectifierQtyUih} />;
+        return <RectifierTab {...commonProps} onComplete={() => handleSectionComplete('rectifier')} />;
       case 'battery':
-        return <BatteryTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('battery')} isReadOnly={isReadOnly} rectifierQtyUihProp={rectifierQtyUih} />;
+        return <BatteryTab {...commonProps} onComplete={() => handleSectionComplete('battery')} />;
       case 'facilities':
-        return <FacilitiesTab site={selectedSite} rpmId={rpmId} rpmCycle={rpmCycle} onComplete={() => handleSectionComplete('facilities')} isReadOnly={isReadOnly} />;
+        return <FacilitiesTab {...commonProps} onComplete={() => handleSectionComplete('facilities')} />;
       case 'summary':
-        return <SummaryTab site={selectedSite} rpmId={rpmId} onComplete={() => handleSectionComplete('summary')} isReadOnly={isReadOnly} />;
+        return <SummaryTab {...commonProps} onComplete={() => handleSectionComplete('summary')} />;
       default:
-        return <MasterTab site={selectedSite} rpmId={rpmId} setRpmId={setRpmId} inspector={inspector} rpmCycle={rpmCycle} inspectionDate={inspectionDate} inspectionTime={inspectionTime} onComplete={() => handleSectionComplete('master')} isReadOnly={isReadOnly} onRectifierQtyChange={setRectifierQtyUih} />;
+        return <MasterTab {...commonProps} setRpmId={setRpmId} inspector={inspector} onComplete={() => handleSectionComplete('master')} />;
     }
   };
+
+  if (!selectedSite) {
+    return (
+      <MainLayout currentStep="workorder" currentSite={null} onNavigateBack={handleReset}>
+        <div className="flex justify-center items-center py-32 bg-dark-card border border-dark-border rounded-xl my-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+          <span className="ml-3 text-gray-400 text-sm">กำลังเชื่อมต่อข้อมูลใบงานสถานี {site_code}...</span>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout 
@@ -264,7 +300,7 @@ function WorkOrderPanel() {
               Reset Draft (Test Mode)
             </button>
             <button 
-              disabled={userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')}
+              disabled={userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin' && userRole !== 'Team Lead')}
               onClick={async () => {
                 if (activeCompletedCount < totalRequiredSections) {
                   alert(`กรุณากรอกข้อมูลและกดบันทึกให้ครบถ้วนทั้ง ${totalRequiredSections} ส่วนก่อนส่งงานครับ!`);
@@ -293,7 +329,7 @@ function WorkOrderPanel() {
                 }
               }}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg ${
-                userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin')
+                userRole === 'Viewer' || (isSubmitted && userRole !== 'Admin' && userRole !== 'Team Lead')
                   ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
                   : activeCompletedCount === totalRequiredSections
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-600/20'
@@ -400,6 +436,44 @@ function GatekeeperWrapper() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <MainLayout currentStep="workorder" currentSite={null} onNavigateBack={() => window.location.href = '/admin/dashboard'}>
+          <div className="p-8 text-center bg-dark-card border border-red-500/30 rounded-xl my-6 space-y-4">
+            <h3 className="text-xl font-bold text-red-400">เกิดข้อผิดพลาดในการโหลดหน้าใบงาน</h3>
+            <p className="text-xs text-gray-400 font-mono">{this.state.error?.toString()}</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-colors"
+            >
+              โหลดหน้านี้ใหม่อีกครั้ง
+            </button>
+          </div>
+        </MainLayout>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const CLIENT_VERSION = '1.0.2';
 
@@ -430,7 +504,7 @@ export default function App() {
           } 
         />
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
-        <Route path="/workorder/:site_code/:tab" element={<WorkOrderPanel />} />
+        <Route path="/workorder/:site_code/:tab" element={<ErrorBoundary><WorkOrderPanel /></ErrorBoundary>} />
         <Route path="/admin/fields" element={<FieldSettings />} />
         <Route path="/admin/users" element={<ManageUsers />} />
         <Route path="/admin/storage" element={<StorageBrowser />} />

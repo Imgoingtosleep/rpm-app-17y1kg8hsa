@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ImagePreviewManager from '../../components/ImagePreviewManager';
 
-export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
+export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, userRole, isSubmitted }) {
   // Facility parameters config
   const [params, setParams] = useState({
     alarm_door: { status: '', file: [] },
@@ -330,7 +330,13 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
     <div className="p-8 space-y-6">
       {isReadOnly && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <span>คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ระบบจะปิดการใช้งานฟิลด์ป้อนข้อมูล ปุ่มบันทึกข้อมูล และการอัปโหลดไฟล์ในหน้านี้ทั้งหมด</span>
+          <span>
+            {isSubmitted 
+              ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+              : userRole === 'Team Lead' 
+              ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+              : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
+          </span>
         </div>
       )}
 
@@ -393,7 +399,11 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold w-full text-center">
-              ไม่สามารถบันทึกข้อมูลสรุประบบและปิดเล่มได้เนื่องจากคุณอยู่ในสิทธิ์ Viewer (ดูข้อมูลได้อย่างเดียว)
+              {isSubmitted 
+                ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Team Lead' 
+                ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
             </div>
           )}
         </div>

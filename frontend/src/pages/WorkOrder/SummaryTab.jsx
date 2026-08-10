@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function SummaryTab({ site, rpmId, onComplete, isReadOnly }) {
+export default function SummaryTab({ site, rpmId, onComplete, isReadOnly, userRole, isSubmitted }) {
   const [summaryIssue, setSummaryIssue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldConfigs, setFieldConfigs] = useState([]);
@@ -110,7 +110,11 @@ export default function SummaryTab({ site, rpmId, onComplete, isReadOnly }) {
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              {isSubmitted 
+                ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Team Lead' 
+                ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
             </div>
           )}
         </div>

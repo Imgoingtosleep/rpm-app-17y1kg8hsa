@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ImagePreviewManager from '../../components/ImagePreviewManager';
 
-export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnly }) {
+export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, userRole, isSubmitted }) {
   // Input fields state
   const [meterSize, setMeterSize] = useState('');
   const [cableStatus, setCableStatus] = useState('');
@@ -291,7 +291,13 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
     <div className="p-8 space-y-6">
       {isReadOnly && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <span>คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ระบบจะปิดการใช้งานฟิลด์ป้อนข้อมูล ปุ่มบันทึกข้อมูล และการอัปโหลดไฟล์ในหน้านี้ทั้งหมด</span>
+          <span>
+            {isSubmitted 
+              ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+              : userRole === 'Team Lead' 
+              ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+              : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
+          </span>
         </div>
       )}
 
@@ -577,8 +583,13 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
                     <label className="block text-xs text-gray-400 mb-1">
                       6. ภาพการวัดค่ากราวด์ (ground_img) {configsMap.ground_resistance.isRequired && <span className="text-red-400">*</span>}
                     </label>
-                    <input key={`ground-${fileInputKey}`} type="file" multiple className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-dark-accent file:text-gray-300 hover:file:bg-indigo-600/20" onChange={(e) => handleFileChange('ground', e.target.files)} />
-                    {existingPaths.ground && <p className="text-[10px] text-gray-500 mt-1">รูปเก่า: {Array.isArray(existingPaths.ground) ? existingPaths.ground.join(', ') : existingPaths.ground}</p>}
+                    <ImagePreviewManager
+                      files={images.ground}
+                      existingPaths={existingPaths.ground}
+                      onFilesChange={(newFiles) => handleFilesChange('ground', newFiles)}
+                      onExistingRemove={(path) => handleExistingRemove('ground', path)}
+                      isReadOnly={isReadOnly}
+                    />
                   </div>
                 )}
               </div>
@@ -593,7 +604,11 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
             </button>
           ) : (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium">
-              คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้
+              {isSubmitted 
+                ? 'ใบงานนี้ถูกส่งเรียบร้อยแล้ว — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : userRole === 'Team Lead' 
+                ? 'โหมดตรวจสอบงาน (Team Lead) — แสดงผลในรูปแบบตรวจสอบ (Read-Only)'
+                : 'คุณอยู่ในโหมดผู้เข้าชมทั่วไป (Viewer) ทำได้เฉพาะการดูข้อมูลเท่านั้น ไม่สามารถแก้ไขหรือบันทึกได้'}
             </div>
           )}
         </div>
