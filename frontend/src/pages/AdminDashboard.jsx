@@ -318,12 +318,14 @@ export default function AdminDashboard() {
 
       // 4. Batteries Sheet
       if (data.batteries && data.batteries.length > 0) {
-        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานภายใน IR (mΩ)', 'สถานะ'];
+        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'วันที่ติดตั้ง', 'วันหมดประกัน', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานภายใน IR (mΩ)', 'สถานะ'];
         const batDataRows = data.batteries.map(b => [
           `ตู้ที่ ${b.rect_no || '-'}`,
           b.bank_name || '-',
           b.brand || '-',
           b.capacity || '-',
+          b.installed_date ? b.installed_date.split('T')[0] : '-',
+          b.warrantee_date ? b.warrantee_date.split('T')[0] : '-',
           b.cell_no ?? '-',
           b.voltage ?? '-',
           b.internal_resistance ?? '-',
@@ -739,9 +741,11 @@ export default function AdminDashboard() {
                         <tr className="text-gray-500 border-b border-dark-border/30 uppercase">
                           <th className="py-1.5 px-2 text-left">ตู้</th>
                           <th className="py-1.5 px-2 text-left">Bank</th>
-                          <th className="py-1.5 px-2 text-center">ลูกที่</th>
                           <th className="py-1.5 px-2 text-left">ยี่ห้อ</th>
                           <th className="py-1.5 px-2 text-left">ความจุ</th>
+                          <th className="py-1.5 px-2 text-center">ติดตั้ง</th>
+                          <th className="py-1.5 px-2 text-center">หมดประกัน</th>
+                          <th className="py-1.5 px-2 text-center">ลูกที่</th>
                           <th className="py-1.5 px-2 text-right">แรงดัน (V)</th>
                           <th className="py-1.5 px-2 text-right">IR (mΩ)</th>
                           <th className="py-1.5 px-2 text-center">สถานะ</th>
@@ -752,9 +756,11 @@ export default function AdminDashboard() {
                           <tr key={i} className="text-gray-300">
                             <td className="py-1.5 px-2">{b.rect_no}</td>
                             <td className="py-1.5 px-2">{b.bank_name}</td>
-                            <td className="py-1.5 px-2 text-center">{b.cell_no}</td>
                             <td className="py-1.5 px-2">{b.brand || '-'}</td>
                             <td className="py-1.5 px-2">{b.capacity || '-'}</td>
+                            <td className="py-1.5 px-2 text-center text-[10px] text-gray-400">{b.installed_date ? b.installed_date.split('T')[0] : '-'}</td>
+                            <td className="py-1.5 px-2 text-center text-[10px] text-gray-400">{b.warrantee_date ? b.warrantee_date.split('T')[0] : '-'}</td>
+                            <td className="py-1.5 px-2 text-center">{b.cell_no}</td>
                             <td className="py-1.5 px-2 text-right font-mono">{b.voltage || '-'}</td>
                             <td className="py-1.5 px-2 text-right font-mono">{b.internal_resistance || '-'}</td>
                             <td className="py-1.5 px-2 text-center">

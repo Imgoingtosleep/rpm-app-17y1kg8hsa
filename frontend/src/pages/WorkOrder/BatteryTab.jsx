@@ -119,35 +119,29 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // 4. Update UI cells state when active batteries list or bank selection changes
   useEffect(() => {
-    const isDifferentBankOrRect = bankNo !== loadedBankRect.bank || activeRectId !== loadedBankRect.rect;
     const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
 
-    setCells(prev => {
-      const nextCells = isDifferentBankOrRect ? {
-        1: { voltage: '', ir: '', file: [], existingPath: [] },
-        2: { voltage: '', ir: '', file: [], existingPath: [] },
-        3: { voltage: '', ir: '', file: [], existingPath: [] },
-        4: { voltage: '', ir: '', file: [], existingPath: [] }
-      } : { ...prev };
+    const nextCells = {
+      1: { voltage: '', ir: '', file: [], existingPath: [] },
+      2: { voltage: '', ir: '', file: [], existingPath: [] },
+      3: { voltage: '', ir: '', file: [], existingPath: [] },
+      4: { voltage: '', ir: '', file: [], existingPath: [] }
+    };
 
-      // Filter batteries for selected bank
-      const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
-      bankBatteries.forEach(bat => {
-        const cellNo = bat.cell_no;
-        if (nextCells[cellNo]) {
-          nextCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
-          nextCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
-          nextCells[cellNo].existingPath = toArray(bat.battery_img);
-          nextCells[cellNo].status = bat.status || 'Good';
-        }
-      });
-
-      return nextCells;
+    // Filter batteries for selected bank
+    const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
+    bankBatteries.forEach(bat => {
+      const cellNo = bat.cell_no;
+      if (nextCells[cellNo]) {
+        nextCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
+        nextCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
+        nextCells[cellNo].existingPath = toArray(bat.battery_img);
+        nextCells[cellNo].status = bat.status || 'Good';
+      }
     });
 
-    if (isDifferentBankOrRect) {
-      setLoadedBankRect({ bank: bankNo, rect: activeRectId });
-    }
+    setCells(nextCells);
+    setLoadedBankRect({ bank: bankNo, rect: activeRectId });
 
     const formatDateForInput = (dateStr) => {
       if (!dateStr) return '';
@@ -164,13 +158,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       setCapacity(matchedBank.capacity || '100AH');
       setInstalledDate(formatDateForInput(matchedBank.installed_date));
       setWarranteeDate(formatDateForInput(matchedBank.warrantee_date));
-    } else if (isDifferentBankOrRect) {
+    } else {
       setBrand('');
       setCapacity('100AH');
       setInstalledDate('');
       setWarranteeDate('');
     }
-  }, [bankNo, batteries, activeRectId, loadedBankRect]);
+  }, [bankNo, batteries, activeRectId]);
 
   const handleCellChange = (num, field, value) => {
     if (field === 'file') {
