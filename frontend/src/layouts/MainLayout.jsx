@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { filterSitesByUserScope, parseScopeList } from '../utils/scopeAccess';
 
 export default function MainLayout({ children, currentStep, currentSite, onNavigateBack }) {
   const navigate = useNavigate();
@@ -56,15 +57,6 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
   const [accessibleSitesCount, setAccessibleSitesCount] = useState(0);
   const [loadingScope, setLoadingScope] = useState(false);
 
-  const parseScopeList = (raw) => {
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === 'string' && raw.startsWith('[')) {
-      try { return JSON.parse(raw); } catch (e) {}
-    }
-    return typeof raw === 'string' ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
-  };
-
   const handleOpenScopeModal = async () => {
     setIsDropdownOpen(false);
     setIsScopeModalOpen(true);
@@ -82,53 +74,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
       const sitesRes = await fetch('/api/sites');
       if (sitesRes.ok) {
         const sites = await sitesRes.json();
-        const userAreas = parseScopeList(currentUserData?.area);
-        const userSubareas = parseScopeList(currentUserData?.subarea);
-        const isAdmin = currentUserData?.role === 'Admin';
-
-        const hasUserAreas = userAreas.length > 0 && !userAreas.includes('All');
-        const hasUserSubareas = userSubareas.length > 0 && !userSubareas.includes('All');
-
-        const allowed = sites.filter(s => {
-          if (isAdmin) return true;
-
-          // If user has no specific area or subarea restrictions, show all sites
-          if (!hasUserAreas && !hasUserSubareas) return true;
-
-          if (hasUserAreas) {
-            // Must match one of the assigned userAreas
-            if (!userAreas.includes(s.area)) {
-              return false;
-            }
-
-            // s.area IS in userAreas
-            if (!hasUserSubareas) return true;
-
-            // Check if any of the user's assigned subareas belong to this s.area in DB
-            const subareasInThisArea = sites
-              .filter(st => st.area === s.area)
-              .map(st => st.subarea)
-              .filter(Boolean);
-
-            const hasMatchingSubareaForThisArea = subareasInThisArea.some(sub => userSubareas.includes(sub));
-
-            if (hasMatchingSubareaForThisArea) {
-              // Strict matching: require s.subarea to match userSubareas
-              return userSubareas.includes(s.subarea);
-            } else {
-              // Subarea filter does not apply to this area (e.g. Chiang Mai), allow all sites in this area
-              return true;
-            }
-          }
-
-          if (hasUserSubareas) {
-            return userSubareas.includes(s.subarea) || userSubareas.includes(s.area);
-          }
-
-          return true;
-        });
-
-        setAccessibleSitesCount(allowed.length);
+        setAccessibleSitesCount(filterSitesByUserScope(sites, currentUserData).length);
       }
     } catch (err) {
       console.error('Error loading user scope:', err);

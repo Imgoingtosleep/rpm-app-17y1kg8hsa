@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { filterSitesByUserScope } from '../utils/scopeAccess';
 
 export default function Gatekeeper({ onOpenWorkOrder }) {
   const [sites, setSites] = useState([]);
@@ -17,6 +18,15 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
 
   const [selectedArea, setSelectedArea] = useState('All');
   const [selectedSubarea, setSelectedSubarea] = useState('All');
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const user = localStorage.getItem('user');
+      return user ? JSON.parse(user) : { role: 'Viewer' };
+    } catch (e) {
+      console.error(e);
+      return { role: 'Viewer' };
+    }
+  });
 
   // Editing states for site_grade, site_type, area, subarea
   const [isEditingSite, setIsEditingSite] = useState(false);
@@ -26,77 +36,12 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   const [editArea, setEditArea] = useState('');
   const [editSubarea, setEditSubarea] = useState('');
 
-  // Retrieve user object from localStorage
-  const getUserObj = () => {
-    try {
-      const user = localStorage.getItem('user');
-      if (user) {
-        return JSON.parse(user);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return { role: 'Viewer' };
-  };
-
-  const parseUserList = (rawVal) => {
-    if (!rawVal) return [];
-    if (Array.isArray(rawVal)) return rawVal;
-    if (typeof rawVal === 'string' && rawVal.startsWith('[')) {
-      try { return JSON.parse(rawVal); } catch (e) {}
-    }
-    return typeof rawVal === 'string' ? rawVal.split(',').map(s => s.trim()).filter(Boolean) : [];
-  };
-
-  const userObj = getUserObj();
-  const userRole = userObj.role || 'Viewer';
+  const userRole = currentUser?.role || 'Viewer';
   const isAdmin = userRole === 'Admin';
   const isTeamLead = userRole === 'Team Lead';
-  const userAreas = parseUserList(userObj.area);
-  const userSubareas = parseUserList(userObj.subarea);
 
   // Filter allowed sites based on logged in user's role and assigned Multi-Areas & Subareas
-  const allowedUserSites = sites.filter(site => {
-    if (isAdmin) return true;
-
-    const hasUserAreas = userAreas.length > 0 && !userAreas.includes('All');
-    const hasUserSubareas = userSubareas.length > 0 && !userSubareas.includes('All');
-
-    // If user has no specific area or subarea restrictions, show all sites
-    if (!hasUserAreas && !hasUserSubareas) return true;
-
-    if (hasUserAreas) {
-      // Must match one of the assigned userAreas
-      if (!userAreas.includes(site.rawArea)) {
-        return false;
-      }
-
-      // site.rawArea IS in userAreas
-      if (!hasUserSubareas) return true;
-
-      // Check if any of the user's assigned subareas belong to this site.rawArea in DB
-      const subareasInThisArea = sites
-        .filter(s => s.rawArea === site.rawArea)
-        .map(s => s.rawSubarea)
-        .filter(Boolean);
-
-      const hasMatchingSubareaForThisArea = subareasInThisArea.some(sub => userSubareas.includes(sub));
-
-      if (hasMatchingSubareaForThisArea) {
-        // Strict matching: require site.rawSubarea to match userSubareas
-        return userSubareas.includes(site.rawSubarea);
-      } else {
-        // Subarea filter does not apply to this area (e.g. Chiang Mai), allow all sites in this area
-        return true;
-      }
-    }
-
-    if (hasUserSubareas) {
-      return userSubareas.includes(site.rawSubarea) || userSubareas.includes(site.rawArea);
-    }
-
-    return true;
-  });
+  const allowedUserSites = filterSitesByUserScope(sites, currentUser);
 
   // Extract unique areas and subareas restricted to user's assigned scope
   const uniqueAreas = ['All', ...Array.from(new Set(allowedUserSites.map(s => s.rawArea).filter(Boolean)))];
@@ -224,6 +169,16 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
 
   useEffect(() => {
     setLoading(true);
+    fetch('/api/users/me')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data) {
+          setCurrentUser(data);
+          localStorage.setItem('user', JSON.stringify(data));
+        }
+      })
+      .catch(err => console.error('Error refreshing user scope:', err));
+
     // Fetch sites
     fetch('/api/sites')
       .then(res => {
