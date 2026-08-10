@@ -48,6 +48,106 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   const [loadedBankRect, setLoadedBankRect] = useState({ bank: '', rect: null });
   const [rectifierQtyUih, setRectifierQtyUih] = useState(rectifierQtyUihProp !== undefined ? rectifierQtyUihProp : 6);
 
+  // ===== BANK CACHE: stores per-bank data in memory to prevent data loss when switching banks =====
+  const bankCacheRef = React.useRef({}); // key: `${rectId}_${normalizedBankName}` → { cells, brand, capacity, installedDate, warranteeDate, isCustomBrand }
+  const prevBankRef = React.useRef({ bank: 'Bank 1', rectId: null }); // track previous bank to save before switching
+
+  const normalizeBank = (str) => (str || '').toString().trim().toLowerCase();
+
+  // Save current UI state into the cache for the given bank
+  const saveToBankCache = (rectId, bankName, cellsData, metaData) => {
+    const key = `${rectId}_${normalizeBank(bankName)}`;
+    bankCacheRef.current[key] = {
+      cells: JSON.parse(JSON.stringify(cellsData)), // deep clone to avoid reference issues
+      brand: metaData.brand,
+      capacity: metaData.capacity,
+      installedDate: metaData.installedDate,
+      warranteeDate: metaData.warranteeDate,
+      isCustomBrand: metaData.isCustomBrand,
+    };
+  };
+
+  // Load bank state from cache, or from batteries array, or return empty defaults
+  const loadBankState = React.useCallback((rectId, bankName, batteriesArr) => {
+    const key = `${rectId}_${normalizeBank(bankName)}`;
+    const cached = bankCacheRef.current[key];
+
+    const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
+    const formatDateForInput = (dateStr) => {
+      if (!dateStr) return '';
+      if (dateStr.length >= 10) return dateStr.substring(0, 10);
+      return dateStr;
+    };
+
+    // Try loading from batteries array (DB data)
+    const curBankKey = normalizeBank(bankName);
+    const bankBatteries = (batteriesArr || []).filter(b => normalizeBank(b.bank_name) === curBankKey);
+
+    const dbCells = {
+      1: { voltage: '', ir: '', file: [], existingPath: [] },
+      2: { voltage: '', ir: '', file: [], existingPath: [] },
+      3: { voltage: '', ir: '', file: [], existingPath: [] },
+      4: { voltage: '', ir: '', file: [], existingPath: [] }
+    };
+
+    bankBatteries.forEach(bat => {
+      const cellNo = bat.cell_no;
+      if (dbCells[cellNo]) {
+        dbCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
+        dbCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
+        dbCells[cellNo].existingPath = toArray(bat.battery_img);
+        dbCells[cellNo].status = bat.status || 'Good';
+      }
+    });
+
+    const matchedBank = bankBatteries[0]; // metadata from first row
+    const dbMeta = matchedBank ? {
+      brand: matchedBank.brand || '',
+      capacity: matchedBank.capacity || '100AH',
+      installedDate: formatDateForInput(matchedBank.installed_date),
+      warranteeDate: formatDateForInput(matchedBank.warrantee_date),
+      isCustomBrand: (() => {
+        const bBrand = matchedBank.brand || '';
+        const isKnown = BATTERY_MODELS.some(m => m.brand === bBrand);
+        return bBrand !== '' && !isKnown;
+      })(),
+    } : { brand: '', capacity: '100AH', installedDate: '', warranteeDate: '', isCustomBrand: false };
+
+    // If we have a cache entry, merge: use cache cells but update existingPath from DB (in case new images were saved)
+    if (cached) {
+      const mergedCells = { ...cached.cells };
+      [1, 2, 3, 4].forEach(num => {
+        if (mergedCells[num]) {
+          // Always use the latest existingPath from DB
+          mergedCells[num].existingPath = dbCells[num].existingPath;
+          // If DB has voltage/ir data and cache doesn't (shouldn't happen, but safety), use DB
+          if ((mergedCells[num].voltage === '' || mergedCells[num].voltage === undefined) && dbCells[num].voltage !== '') {
+            mergedCells[num].voltage = dbCells[num].voltage;
+          }
+          if ((mergedCells[num].ir === '' || mergedCells[num].ir === undefined) && dbCells[num].ir !== '') {
+            mergedCells[num].ir = dbCells[num].ir;
+          }
+          if (!mergedCells[num].status && dbCells[num].status) {
+            mergedCells[num].status = dbCells[num].status;
+          }
+        }
+      });
+      return {
+        cells: mergedCells,
+        meta: {
+          brand: cached.brand || dbMeta.brand,
+          capacity: cached.capacity || dbMeta.capacity,
+          installedDate: cached.installedDate || dbMeta.installedDate,
+          warranteeDate: cached.warranteeDate || dbMeta.warranteeDate,
+          isCustomBrand: cached.isCustomBrand || dbMeta.isCustomBrand,
+        }
+      };
+    }
+
+    // No cache, use DB data
+    return { cells: dbCells, meta: dbMeta };
+  }, []);
+
   useEffect(() => {
     if (rectifierQtyUihProp !== undefined) {
       setRectifierQtyUih(rectifierQtyUihProp);
@@ -102,8 +202,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // 3. Fetch batteries for active rectifier
   const fetchBatteries = React.useCallback(() => {
-    if (!activeRectId) return;
-    fetch(`/api/rectifier/${activeRectId}/batteries`)
+    if (!activeRectId) return Promise.resolve();
+    return fetch(`/api/rectifier/${activeRectId}/batteries`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -113,69 +213,74 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       .catch(err => console.error("Error fetching batteries:", err));
   }, [activeRectId]);
 
-  // Re-fetch batteries whenever activeRectId OR bankNo changes
-  // This ensures switching banks always pulls the latest data from the DB
+  // Fetch batteries when activeRectId changes
   useEffect(() => {
     fetchBatteries();
-  }, [activeRectId, bankNo, fetchBatteries]);
+  }, [activeRectId, fetchBatteries]);
 
-  // 4. Update UI cells state when active batteries list or bank selection changes
+  // 4. When bankNo changes: save current bank to cache, then load new bank from cache/DB
   useEffect(() => {
-    const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
+    const prev = prevBankRef.current;
 
-    const nextCells = {
-      1: { voltage: '', ir: '', file: [], existingPath: [] },
-      2: { voltage: '', ir: '', file: [], existingPath: [] },
-      3: { voltage: '', ir: '', file: [], existingPath: [] },
-      4: { voltage: '', ir: '', file: [], existingPath: [] }
-    };
+    // Save the PREVIOUS bank's state to cache before switching
+    if (prev.rectId && prev.bank) {
+      saveToBankCache(prev.rectId, prev.bank, cells, {
+        brand, capacity, installedDate, warranteeDate, isCustomBrand
+      });
+    }
 
-    const normalizeBank = (str) => (str || '').toString().trim().toLowerCase();
-
-    // Filter batteries for selected bank
-    const curBankKey = normalizeBank(bankNo);
-    const bankBatteries = batteries.filter(b => normalizeBank(b.bank_name) === curBankKey);
-    bankBatteries.forEach(bat => {
-      const cellNo = bat.cell_no;
-      if (nextCells[cellNo]) {
-        nextCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
-        nextCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
-        nextCells[cellNo].existingPath = toArray(bat.battery_img);
-        nextCells[cellNo].status = bat.status || 'Good';
-      }
-    });
-
-    setCells(nextCells);
+    // Load the NEW bank's state from cache or batteries
+    const loaded = loadBankState(activeRectId, bankNo, batteries);
+    setCells(loaded.cells);
+    setBrand(loaded.meta.brand);
+    setCapacity(loaded.meta.capacity);
+    setInstalledDate(loaded.meta.installedDate);
+    setWarranteeDate(loaded.meta.warranteeDate);
+    setIsCustomBrand(loaded.meta.isCustomBrand);
     setLoadedBankRect({ bank: bankNo, rect: activeRectId });
 
-    const formatDateForInput = (dateStr) => {
-      if (!dateStr) return '';
-      if (dateStr.length >= 10) {
-        return dateStr.substring(0, 10);
+    // Update prev ref
+    prevBankRef.current = { bank: bankNo, rectId: activeRectId };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankNo, activeRectId]);
+
+  // 5. When batteries data arrives from server (after fetch), refresh the current bank's display
+  useEffect(() => {
+    if (!batteries || batteries.length === 0) return;
+
+    const loaded = loadBankState(activeRectId, bankNo, batteries);
+    setCells(loaded.cells);
+    setBrand(loaded.meta.brand);
+    setCapacity(loaded.meta.capacity);
+    setInstalledDate(loaded.meta.installedDate);
+    setWarranteeDate(loaded.meta.warranteeDate);
+    setIsCustomBrand(loaded.meta.isCustomBrand);
+
+    // Also update the cache with latest DB data for all banks
+    const allBankNames = [...new Set(batteries.map(b => b.bank_name).filter(Boolean))];
+    allBankNames.forEach(bn => {
+      const key = `${activeRectId}_${normalizeBank(bn)}`;
+      if (!bankCacheRef.current[key]) {
+        // Only populate cache for banks we haven't edited yet
+        const bankState = loadBankState(activeRectId, bn, batteries);
+        bankCacheRef.current[key] = {
+          cells: bankState.cells,
+          ...bankState.meta,
+        };
+      } else {
+        // Update existingPath (images) from DB for cached banks
+        const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
+        const bankBatteries = batteries.filter(b => normalizeBank(b.bank_name) === normalizeBank(bn));
+        const cachedEntry = bankCacheRef.current[key];
+        bankBatteries.forEach(bat => {
+          if (cachedEntry.cells && cachedEntry.cells[bat.cell_no]) {
+            cachedEntry.cells[bat.cell_no].existingPath = toArray(bat.battery_img);
+          }
+        });
       }
-      return dateStr;
-    };
-
-    // Get metadata from any cell of this bank
-    const matchedBank = batteries.find(b => normalizeBank(b.bank_name) === curBankKey);
-    if (matchedBank) {
-      const bBrand = matchedBank.brand || '';
-      setBrand(bBrand);
-      setCapacity(matchedBank.capacity || '100AH');
-      setInstalledDate(formatDateForInput(matchedBank.installed_date));
-      setWarranteeDate(formatDateForInput(matchedBank.warrantee_date));
-
-      // Check if brand is in predefined list or custom
-      const isKnown = BATTERY_MODELS.some(m => m.brand === bBrand);
-      setIsCustomBrand(bBrand !== '' && !isKnown);
-    } else {
-      setBrand('');
-      setCapacity('100AH');
-      setInstalledDate('');
-      setWarranteeDate('');
-      setIsCustomBrand(false);
-    }
-  }, [bankNo, batteries, activeRectId]);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batteries]);
 
   const handleCellChange = (num, field, value) => {
     if (field === 'file') {
@@ -359,6 +464,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       if (res.ok) {
         alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) และข้อมูล Bank เรียบร้อยแล้ว!`);
         setFileInputKey(Date.now());
+        // Save current state to cache before re-fetching
+        saveToBankCache(activeRectId, bankNo, cells, {
+          brand, capacity, installedDate, warranteeDate, isCustomBrand
+        });
+        // Invalidate cache for current bank so fresh DB data replaces it
+        const cacheKey = `${activeRectId}_${normalizeBank(bankNo)}`;
+        delete bankCacheRef.current[cacheKey];
         fetchBatteries(); // Reload batteries list
         if (onComplete) onComplete();
       } else {
@@ -407,6 +519,9 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       });
       if (res.ok) {
         alert(`บันทึกข้อมูลกลุ่มแบตเตอรี่ ${bankNo} เรียบร้อยแล้ว!`);
+        // Invalidate cache for current bank so fresh DB data replaces it
+        const cacheKey = `${activeRectId}_${normalizeBank(bankNo)}`;
+        delete bankCacheRef.current[cacheKey];
         fetchBatteries();
       } else {
         const err = await res.json();
