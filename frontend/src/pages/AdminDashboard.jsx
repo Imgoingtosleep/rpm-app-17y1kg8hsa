@@ -979,8 +979,8 @@ export default function AdminDashboard() {
           ไม่พบรายการใบงานตามเงื่อนไขที่เลือก
         </div>
       ) : (
-        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
+        <div className="bg-dark-card border border-dark-border rounded-xl shadow-xl">
+          <div className="overflow-x-auto overflow-y-visible rounded-xl">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-dark-accent/40 border-b border-dark-border text-xs text-gray-400 font-semibold uppercase">
@@ -996,12 +996,13 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-border/40 text-sm text-gray-300">
-                {filteredWorkorders.map((wo) => {
+                {filteredWorkorders.map((wo, index) => {
                   const isExpanded = expandedRow === wo.rpm_id;
                   const completeness = getDataCompleteness(wo);
                   const isSubmitted = wo.status === 'Submitted';
                   const isTLApproved = wo.status === 'TL Approved';
                   const isMenuOpen = openMenuId === wo.rpm_id;
+                  const isTopRow = index < 2;
 
                   return (
                     <React.Fragment key={wo.rpm_id}>
@@ -1053,7 +1054,30 @@ export default function AdminDashboard() {
                         {/* ─── Consolidated Action Menu ─── */}
                         <td className="p-4 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => setOpenMenuId(isMenuOpen ? null : wo.rpm_id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isMenuOpen) {
+                                setOpenMenuId(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const showBelow = spaceBelow > 220;
+                                setOpenMenuId(wo.rpm_id);
+                                setTimeout(() => {
+                                  if (menuRef.current) {
+                                    menuRef.current.style.position = 'fixed';
+                                    menuRef.current.style.right = `${window.innerWidth - rect.right}px`;
+                                    if (showBelow) {
+                                      menuRef.current.style.top = `${rect.bottom + 4}px`;
+                                      menuRef.current.style.bottom = 'auto';
+                                    } else {
+                                      menuRef.current.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+                                      menuRef.current.style.top = 'auto';
+                                    }
+                                  }
+                                }, 0);
+                              }
+                            }}
                             className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
                               isMenuOpen
                                 ? 'bg-indigo-600 border-indigo-500 text-white'
@@ -1069,7 +1093,8 @@ export default function AdminDashboard() {
                           {isMenuOpen && (
                             <div
                               ref={menuRef}
-                              className="absolute right-4 top-full mt-1 z-20 w-52 bg-dark-card border border-dark-border rounded-xl shadow-2xl p-1.5 text-left"
+                              onClick={(e) => e.stopPropagation()}
+                              className="fixed z-50 w-52 bg-dark-card border border-dark-border rounded-xl shadow-2xl p-1.5 text-left"
                             >
                               <MenuItem
                                 tone="indigo"
