@@ -101,7 +101,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   }, [selectedRect, rectifiers]);
 
   // 3. Fetch batteries for active rectifier
-  const fetchBatteries = () => {
+  const fetchBatteries = React.useCallback(() => {
     if (!activeRectId) return;
     fetch(`/api/rectifier/${activeRectId}/batteries`)
       .then(res => res.json())
@@ -111,11 +111,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         }
       })
       .catch(err => console.error("Error fetching batteries:", err));
-  };
+  }, [activeRectId]);
 
+  // Re-fetch batteries whenever activeRectId OR bankNo changes
+  // This ensures switching banks always pulls the latest data from the DB
   useEffect(() => {
     fetchBatteries();
-  }, [activeRectId]);
+  }, [activeRectId, bankNo, fetchBatteries]);
 
   // 4. Update UI cells state when active batteries list or bank selection changes
   useEffect(() => {
@@ -128,8 +130,11 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       4: { voltage: '', ir: '', file: [], existingPath: [] }
     };
 
+    const normalizeBank = (str) => (str || '').toString().trim().toLowerCase();
+
     // Filter batteries for selected bank
-    const bankBatteries = batteries.filter(b => b.bank_name === bankNo);
+    const curBankKey = normalizeBank(bankNo);
+    const bankBatteries = batteries.filter(b => normalizeBank(b.bank_name) === curBankKey);
     bankBatteries.forEach(bat => {
       const cellNo = bat.cell_no;
       if (nextCells[cellNo]) {
@@ -152,17 +157,23 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     };
 
     // Get metadata from any cell of this bank
-    const matchedBank = batteries.find(b => b.bank_name === bankNo);
+    const matchedBank = batteries.find(b => normalizeBank(b.bank_name) === curBankKey);
     if (matchedBank) {
-      setBrand(matchedBank.brand || '');
+      const bBrand = matchedBank.brand || '';
+      setBrand(bBrand);
       setCapacity(matchedBank.capacity || '100AH');
       setInstalledDate(formatDateForInput(matchedBank.installed_date));
       setWarranteeDate(formatDateForInput(matchedBank.warrantee_date));
+
+      // Check if brand is in predefined list or custom
+      const isKnown = BATTERY_MODELS.some(m => m.brand === bBrand);
+      setIsCustomBrand(bBrand !== '' && !isKnown);
     } else {
       setBrand('');
       setCapacity('100AH');
       setInstalledDate('');
       setWarranteeDate('');
+      setIsCustomBrand(false);
     }
   }, [bankNo, batteries, activeRectId]);
 
@@ -440,10 +451,16 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     const normalize = (str) => String(str || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const summaryMap = new Map();
 
+    // Helper to format Rectifier name to rect_1, rect_2 for key matching
+    const getRectKey = (rName) => {
+      const num = String(rName || '').replace(/[^0-9]/g, '');
+      return num ? `rect_${num}` : 'rect_1';
+    };
+
     // 1. First add saved records from DB across all rectifiers & banks
     allWorkorderBatteries.forEach(b => {
-      const rKey = normalize(b.rect_no || selectedRect);
-      const bKey = normalize(b.bank_name || bankNo);
+      const rKey = getRectKey(b.rect_no);
+      const bKey = normalize(b.bank_name || 'Bank 1');
       const cKey = parseInt(b.cell_no, 10);
       const key = `${rKey}_${bKey}_${cKey}`;
 
@@ -457,8 +474,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       });
     });
 
-    // 2. Override with current live unsaved form state (cells)
-    const curRectKey = normalize(selectedRect);
+    // 2. Override with current live form state (cells)
+    const curRectKey = getRectKey(selectedRect);
     const curBankKey = normalize(bankNo);
 
     [1, 2, 3, 4].forEach(num => {
@@ -597,7 +614,13 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                   }
                 }
                 const count = (!isNaN(availableQty) && availableQty > 0) ? Math.min(Math.max(availableQty, 1), 12) : 12;
-                return Array.from({ length: count }, (_, i) => `Bank ${i + 1}`).map((bName) => (
+                const defaultList = Array.from({ length: count }, (_, i) => `Bank ${i + 1}`);
+                
+                // Include any extra banks that exist in DB
+                const savedBanks = (batteries || []).map(b => b.bank_name).filter(Boolean);
+                const mergedSet = new Set([...defaultList, ...savedBanks]);
+                
+                return Array.from(mergedSet).map((bName) => (
                   <option key={bName} value={bName}>{bName}</option>
                 ));
               })()}

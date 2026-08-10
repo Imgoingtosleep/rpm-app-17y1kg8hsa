@@ -191,6 +191,7 @@ export default function AdminDashboard() {
       (statusFilter === 'Approved' && wo.status === 'Approved') ||
       (statusFilter === 'Submitted' && wo.status === 'Submitted') ||
       (statusFilter === 'TL Approved' && wo.status === 'TL Approved') ||
+      (statusFilter === 'Rejected' && wo.status === 'Rejected') ||
       (statusFilter === 'Pending' && (wo.status === 'Pending' || !wo.status));
 
     const matchesCycle = cycleFilter === 'All' || wo.rpm_cycle === cycleFilter;
@@ -205,9 +206,10 @@ export default function AdminDashboard() {
     const approved = filteredWorkorders.filter(wo => wo.status === 'Approved').length;
     const tlApproved = filteredWorkorders.filter(wo => wo.status === 'TL Approved').length;
     const submitted = filteredWorkorders.filter(wo => wo.status === 'Submitted').length;
+    const rejected = filteredWorkorders.filter(wo => wo.status === 'Rejected').length;
     const pending = filteredWorkorders.filter(wo => wo.status === 'Pending' || !wo.status).length;
     const hasAcCount = filteredWorkorders.filter(wo => Number(wo.has_ac) > 0).length;
-    return { total, approved, tlApproved, submitted, pending, hasAcCount };
+    return { total, approved, tlApproved, submitted, rejected, pending, hasAcCount };
   }, [filteredWorkorders]);
 
   const formatDate = (dateStr) => {
@@ -776,9 +778,12 @@ export default function AdminDashboard() {
             })()}
 
             {d.master?.summary_issue && (
-              <DetailSection title="สรุปปัญหาหน้างาน">
-                <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{d.master.summary_issue}</p>
-              </DetailSection>
+              <div className={`rounded-xl p-4 border ${d.master.summary_issue.includes('[ตีกลับแก้ไข') ? 'bg-rose-500/10 border-rose-500/30' : 'bg-dark-card border-dark-border'}`}>
+                <h4 className={`text-xs font-bold uppercase mb-2 ${d.master.summary_issue.includes('[ตีกลับแก้ไข') ? 'text-rose-400' : 'text-gray-400'}`}>
+                  {d.master.summary_issue.includes('[ตีกลับแก้ไข') ? '⚠️ เหตุผลการตีกลับใบงาน ( Reject Reason )' : 'สรุปปัญหาหน้างาน'}
+                </h4>
+                <p className="text-xs text-gray-200 whitespace-pre-wrap leading-relaxed">{d.master.summary_issue}</p>
+              </div>
             )}
           </div>
         </td>
@@ -799,6 +804,13 @@ export default function AdminDashboard() {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
           TL อนุมัติแล้ว
+        </span>
+      );
+    } else if (status === 'Rejected') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 border border-rose-500/30 text-rose-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+          ตีกลับ
         </span>
       );
     } else if (status === 'Submitted') {
@@ -863,7 +875,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
           <p className="text-xs text-gray-500 font-semibold uppercase">ใบงานทั้งหมด</p>
           <p className="text-3xl font-black text-white mt-1">{stats.total}</p>
@@ -883,6 +895,11 @@ export default function AdminDashboard() {
           <p className="text-xs text-gray-500 font-semibold uppercase">รอ TL ตรวจ</p>
           <p className="text-3xl font-black text-amber-400 mt-1">{stats.submitted}</p>
           <p className="text-[10px] text-gray-500 mt-1">Inspector ส่งมาแล้ว</p>
+        </div>
+        <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
+          <p className="text-xs text-gray-500 font-semibold uppercase">ตีกลับ</p>
+          <p className="text-3xl font-black text-rose-400 mt-1">{stats.rejected}</p>
+          <p className="text-[10px] text-gray-500 mt-1">ส่งกลับให้แก้ไข</p>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
           <p className="text-xs text-gray-500 font-semibold uppercase">กำลังดำเนินการ</p>
@@ -946,6 +963,7 @@ export default function AdminDashboard() {
               { id: 'Approved', label: 'Completed' },
               { id: 'TL Approved', label: 'TL อนุมัติแล้ว' },
               { id: 'Submitted', label: 'รอ TL ตรวจ' },
+              { id: 'Rejected', label: 'ตีกลับ' },
               { id: 'Pending', label: 'ดำเนินการ' }
             ].map((item) => (
               <button
@@ -1055,6 +1073,11 @@ export default function AdminDashboard() {
                         </td>
                         <td className="p-4 text-center">
                           {getStatusBadge(wo.status)}
+                          {wo.summary_issue && wo.summary_issue.includes('[ตีกลับแก้ไข') && (
+                            <div className="mt-1 max-w-[160px] mx-auto text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded text-left truncate" title={wo.summary_issue}>
+                              <span className="font-bold">สาเหตุตีกลับ:</span> {wo.summary_issue.replace(/\[ตีกลับแก้ไขโดย TL\/Admin\]:\s*/, '')}
+                            </div>
+                          )}
                         </td>
 
                         {/* ─── Consolidated Action Menu ─── */}

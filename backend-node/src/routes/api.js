@@ -727,8 +727,8 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
          rb.bank_name, 
          rb.brand, 
          rb.capacity, 
-         rb.installed_date, 
-         rb.warrantee_date,
+         COALESCE(bt.installed_date::text, rb.installed_date::text) AS installed_date, 
+         COALESCE(bt.warrantee_date::text, rb.warrantee_date::text) AS warrantee_date,
          bt.test_id,
          bt.cell_no,
          bt.voltage,
@@ -750,9 +750,11 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
 router.post('/rectifier/:rect_id/bank-meta', async (req, res) => {
   const { rect_id } = req.params;
   const { bank_name, brand, capacity, installed_date, warrantee_date } = req.body;
+  const cleanDate = (d) => (d && d.trim() !== '') ? d.trim() : null;
+
   try {
     let bankResult = await db.query(
-      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
+      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND LOWER(bank_name) = LOWER($2);',
       [rect_id, bank_name || 'Bank 1']
     );
 
@@ -761,12 +763,12 @@ router.post('/rectifier/:rect_id/bank-meta', async (req, res) => {
       bank_id = bankResult.rows[0].bank_id;
       await db.query(
         'UPDATE rectifier_banks SET brand = $1, capacity = $2, installed_date = $3, warrantee_date = $4 WHERE bank_id = $5;',
-        [brand || null, capacity || null, installed_date || null, warrantee_date || null, bank_id]
+        [brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
       );
     } else {
       const newBank = await db.query(
         'INSERT INTO rectifier_banks (rect_id, bank_name, brand, capacity, installed_date, warrantee_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING bank_id;',
-        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, installed_date || null, warrantee_date || null]
+        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date)]
       );
       bank_id = newBank.rows[0].bank_id;
     }
@@ -823,10 +825,13 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
   };
 
   try {
+    const cleanDate = (d) => (d && d.trim() !== '') ? d.trim() : null;
+    console.log('[BATTERY SAVE] raw installed_date:', JSON.stringify(installed_date), '| raw warrantee_date:', JSON.stringify(warrantee_date));
+    console.log('[BATTERY SAVE] cleaned installed_date:', cleanDate(installed_date), '| cleaned warrantee_date:', cleanDate(warrantee_date));
     const newBatteryImgs = await getBatteryPaths();
-    // 1. Get or Create the Bank record
+
     let bankResult = await db.query(
-      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND bank_name = $2;',
+      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND LOWER(bank_name) = LOWER($2);',
       [rect_id, bank_name || 'Bank 1']
     );
     
@@ -835,12 +840,12 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
       bank_id = bankResult.rows[0].bank_id;
       await db.query(
         'UPDATE rectifier_banks SET brand = $1, capacity = $2, installed_date = $3, warrantee_date = $4 WHERE bank_id = $5;',
-        [brand || null, capacity || null, installed_date || null, warrantee_date || null, bank_id]
+        [brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
       );
     } else {
       const newBank = await db.query(
         'INSERT INTO rectifier_banks (rect_id, bank_name, brand, capacity, installed_date, warrantee_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING bank_id;',
-        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, installed_date || null, warrantee_date || null]
+        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date)]
       );
       bank_id = newBank.rows[0].bank_id;
     }
@@ -878,15 +883,15 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
     let result;
     if (existing.rows.length > 0) {
       result = await db.query(
-        `UPDATE battery_tests SET voltage = $1, internal_resistance = $2, status = $3, battery_img = $4
-        WHERE bat_id = $5 RETURNING *;`,
-        [toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr, existing.rows[0].bat_id]
+        `UPDATE battery_tests SET voltage = $1, internal_resistance = $2, status = $3, battery_img = $4, installed_date = $5, warrantee_date = $6
+        WHERE bat_id = $7 RETURNING *;`,
+        [toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr, cleanDate(installed_date), cleanDate(warrantee_date), existing.rows[0].bat_id]
       );
     } else {
       result = await db.query(
-        `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img)
-        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
-        [bank_id, cell_no, toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr]
+        `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img, installed_date, warrantee_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;`,
+        [bank_id, cell_no, toNumOrNull(voltage), toNumOrNull(internal_resistance), status, batteryImgArr, cleanDate(installed_date), cleanDate(warrantee_date)]
       );
     }
     res.json(result.rows[0]);
@@ -1298,7 +1303,20 @@ router.get('/workorder/:rpm_id/export-detail', async (req, res) => {
     const rectifiers = rectRes.rows;
 
     const batRes = await db.query(
-      `SELECT b.*, t.*, r.rect_no
+      `SELECT 
+         b.bank_id,
+         b.bank_name,
+         b.brand,
+         b.capacity,
+         b.installed_date,
+         b.warrantee_date,
+         t.bat_id,
+         t.cell_no,
+         t.voltage,
+         t.internal_resistance,
+         t.status,
+         t.battery_img,
+         r.rect_no
        FROM rectifier_banks b
        LEFT JOIN battery_tests t ON b.bank_id = t.bank_id
        JOIN power_rectifier r ON b.rect_id = r.rect_id
@@ -1392,13 +1410,13 @@ router.post('/workorder/:rpm_id/admin-approve', async (req, res) => {
 });
 
 
-// Reject a work order (send back to Inspector as Pending)
+// Reject a work order (send back to Inspector as Rejected)
 router.post('/workorder/:rpm_id/reject', async (req, res) => {
   const { rpm_id } = req.params;
   const { reason } = req.body;
   try {
     const result = await db.query(
-      "UPDATE rpm_records_master SET status = 'Pending', summary_issue = COALESCE($2, summary_issue) WHERE rpm_id = $1 RETURNING *;",
+      "UPDATE rpm_records_master SET status = 'Rejected', summary_issue = COALESCE($2, summary_issue) WHERE rpm_id = $1 RETURNING *;",
       [rpm_id, reason ? `[ตีกลับแก้ไขโดย TL/Admin]: ${reason}` : null]
     );
     if (result.rows.length === 0) {
