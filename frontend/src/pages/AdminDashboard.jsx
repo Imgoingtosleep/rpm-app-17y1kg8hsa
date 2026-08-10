@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ export default function AdminDashboard() {
   const [detailData, setDetailData] = useState({});
   const [detailLoading, setDetailLoading] = useState({});
   const [exportingId, setExportingId] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
 
   const getUserObj = () => {
     try {
@@ -48,6 +51,19 @@ export default function AdminDashboard() {
     }
     fetchWorkorders();
   }, [navigate]);
+
+  // Close the action menu when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   const fetchWorkorders = () => {
     setLoading(true);
@@ -200,6 +216,132 @@ export default function AdminDashboard() {
     return { sections, filled, pct: sections > 0 ? Math.round((filled / sections) * 100) : 0 };
   };
 
+  const exportSingleXLSX = async (wo) => {
+    setExportingId(wo.rpm_id);
+    try {
+      const res = await fetch(`/api/workorder/${wo.rpm_id}/export-detail`);
+      if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
+      const data = await res.json();
+
+      const wb = XLSX.utils.book_new();
+
+      // 1. Master Sheet
+      const masterRows = [
+        ['หัวข้อ', 'รายละเอียด'],
+        ['รหัสสถานี (Site Code)', wo.site_code || ''],
+        ['ชื่อสถานี (Site Name)', wo.site_name || ''],
+        ['ประเภทสถานี (Site Type)', wo.site_type || ''],
+        ['Grade สถานี (Site Grade)', wo.site_grade || ''],
+        ['เขต/พื้นที่ (Area)', wo.area || ''],
+        ['พื้นที่ย่อย (Subarea)', wo.subarea || ''],
+        ['รอบการตรวจ (RPM Cycle)', wo.rpm_cycle || ''],
+        ['วันที่ตรวจ (Inspection Date)', wo.inspection_date ? wo.inspection_date.split('T')[0] : ''],
+        ['เวลาตรวจ (Inspection Time)', wo.inspection_time || ''],
+        ['สถานะใบงาน (Status)', wo.status || ''],
+        ['SL6 Job Number', data.master?.job_number_sl6 || ''],
+        ['SAP Number', data.master?.sap_number || ''],
+        ['จำนวน Rectifier UIH', data.master?.rectifier_qty_uih || 0]
+      ];
+      const wsMaster = XLSX.utils.aoa_to_sheet(masterRows);
+      XLSX.utils.book_append_sheet(wb, wsMaster, 'Master Overview');
+
+      // 2. AC Main Sheet
+      if (data.acMain) {
+        const ac = data.acMain;
+        const acRows = [
+          ['รายการตรวจสอบ AC Main', 'ค่าที่วัดได้ / สถานะ'],
+          ['หม้อแปลงไฟฟ้า (Transformer)', ac.transformer_status || '-'],
+          ['มิเตอร์ไฟฟ้า (Meter)', ac.meter_status || '-'],
+          ['เครื่องกำเนิดไฟฟ้า (Generator)', ac.generator_status || '-'],
+          ['แรงดันไฟฟ้า L1-N (V)', ac.voltage_l1_n || '-'],
+          ['แรงดันไฟฟ้า L2-N (V)', ac.voltage_l2_n || '-'],
+          ['แรงดันไฟฟ้า L3-N (V)', ac.voltage_l3_n || '-'],
+          ['กระแสไฟฟ้า L1 (A)', ac.current_l1 || '-'],
+          ['กระแสไฟฟ้า L2 (A)', ac.current_l2 || '-'],
+          ['กระแสไฟฟ้า L3 (A)', ac.current_l3 || '-'],
+          ['อุปกรณ์ป้องกันฟ้าผ่า (Surge)', ac.surge_status || '-'],
+          ['ความต้านทานระบบดิน (Grounding Ω)', ac.ground_resistance || '-']
+        ];
+        const wsAC = XLSX.utils.aoa_to_sheet(acRows);
+        XLSX.utils.book_append_sheet(wb, wsAC, 'AC Main System');
+      }
+
+      // 3. Rectifiers Sheet
+      if (data.rectifiers && data.rectifiers.length > 0) {
+        const rectHeaders = ['ตู้ที่', 'ยี่ห้อ/รุ่น', 'จำนวนโมดูล', 'แรงดัน Output (V)', 'กระแส Output (A)', 'กระแส Load (A)', 'ระบบแจ้งเตือน (Alarm)'];
+        const rectDataRows = data.rectifiers.map(r => [
+          `ตู้ที่ ${r.rect_no}`,
+          r.brand_model || '-',
+          r.module_qty || '-',
+          r.output_voltage || '-',
+          r.output_current || '-',
+          r.load_current || '-',
+          r.alarm_status || '-'
+        ]);
+        const wsRect = XLSX.utils.aoa_to_sheet([rectHeaders, ...rectDataRows]);
+        XLSX.utils.book_append_sheet(wb, wsRect, 'Rectifier Systems');
+      }
+
+      // 4. Batteries Sheet
+      if (data.batteries && data.batteries.length > 0) {
+        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานทานภายใน IR (mΩ)', 'สถานะ'];
+        const batDataRows = data.batteries.map(b => [
+          `ตู้ที่ ${b.rect_no}`,
+          b.bank_name || '-',
+          b.brand || '-',
+          b.capacity || '-',
+          b.cell_no,
+          b.voltage || '-',
+          b.internal_resistance || '-',
+          b.status || 'ปกติ'
+        ]);
+        const wsBat = XLSX.utils.aoa_to_sheet([batHeaders, ...batDataRows]);
+        XLSX.utils.book_append_sheet(wb, wsBat, 'Battery Test Results');
+      }
+
+      // 5. Facilities Sheet
+      if (data.facilities) {
+        const fac = data.facilities;
+        const facRows = [
+          ['รายการตรวจสอบอาคารและสิ่งอำนวยความสะดวก', 'สถานะ'],
+          ['ระบบเครื่องปรับอากาศ (Air Conditioner)', fac.air_conditioner_status || '-'],
+          ['ระบบป้องกันอัคคีภัย (Fire Alarm / Extinguisher)', fac.fire_protection_status || '-'],
+          ['สภาพแวดล้อมและโครงสร้างสถานี', fac.environment_status || '-'],
+          ['ความสะอาดและความเป็นระเบียบ', fac.cleanliness_status || '-']
+        ];
+        const wsFac = XLSX.utils.aoa_to_sheet(facRows);
+        XLSX.utils.book_append_sheet(wb, wsFac, 'Facilities & Systems');
+      }
+
+      XLSX.writeFile(wb, `RPM_${wo.site_code}_${wo.rpm_cycle || 'export'}.xlsx`);
+    } catch (e) {
+      alert('เกิดข้อผิดพลาดในการ Export XLSX: ' + e.message);
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const exportAllXLSX = () => {
+    if (filteredWorkorders.length === 0) return;
+    const headers = [
+      'Site Code', 'Site Name', 'Area', 'Subarea', 'Site Type', 'Site Grade',
+      'RPM Cycle', 'SL6 Number', 'SAP Number', 'วันที่ตรวจ', 'เวลาตรวจ',
+      'จำนวน Rectifier', 'สถานะใบงาน', 'มีข้อมูล AC Main', 'จำนวน Rectifier ที่บันทึก', 'มีข้อมูล Facilities'
+    ];
+    const rows = filteredWorkorders.map(wo => [
+      wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
+      wo.rpm_cycle || '', wo.job_number_sl6 || '', wo.sap_number || '',
+      wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
+      wo.rectifier_qty_uih || 0, wo.status || 'Pending',
+      Number(wo.has_ac) > 0 ? 'ใช่' : 'ไม่', wo.rectifier_count || 0, Number(wo.has_facilities) > 0 ? 'ใช่' : 'ไม่'
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, 'RPM Summary');
+    XLSX.writeFile(wb, `RPM_Dashboard_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const exportSingleCSV = async (wo) => {
     setExportingId(wo.rpm_id);
     try {
@@ -350,6 +492,28 @@ export default function AdminDashboard() {
     </div>
   );
 
+  // Menu item used inside the consolidated action popup
+  const MenuItem = ({ onClick, children, tone = 'default', disabled = false, icon = null }) => {
+    const toneClasses = {
+      default: 'text-gray-200 hover:bg-dark-accent/60',
+      indigo: 'text-indigo-400 hover:bg-indigo-600/10',
+      emerald: 'text-emerald-400 hover:bg-emerald-600/10',
+      rose: 'text-rose-400 hover:bg-rose-600/10',
+      cyan: 'text-cyan-400 hover:bg-cyan-600/10',
+      purple: 'text-purple-400 hover:bg-purple-600/10',
+    };
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-left rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${toneClasses[tone]}`}
+      >
+        {icon}
+        {children}
+      </button>
+    );
+  };
+
   const renderDetailPanel = (rpmId) => {
     if (detailLoading[rpmId]) {
       return (
@@ -489,7 +653,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-2 text-xs font-medium">
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                          ดี/ปกติ: {goodCount} ลูก
+                          Good: {goodCount} ลูก
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
@@ -509,9 +673,9 @@ export default function AdminDashboard() {
                         <tr className="text-gray-500 border-b border-dark-border/30 uppercase">
                           <th className="py-1.5 px-2 text-left">ตู้</th>
                           <th className="py-1.5 px-2 text-left">Bank</th>
+                          <th className="py-1.5 px-2 text-center">ลูกที่</th>
                           <th className="py-1.5 px-2 text-left">ยี่ห้อ</th>
                           <th className="py-1.5 px-2 text-left">ความจุ</th>
-                          <th className="py-1.5 px-2 text-center">ลูกที่</th>
                           <th className="py-1.5 px-2 text-right">แรงดัน (V)</th>
                           <th className="py-1.5 px-2 text-right">IR (mΩ)</th>
                           <th className="py-1.5 px-2 text-center">สถานะ</th>
@@ -522,9 +686,9 @@ export default function AdminDashboard() {
                           <tr key={i} className="text-gray-300">
                             <td className="py-1.5 px-2">{b.rect_no}</td>
                             <td className="py-1.5 px-2">{b.bank_name}</td>
+                            <td className="py-1.5 px-2 text-center">{b.cell_no}</td>
                             <td className="py-1.5 px-2">{b.brand || '-'}</td>
                             <td className="py-1.5 px-2">{b.capacity || '-'}</td>
-                            <td className="py-1.5 px-2 text-center">{b.cell_no}</td>
                             <td className="py-1.5 px-2 text-right font-mono">{b.voltage || '-'}</td>
                             <td className="py-1.5 px-2 text-right font-mono">{b.internal_resistance || '-'}</td>
                             <td className="py-1.5 px-2 text-center">
@@ -540,7 +704,7 @@ export default function AdminDashboard() {
             })()}
 
             {d.master?.summary_issue && (
-              <DetailSection title="สรุปปัญหา / หมายเหตุการตีกลับ">
+              <DetailSection title="สรุปปัญหาหน้างาน">
                 <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{d.master.summary_issue}</p>
               </DetailSection>
             )}
@@ -591,18 +755,24 @@ export default function AdminDashboard() {
               : 'ติดตามสถานะ ตรวจสอบใบงานที่ TL อนุมัติแล้ว และจัดการปลดล็อกใบงาน'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(isAdmin || isTeamLead) && (
-            <button
-              onClick={exportAllCSV}
-              disabled={filteredWorkorders.length === 0}
-              className="px-5 py-2.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export ทั้งหมด (CSV)
-            </button>
+            <>
+              <button
+                onClick={exportAllXLSX}
+                disabled={filteredWorkorders.length === 0}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Export ทั้งหมด (XLSX)
+              </button>
+              <button
+                onClick={exportAllCSV}
+                disabled={filteredWorkorders.length === 0}
+                className="px-4 py-2.5 bg-cyan-600/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 font-bold rounded-lg text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Export ทั้งหมด (CSV)
+              </button>
+            </>
           )}
           <button
             onClick={() => navigate('/select-site')}
@@ -752,6 +922,7 @@ export default function AdminDashboard() {
                   const completeness = getDataCompleteness(wo);
                   const isSubmitted = wo.status === 'Submitted';
                   const isTLApproved = wo.status === 'TL Approved';
+                  const isMenuOpen = openMenuId === wo.rpm_id;
 
                   return (
                     <React.Fragment key={wo.rpm_id}>
@@ -799,73 +970,97 @@ export default function AdminDashboard() {
                         <td className="p-4 text-center">
                           {getStatusBadge(wo.status)}
                         </td>
-                        <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-wrap gap-1.5 justify-center">
-                            <button
-                              onClick={() => {
-                                if (wo.rpm_id) localStorage.setItem('currentRpmId', wo.rpm_id);
-                                localStorage.setItem('rpmCycle', wo.rpm_cycle || '');
-                                localStorage.setItem('inspectionDate', wo.inspection_date ? wo.inspection_date.split('T')[0] : '');
-                                localStorage.setItem('inspectionTime', wo.inspection_time || '');
-                                navigate(`/workorder/${wo.site_code}/master`);
-                              }}
-                              className="px-2.5 py-1 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/30 font-bold rounded-lg text-xs transition-all"
-                              title={isInspector && wo.status === 'Pending' ? 'กรอก/แก้ไขใบงาน' : 'เปิดดูใบงาน'}
+
+                        {/* ─── Consolidated Action Menu ─── */}
+                        <td className="p-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setOpenMenuId(isMenuOpen ? null : wo.rpm_id)}
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
+                              isMenuOpen
+                                ? 'bg-indigo-600 border-indigo-500 text-white'
+                                : 'bg-dark-bg border-dark-border text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                            }`}
+                            title="จัดการ"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                            </svg>
+                          </button>
+
+                          {isMenuOpen && (
+                            <div
+                              ref={menuRef}
+                              className="absolute right-4 top-full mt-1 z-20 w-52 bg-dark-card border border-dark-border rounded-xl shadow-2xl p-1.5 text-left"
                             >
-                              {isInspector && wo.status === 'Pending' ? 'แก้ไขงาน' : 'ดูงาน'}
-                            </button>
-
-                            {/* Team Lead Actions on Submitted Work Orders */}
-                            {isTeamLead && isSubmitted && (
-                              <>
-                                <button
-                                  onClick={() => handleTLApprove(wo.rpm_id)}
-                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 font-bold rounded-lg text-xs transition-all"
-                                  title="อนุมัติส่งให้ Admin เช็คต่อ"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleReject(wo.rpm_id)}
-                                  className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 font-bold rounded-lg text-xs transition-all"
-                                  title="ตีกลับให้ Inspector แก้ไขใหม่"
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-
-                            {/* Admin Actions */}
-                            {isAdmin && (isSubmitted || isTLApproved) && (
-                              <>
-                                <button
-                                  onClick={() => handleTLApprove(wo.rpm_id)}
-                                  className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 font-bold rounded-lg text-xs transition-all"
-                                  title="อนุมัติใบงาน"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleReject(wo.rpm_id)}
-                                  className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/40 font-bold rounded-lg text-xs transition-all"
-                                  title="ตีกลับให้ Inspector แก้ไขใหม่"
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-
-                            {(isAdmin || isTeamLead) && (
-                              <button
-                                onClick={() => exportSingleCSV(wo)}
-                                disabled={exportingId === wo.rpm_id}
-                                className="px-2.5 py-1 bg-cyan-600/10 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 font-bold rounded-lg text-xs transition-all disabled:opacity-40"
-                                title="Export CSV"
+                              <MenuItem
+                                tone="indigo"
+                                onClick={() => {
+                                  if (wo.rpm_id) localStorage.setItem('currentRpmId', wo.rpm_id);
+                                  localStorage.setItem('rpmCycle', wo.rpm_cycle || '');
+                                  localStorage.setItem('inspectionDate', wo.inspection_date ? wo.inspection_date.split('T')[0] : '');
+                                  localStorage.setItem('inspectionTime', wo.inspection_time || '');
+                                  setOpenMenuId(null);
+                                  navigate(`/workorder/${wo.site_code}/master`);
+                                }}
                               >
-                                {exportingId === wo.rpm_id ? '...' : 'CSV'}
-                              </button>
-                            )}
-                          </div>
+                                {isInspector && wo.status === 'Pending' ? 'แก้ไขงาน' : 'ดูงาน'}
+                              </MenuItem>
+
+                              {/* Team Lead Actions on Submitted Work Orders */}
+                              {isTeamLead && isSubmitted && (
+                                <>
+                                  <MenuItem tone="emerald" onClick={() => { setOpenMenuId(null); handleTLApprove(wo.rpm_id); }}>
+                                    Approve
+                                  </MenuItem>
+                                  <MenuItem tone="rose" onClick={() => { setOpenMenuId(null); handleReject(wo.rpm_id); }}>
+                                    Reject
+                                  </MenuItem>
+                                </>
+                              )}
+
+                              {/* Admin Actions */}
+                              {isAdmin && (isSubmitted || isTLApproved) && (
+                                <>
+                                  <MenuItem tone="emerald" onClick={() => { setOpenMenuId(null); handleTLApprove(wo.rpm_id); }}>
+                                    Approve
+                                  </MenuItem>
+                                  <MenuItem tone="rose" onClick={() => { setOpenMenuId(null); handleReject(wo.rpm_id); }}>
+                                    Reject
+                                  </MenuItem>
+                                </>
+                              )}
+
+                              {(isAdmin || isTeamLead) && (
+                                <>
+                                  <div className="my-1 border-t border-dark-border/60" />
+                                  <MenuItem
+                                    tone="emerald"
+                                    disabled={exportingId === wo.rpm_id}
+                                    onClick={() => { setOpenMenuId(null); exportSingleXLSX(wo); }}
+                                  >
+                                    {exportingId === wo.rpm_id ? 'กำลัง Export...' : 'Export Excel (XLSX)'}
+                                  </MenuItem>
+                                  <MenuItem
+                                    tone="cyan"
+                                    disabled={exportingId === wo.rpm_id}
+                                    onClick={() => { setOpenMenuId(null); exportSingleCSV(wo); }}
+                                  >
+                                    {exportingId === wo.rpm_id ? 'กำลัง Export...' : 'Export CSV'}
+                                  </MenuItem>
+                                  <MenuItem
+                                    tone="purple"
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      const storagePath = `db_img/${wo.site_code}${wo.rpm_cycle ? '/' + wo.rpm_cycle : ''}`;
+                                      navigate(`/admin/storage?path=${encodeURIComponent(storagePath)}`);
+                                    }}
+                                  >
+                                    ดูรูปภาพสถานี
+                                  </MenuItem>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                       {isExpanded && renderDetailPanel(wo.rpm_id)}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 
 export default function StorageBrowser() {
@@ -112,13 +113,16 @@ export default function StorageBrowser() {
     }
   };
 
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('user');
       const user = stored ? JSON.parse(stored) : null;
-      if (user && user.role === 'Admin') {
+      if (user && (user.role === 'Admin' || user.role === 'Team Lead')) {
         setIsAdmin(true);
-        fetchFolder('');
+        const initialPath = searchParams.get('path') || '';
+        fetchFolder(initialPath);
       } else {
         setIsAdmin(false);
       }
