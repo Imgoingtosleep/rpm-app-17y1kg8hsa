@@ -101,6 +101,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAdminApprove = async (rpmId) => {
+    if (!window.confirm('คุณต้องการอนุมัติใบงานนี้เป็นขั้นสุดท้าย (อนุมัติเสร็จสมบูรณ์) ใช่หรือไม่?')) return;
+    try {
+      const res = await fetch(`/api/workorder/${rpmId}/admin-approve`, { method: 'POST' });
+      if (res.ok) {
+        alert('อนุมัติใบงานเสร็จสมบูรณ์ (Approved) เรียบร้อยแล้ว');
+        fetchWorkorders();
+      } else {
+        const data = await res.json();
+        alert('เกิดข้อผิดพลาด: ' + data.error);
+      }
+    } catch (e) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+  };
+
   const handleReject = async (rpmId) => {
     const reason = window.prompt('กรุณาระบุเหตุผลการตีกลับใบงาน (ส่งกลับให้ Inspector แก้ไขใหม่):');
     if (reason === null) return; // cancelled
@@ -172,6 +188,7 @@ export default function AdminDashboard() {
 
     const matchesStatus = 
       statusFilter === 'All' || 
+      (statusFilter === 'Approved' && wo.status === 'Approved') ||
       (statusFilter === 'Submitted' && wo.status === 'Submitted') ||
       (statusFilter === 'TL Approved' && wo.status === 'TL Approved') ||
       (statusFilter === 'Pending' && (wo.status === 'Pending' || !wo.status));
@@ -185,11 +202,12 @@ export default function AdminDashboard() {
   // ─── Statistics ───
   const stats = useMemo(() => {
     const total = filteredWorkorders.length;
+    const approved = filteredWorkorders.filter(wo => wo.status === 'Approved').length;
     const tlApproved = filteredWorkorders.filter(wo => wo.status === 'TL Approved').length;
     const submitted = filteredWorkorders.filter(wo => wo.status === 'Submitted').length;
     const pending = filteredWorkorders.filter(wo => wo.status === 'Pending' || !wo.status).length;
     const hasAcCount = filteredWorkorders.filter(wo => Number(wo.has_ac) > 0).length;
-    return { total, tlApproved, submitted, pending, hasAcCount };
+    return { total, approved, tlApproved, submitted, pending, hasAcCount };
   }, [filteredWorkorders]);
 
   const formatDate = (dateStr) => {
@@ -250,17 +268,20 @@ export default function AdminDashboard() {
         const ac = data.acMain;
         const acRows = [
           ['รายการตรวจสอบ AC Main', 'ค่าที่วัดได้ / สถานะ'],
-          ['หม้อแปลงไฟฟ้า (Transformer)', ac.transformer_status || '-'],
-          ['มิเตอร์ไฟฟ้า (Meter)', ac.meter_status || '-'],
-          ['เครื่องกำเนิดไฟฟ้า (Generator)', ac.generator_status || '-'],
-          ['แรงดันไฟฟ้า L1-N (V)', ac.voltage_l1_n || '-'],
-          ['แรงดันไฟฟ้า L2-N (V)', ac.voltage_l2_n || '-'],
-          ['แรงดันไฟฟ้า L3-N (V)', ac.voltage_l3_n || '-'],
-          ['กระแสไฟฟ้า L1 (A)', ac.current_l1 || '-'],
-          ['กระแสไฟฟ้า L2 (A)', ac.current_l2 || '-'],
-          ['กระแสไฟฟ้า L3 (A)', ac.current_l3 || '-'],
-          ['อุปกรณ์ป้องกันฟ้าผ่า (Surge)', ac.surge_status || '-'],
-          ['ความต้านทานระบบดิน (Grounding Ω)', ac.ground_resistance || '-']
+          ['ขนาดมิเตอร์ AC (Meter Size)', ac.meter_ac_size || '-'],
+          ['สภาพสายไฟ/เคเบิล (Cable Status)', ac.cable_status || '-'],
+          ['Change Over Switch', ac.change_over_switch || '-'],
+          ['จำนวน Phase AC', ac.ac_phase_qty || '-'],
+          ['Surge Protection AC', ac.surge_protection || '-'],
+          ['อุณหภูมิ MDB (°C)', ac.mdb_temp || '-'],
+          ['อุณหภูมิภายในสถานี (°C)', ac.site_temp || '-'],
+          ['แรงดันไฟฟ้า Voltage Phase 1 (V)', ac.voltage_p1 || '-'],
+          ['กระแสไฟฟ้า Current Phase 1 (A)', ac.current_p1 || '-'],
+          ['แรงดันไฟฟ้า Voltage Phase 2 (V)', ac.voltage_p2 || '-'],
+          ['กระแสไฟฟ้า Current Phase 2 (A)', ac.current_p2 || '-'],
+          ['แรงดันไฟฟ้า Voltage Phase 3 (V)', ac.voltage_p3 || '-'],
+          ['กระแสไฟฟ้า Current Phase 3 (A)', ac.current_p3 || '-'],
+          ['ความต้านทานระบบสายดิน Grounding (Ω)', ac.ground_resistance || '-']
         ];
         const wsAC = XLSX.utils.aoa_to_sheet(acRows);
         XLSX.utils.book_append_sheet(wb, wsAC, 'AC Main System');
@@ -268,15 +289,28 @@ export default function AdminDashboard() {
 
       // 3. Rectifiers Sheet
       if (data.rectifiers && data.rectifiers.length > 0) {
-        const rectHeaders = ['ตู้ที่', 'ยี่ห้อ/รุ่น', 'จำนวนโมดูล', 'แรงดัน Output (V)', 'กระแส Output (A)', 'กระแส Load (A)', 'ระบบแจ้งเตือน (Alarm)'];
+        const rectHeaders = [
+          'ตู้ที่', 'ยี่ห้อ/รุ่น', 'ขนาดสาย AC', 'ขนาด Breaker', 'Breaker Phase 1', 'Breaker Phase 2', 'Breaker Phase 3',
+          'จำนวน Module ทั้งหมด', 'จำนวน Module เสีย', 'กระแส Input AC (A)', 'กระแส Output DC (A)',
+          'สถานะ Surge', 'ชนิดแบตเตอรี่', 'SOH (%)', 'SOC (%)', 'จำนวน Bank'
+        ];
         const rectDataRows = data.rectifiers.map(r => [
-          `ตู้ที่ ${r.rect_no}`,
-          r.brand_model || '-',
-          r.module_qty || '-',
-          r.output_voltage || '-',
-          r.output_current || '-',
-          r.load_current || '-',
-          r.alarm_status || '-'
+          r.rect_no,
+          r.model || '-',
+          r.ac_cable_size || '-',
+          r.breaker_size || '-',
+          r.breaker_phase1 || '-',
+          r.breaker_phase2 || '-',
+          r.breaker_phase3 || '-',
+          r.modules_all ?? '-',
+          r.modules_fail ?? '-',
+          r.input_current_ac ?? '-',
+          r.output_current_dc ?? '-',
+          r.surge_status || '-',
+          r.battery_type || '-',
+          r.battery_soh ?? '-',
+          r.battery_soc ?? '-',
+          r.battery_qty_bank ?? '-'
         ]);
         const wsRect = XLSX.utils.aoa_to_sheet([rectHeaders, ...rectDataRows]);
         XLSX.utils.book_append_sheet(wb, wsRect, 'Rectifier Systems');
@@ -284,15 +318,15 @@ export default function AdminDashboard() {
 
       // 4. Batteries Sheet
       if (data.batteries && data.batteries.length > 0) {
-        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานทานภายใน IR (mΩ)', 'สถานะ'];
+        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานภายใน IR (mΩ)', 'สถานะ'];
         const batDataRows = data.batteries.map(b => [
-          `ตู้ที่ ${b.rect_no}`,
+          `ตู้ที่ ${b.rect_no || '-'}`,
           b.bank_name || '-',
           b.brand || '-',
           b.capacity || '-',
-          b.cell_no,
-          b.voltage || '-',
-          b.internal_resistance || '-',
+          b.cell_no ?? '-',
+          b.voltage ?? '-',
+          b.internal_resistance ?? '-',
           b.status || 'ปกติ'
         ]);
         const wsBat = XLSX.utils.aoa_to_sheet([batHeaders, ...batDataRows]);
@@ -303,11 +337,30 @@ export default function AdminDashboard() {
       if (data.facilities) {
         const fac = data.facilities;
         const facRows = [
-          ['รายการตรวจสอบอาคารและสิ่งอำนวยความสะดวก', 'สถานะ'],
-          ['ระบบเครื่องปรับอากาศ (Air Conditioner)', fac.air_conditioner_status || '-'],
-          ['ระบบป้องกันอัคคีภัย (Fire Alarm / Extinguisher)', fac.fire_protection_status || '-'],
-          ['สภาพแวดล้อมและโครงสร้างสถานี', fac.environment_status || '-'],
-          ['ความสะอาดและความเป็นระเบียบ', fac.cleanliness_status || '-']
+          ['รายการตรวจสอบ Alarm และสิ่งอำนวยความสะดวก', 'สถานะ'],
+          ['Alarm ประตู (Door Open Alarm)', fac.alarm_door || '-'],
+          ['Alarm ไฟดับ (AC Fail Alarm)', fac.alarm_ac_fail || '-'],
+          ['Alarm แบตเตอรี่ต่ำ (Low Bat Alarm)', fac.alarm_low_bat || '-'],
+          ['Alarm อุณหภูมิสูง (High Temp Alarm)', fac.alarm_high_temp || '-'],
+          ['Alarm ควันไฟ (Smoke Alarm)', fac.alarm_smoke || '-'],
+          ['Alarm แอร์เสีย (Air Fail Alarm)', fac.alarm_air_fail || '-'],
+          ['พัดลมระบายอากาศ AC (Vent AC Fan)', fac.vent_ac_fan || '-'],
+          ['Hood พัดลม AC (Vent AC Fan Hood)', fac.vent_ac_fan_hood || '-'],
+          ['พัดลมระบายอากาศ DC (Vent DC Fan)', fac.vent_dc_fan || '-'],
+          ['Hood พัดลม DC (Vent DC Fan Hood)', fac.vent_dc_fan_hood || '-'],
+          ['เครื่องปรับอากาศ (Air Conditioner)', fac.vent_air_cond || '-'],
+          ['เจ้าของเครื่องปรับอากาศ (Air Owner)', fac.air_owner || '-'],
+          ['ประเภทการควบคุมแอร์ (Control Air Type)', fac.control_air_type || '-'],
+          ['สถานะการควบคุมแอร์ (Control Air Status)', fac.control_air_status || '-'],
+          ['ป้ายชื่อสถานี (Site Sign)', fac.fac_site_sign || '-'],
+          ['ความสะอาดภายนอก (Outdoor Cleanliness)', fac.fac_outdoor_clean || '-'],
+          ['ความสะอาดภายใน (Indoor Cleanliness)', fac.fac_indoor_clean || '-'],
+          ['ระบบไฟส่องสว่าง (Lighting System)', fac.fac_lighting || '-'],
+          ['การตัดหญ้า/ถางป่า (Grass Cutting)', fac.fac_grass_cut || '-'],
+          ['ฟิลเตอร์ประตู (Filter Door)', fac.vent_filter_door || '-'],
+          ['ฟิลเตอร์หน้าต่าง (Filter Window)', fac.vent_filter_window || '-'],
+          ['พัดลมอุปกรณ์ (Equipment Fan)', fac.vent_equip_fan || '-'],
+          ['ฟิลเตอร์อุปกรณ์ (Filter Equipment)', fac.vent_filter_equip || '-']
         ];
         const wsFac = XLSX.utils.aoa_to_sheet(facRows);
         XLSX.utils.book_append_sheet(wb, wsFac, 'Facilities & Systems');
@@ -566,12 +619,14 @@ export default function AdminDashboard() {
                       <div key={i} className="bg-dark-card/50 rounded-md p-2.5 border border-dark-border/30">
                         <p className="text-xs font-bold text-indigo-400 mb-1.5">{r.rect_no} — {r.model || 'ไม่ระบุรุ่น'}</p>
                         <div className="grid grid-cols-2 gap-1.5">
+                          <InfoCell label="สาย AC / Breaker" value={`${r.ac_cable_size || '-'} / ${r.breaker_size || '-'}`} />
+                          <InfoCell label="Breaker Ph1/2/3" value={`${r.breaker_phase1 || '-'}/${r.breaker_phase2 || '-'}/${r.breaker_phase3 || '-'}`} />
                           <InfoCell label="Module ทั้งหมด/เสีย" value={`${r.modules_all || 0}/${r.modules_fail || 0}`} />
                           <InfoCell label="AC In / DC Out" value={`${r.input_current_ac || '-'}A / ${r.output_current_dc || '-'}A`} />
                           <InfoCell label="Battery Type" value={r.battery_type} />
                           <InfoCell label="SOH / SOC" value={`${r.battery_soh || '-'}% / ${r.battery_soc || '-'}%`} highlight />
-                          <InfoCell label="Surge" value={r.surge_status} />
-                          <InfoCell label="Banks" value={r.battery_qty_bank} />
+                          <InfoCell label="Surge Status" value={r.surge_status} />
+                          <InfoCell label="จำนวน Bank" value={r.battery_qty_bank} />
                         </div>
                       </div>
                     ))}
@@ -581,21 +636,32 @@ export default function AdminDashboard() {
                 )}
               </DetailSection>
 
-              <DetailSection title="Alarm & สิ่งอำนวยความสะดวก">
+              <DetailSection title="Alarm & สิ่งอำนวยความสะดวก (Facilities & Alarms)">
                 {d.facilities ? (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <InfoCell label="Alarm ประตู" value={d.facilities.alarm_door} />
-                    <InfoCell label="Alarm ไฟดับ" value={d.facilities.alarm_ac_fail} />
-                    <InfoCell label="Alarm แบต Low" value={d.facilities.alarm_low_bat} />
-                    <InfoCell label="Alarm อุณหภูมิสูง" value={d.facilities.alarm_high_temp} />
-                    <InfoCell label="Alarm ควัน" value={d.facilities.alarm_smoke} />
-                    <InfoCell label="Alarm แอร์เสีย" value={d.facilities.alarm_air_fail} />
-                    <InfoCell label="พัดลม AC" value={d.facilities.vent_ac_fan} />
-                    <InfoCell label="แอร์" value={d.facilities.vent_air_cond} />
-                    <InfoCell label="ป้ายสถานี" value={d.facilities.fac_site_sign} />
-                    <InfoCell label="ความสะอาดนอก" value={d.facilities.fac_outdoor_clean} />
-                    <InfoCell label="ความสะอาดใน" value={d.facilities.fac_indoor_clean} />
-                    <InfoCell label="ไฟส่องสว่าง" value={d.facilities.fac_lighting} />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <InfoCell label="Door Open Alarm" value={d.facilities.alarm_door} />
+                    <InfoCell label="AC Fail Alarm" value={d.facilities.alarm_ac_fail} />
+                    <InfoCell label="Low Bat Alarm" value={d.facilities.alarm_low_bat} />
+                    <InfoCell label="High Temp Alarm" value={d.facilities.alarm_high_temp} />
+                    <InfoCell label="Smoke & Fire Alarm" value={d.facilities.alarm_smoke} />
+                    <InfoCell label="Air Fail Alarm" value={d.facilities.alarm_air_fail} />
+                    <InfoCell label="Vent AC Fan Status" value={d.facilities.vent_ac_fan} />
+                    <InfoCell label="Vent AC Fan Hood" value={d.facilities.vent_ac_fan_hood} />
+                    <InfoCell label="Vent DC Fan Status" value={d.facilities.vent_dc_fan} />
+                    <InfoCell label="Vent DC Fan Hood" value={d.facilities.vent_dc_fan_hood} />
+                    <InfoCell label="Air Cond System Test" value={d.facilities.vent_air_cond} />
+                    <InfoCell label="เจ้าของแอร์" value={d.facilities.air_owner} />
+                    <InfoCell label="Control Air Type" value={d.facilities.control_air_type} />
+                    <InfoCell label="Control Air Status" value={d.facilities.control_air_status} />
+                    <InfoCell label="ประตู ป้าย Site" value={d.facilities.fac_site_sign} />
+                    <InfoCell label="ความสะอาดภายนอก" value={d.facilities.fac_outdoor_clean} />
+                    <InfoCell label="ความสะอาดภายใน" value={d.facilities.fac_indoor_clean} />
+                    <InfoCell label="ระบบไฟฟ้าแสงสว่าง" value={d.facilities.fac_lighting} />
+                    <InfoCell label="ถางป่า/ตัดหญ้า" value={d.facilities.fac_grass_cut} />
+                    <InfoCell label="ความสะอาด Filter Door" value={d.facilities.vent_filter_door} />
+                    <InfoCell label="ความสะอาด Filter Window" value={d.facilities.vent_filter_window} />
+                    <InfoCell label="ทำความสะอาด Equip Fan" value={d.facilities.vent_equip_fan} />
+                    <InfoCell label="ความสะอาด Filter Equip" value={d.facilities.vent_filter_equip} />
                   </div>
                 ) : (
                   <p className="text-xs text-gray-500 italic">ยังไม่มีข้อมูล Facilities</p>
@@ -715,7 +781,14 @@ export default function AdminDashboard() {
   };
 
   const getStatusBadge = (status) => {
-    if (status === 'TL Approved') {
+    if (status === 'Approved' || status === 'Completed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Completed
+        </span>
+      );
+    } else if (status === 'TL Approved') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
@@ -752,7 +825,7 @@ export default function AdminDashboard() {
               ? 'ติดตามสถานะใบงานในพื้นที่รับผิดชอบ ดูว่าส่งแล้ว รอ TL ตรวจ หรืออนุมัติเรียบร้อยแล้ว'
               : isTeamLead 
               ? 'ตรวจสอบใบงาน อนุมัติ (Approve) ส่ง Admin หรือตีกลับ (Reject) ให้ Inspector แก้ไข' 
-              : 'ติดตามสถานะ ตรวจสอบใบงานที่ TL อนุมัติแล้ว และจัดการปลดล็อกใบงาน'}
+              : 'ติดตามสถานะ ตรวจสอบใบงานที่ TL อนุมัติแล้ว และอนุมัติปิดงานขั้นสุดท้าย (Approved)'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -784,21 +857,26 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
           <p className="text-xs text-gray-500 font-semibold uppercase">ใบงานทั้งหมด</p>
           <p className="text-3xl font-black text-white mt-1">{stats.total}</p>
           <p className="text-[10px] text-gray-500 mt-1">ในขอบเขตที่เลือก</p>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
-          <p className="text-xs text-gray-500 font-semibold uppercase">รอ TL ตรวจ</p>
-          <p className="text-3xl font-black text-amber-400 mt-1">{stats.submitted}</p>
-          <p className="text-[10px] text-gray-500 mt-1"> Inspector ส่งมาแล้ว</p>
+          <p className="text-xs text-gray-500 font-semibold uppercase">อนุมัติแล้ว (เสร็จสิ้น)</p>
+          <p className="text-3xl font-black text-emerald-400 mt-1">{stats.approved}</p>
+          <p className="text-[10px] text-gray-500 mt-1">Admin อนุมัติจบงาน</p>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
           <p className="text-xs text-gray-500 font-semibold uppercase">TL อนุมัติแล้ว</p>
           <p className="text-3xl font-black text-cyan-400 mt-1">{stats.tlApproved}</p>
-          <p className="text-[10px] text-gray-500 mt-1">ส่งต่อให้ Admin</p>
+          <p className="text-[10px] text-gray-500 mt-1">รอ Admin ปิดงาน</p>
+        </div>
+        <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
+          <p className="text-xs text-gray-500 font-semibold uppercase">รอ TL ตรวจ</p>
+          <p className="text-3xl font-black text-amber-400 mt-1">{stats.submitted}</p>
+          <p className="text-[10px] text-gray-500 mt-1">Inspector ส่งมาแล้ว</p>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-4 relative overflow-hidden">
           <p className="text-xs text-gray-500 font-semibold uppercase">กำลังดำเนินการ</p>
@@ -859,8 +937,9 @@ export default function AdminDashboard() {
           <div className="flex bg-dark-bg border border-dark-border rounded-lg p-1">
             {[
               { id: 'All', label: 'ทั้งหมด' },
-              { id: 'Submitted', label: 'รอ TL ตรวจ' },
+              { id: 'Approved', label: 'Completed' },
               { id: 'TL Approved', label: 'TL อนุมัติแล้ว' },
+              { id: 'Submitted', label: 'รอ TL ตรวจ' },
               { id: 'Pending', label: 'ดำเนินการ' }
             ].map((item) => (
               <button
@@ -1021,8 +1100,8 @@ export default function AdminDashboard() {
                               {/* Admin Actions */}
                               {isAdmin && (isSubmitted || isTLApproved) && (
                                 <>
-                                  <MenuItem tone="emerald" onClick={() => { setOpenMenuId(null); handleTLApprove(wo.rpm_id); }}>
-                                    Approve
+                                  <MenuItem tone="emerald" onClick={() => { setOpenMenuId(null); handleAdminApprove(wo.rpm_id); }}>
+                                    Approve (จบงาน)
                                   </MenuItem>
                                   <MenuItem tone="rose" onClick={() => { setOpenMenuId(null); handleReject(wo.rpm_id); }}>
                                     Reject

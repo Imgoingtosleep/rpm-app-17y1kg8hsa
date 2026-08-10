@@ -1374,6 +1374,24 @@ router.post('/workorder/:rpm_id/tl-approve', async (req, res) => {
   }
 });
 
+// Admin Approve a work order (Final Approval -> Approved)
+router.post('/workorder/:rpm_id/admin-approve', async (req, res) => {
+  const { rpm_id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE rpm_records_master SET status = 'Approved' WHERE rpm_id = $1 RETURNING *;",
+      [rpm_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลใบงานหลัก' });
+    }
+    res.json({ message: 'Admin Approved successfully', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Reject a work order (send back to Inspector as Pending)
 router.post('/workorder/:rpm_id/reject', async (req, res) => {
   const { rpm_id } = req.params;
