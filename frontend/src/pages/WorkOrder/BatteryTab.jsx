@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 const BATTERY_MODELS = [
@@ -22,8 +23,23 @@ const BATTERY_MODELS = [
 ];
 
 export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOnly, rectifierQtyUihProp, userRole, isSubmitted }) {
-  const [selectedRect, setSelectedRect] = useState('ตู้ที่ 1');
-  const [bankNo, setBankNo] = useState('Bank 1');
+  const { site_code, rect_no: paramRectNo, bank_no: paramBankNo } = useParams();
+  const navigate = useNavigate();
+
+  const parseRectParam = (p) => {
+    if (!p) return 'ตู้ที่ 1';
+    if (p.startsWith('rect_')) return `ตู้ที่ ${p.replace('rect_', '')}`;
+    return p;
+  };
+
+  const parseBankParam = (p) => {
+    if (!p) return 'Bank 1';
+    if (p.startsWith('bank_')) return `Bank ${p.replace('bank_', '')}`;
+    return p;
+  };
+
+  const [selectedRect, setSelectedRect] = useState(parseRectParam(paramRectNo));
+  const [bankNo, setBankNo] = useState(parseBankParam(paramBankNo));
   const [rectifiers, setRectifiers] = useState([]);
   const [activeRectId, setActiveRectId] = useState(null);
   const [batteries, setBatteries] = useState([]);
@@ -76,8 +92,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     };
 
     bankBatteries.forEach(bat => {
-      const cellNo = bat.cell_no;
-      if (dbCells[cellNo]) {
+      const cellNo = parseInt(bat.cell_no, 10);
+      if (cellNo >= 1 && cellNo <= 4 && dbCells[cellNo]) {
         const vNum = (bat.voltage !== null && bat.voltage !== undefined && bat.voltage !== '') ? parseFloat(bat.voltage) : NaN;
         const irNum = (bat.internal_resistance !== null && bat.internal_resistance !== undefined && bat.internal_resistance !== '') ? parseFloat(bat.internal_resistance) : NaN;
 
@@ -158,15 +174,12 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     const normalizeRectName = (str) => str ? str.replace(/[^0-9]/g, '') : '';
     const selectedNum = normalizeRectName(selectedRect);
     
-    // Find matching rectifier by number or exact string, fallback to first rectifier
-    const found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || 
-                  rectifiers.find(r => r.rect_no === selectedRect) || 
-                  rectifiers[0];
+    // Find matching rectifier by number, or exact string
+    let found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || 
+                rectifiers.find(r => r.rect_no === selectedRect) ||
+                rectifiers[0];
                   
     if (found) {
-      if (found.rect_no && found.rect_no !== selectedRect) {
-        setSelectedRect(found.rect_no);
-      }
       if (found.rect_id !== activeRectId) {
         setActiveRectId(found.rect_id);
       }
@@ -194,14 +207,17 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
           setInstalledDate(loaded.meta.installedDate);
           setWarranteeDate(loaded.meta.warranteeDate);
           setIsCustomBrand(loaded.meta.isCustomBrand);
+          setFileInputKey(Date.now());
           setIsBankLoaded(true);
         } else {
           setBatteries([]);
+          setIsBankLoaded(true);
         }
       })
       .catch(err => {
         console.error("Error fetching batteries:", err);
         setBatteries([]);
+        setIsBankLoaded(true);
       });
   }, [activeRectId, bankNo, loadBankState]);
 
@@ -210,24 +226,44 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     fetchBatteries();
   }, [activeRectId, fetchBatteries]);
 
-  // NEW: mark bank data as "not loaded yet" whenever the target bank/rectifier
-  // changes, so the Save button is disabled until the fresh data actually
-  // arrives (prevents saving stale/empty state on top of real DB data).
+  // Sync state if URL params change externally (e.g. back/forward button)
   useEffect(() => {
-    setIsBankLoaded(false);
-  }, [bankNo, activeRectId]);
+    if (paramRectNo) {
+      const parsedRect = parseRectParam(paramRectNo);
+      if (parsedRect !== selectedRect) setSelectedRect(parsedRect);
+    }
+    if (paramBankNo) {
+      const parsedBank = parseBankParam(paramBankNo);
+      if (parsedBank !== bankNo) setBankNo(parsedBank);
+    }
+  }, [paramRectNo, paramBankNo]);
 
-  // 4. When bankNo or batteries change: load data from batteries array
-  useEffect(() => {
-    const loaded = loadBankState(activeRectId, bankNo, batteries);
+  const updateUrlParams = (rect, bank) => {
+    if (!site_code) return;
+    const rectSlug = `rect_${(rect || 'ตู้ที่ 1').replace(/[^0-9]/g, '') || '1'}`;
+    const bankSlug = `bank_${(bank || 'Bank 1').replace(/[^0-9]/g, '') || '1'}`;
+    navigate(`/workorder/${site_code}/battery/${rectSlug}/${bankSlug}`, { replace: true });
+  };
+
+  const handleRectChange = (newRect) => {
+    setSelectedRect(newRect);
+    updateUrlParams(newRect, bankNo);
+  };
+
+  // Handle bank switch directly with clean URL update
+  const handleBankChange = (targetBank) => {
+    setBankNo(targetBank);
+    updateUrlParams(selectedRect, targetBank);
+    const loaded = loadBankState(activeRectId, targetBank, batteries);
     setCells(loaded.cells);
     setBrand(loaded.meta.brand);
     setCapacity(loaded.meta.capacity);
     setInstalledDate(loaded.meta.installedDate);
     setWarranteeDate(loaded.meta.warranteeDate);
     setIsCustomBrand(loaded.meta.isCustomBrand);
-    setIsBankLoaded(true); // data for this bank/rect is now in sync with the server
-  }, [bankNo, activeRectId, batteries, loadBankState]);
+    setFileInputKey(Date.now());
+    setIsBankLoaded(true);
+  };
 
   const handleCellChange = (num, field, value) => {
     if (field === 'file') {
@@ -643,7 +679,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                 return (
                   <div
                     key={g.name}
-                    onClick={() => setBankNo(g.name)}
+                    onClick={() => handleBankChange(g.name)}
                     className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
                       isCurrent
                         ? 'bg-indigo-950/40 border-indigo-500 text-white shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500'
@@ -684,7 +720,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
             disabled={isReadOnly || rectifierQtyUih === 0}
             className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50 font-medium"
             value={selectedRect}
-            onChange={(e) => setSelectedRect(e.target.value)}
+            onChange={(e) => handleRectChange(e.target.value)}
           >
             {rectifierQtyUih === 0 ? (
               <option value="">ไม่มีตู้ Rectifier (0 ตู้)</option>
@@ -709,7 +745,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
               disabled={isReadOnly}
               className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50"
               value={bankNo}
-              onChange={(e) => setBankNo(e.target.value)}
+              onChange={(e) => handleBankChange(e.target.value)}
             >
               {(() => {
                 let availableQty = 12;
@@ -737,9 +773,11 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       </div>
 
       {!isLithiumMode && (
-        <div className="bg-dark-bg/30 p-3 rounded-xl border border-dark-border space-y-2">
-          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-            แท็บเลือก Bank แบตเตอรี่ด่วน (Quick Bank Switcher):
+        <div className="bg-dark-bg/30 p-3.5 rounded-xl border border-dark-border space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+              แท็บเลือก Bank แบตเตอรี่ด่วน (Quick Bank Switcher)
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {(() => {
@@ -758,26 +796,19 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
               return allBankNames.map((bName) => {
                 const isActive = normalizeBank(bName) === normalizeBank(bankNo);
-                const bankRows = (batteries || []).filter(b => normalizeBank(b.bank_name) === normalizeBank(bName));
-                const hasSavedData = bankRows.length > 0 && bankRows.some(r => r.voltage !== null || r.internal_resistance !== null || r.brand);
 
                 return (
                   <button
                     key={bName}
                     type="button"
-                    onClick={() => setBankNo(bName)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    onClick={() => handleBankChange(bName)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
                       isActive
-                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30'
-                        : hasSavedData
-                        ? 'bg-dark-accent/60 border-indigo-500/40 text-indigo-300 hover:bg-dark-accent hover:border-indigo-500'
-                        : 'bg-dark-bg/60 border-dark-border text-gray-400 hover:border-gray-500'
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30 ring-1 ring-indigo-400'
+                        : 'bg-dark-bg/60 border-dark-border text-gray-300 hover:border-indigo-500/60 hover:bg-dark-accent'
                     }`}
                   >
                     <span>{bName}</span>
-                    {hasSavedData && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" title="มีข้อมูลในระบบ"></span>
-                    )}
                   </button>
                 );
               });

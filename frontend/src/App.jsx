@@ -20,9 +20,9 @@ import ManageUsers from './pages/ManageUsers';
 import DatabaseQuery from './pages/DatabaseQuery';
 
 function WorkOrderPanel() {
-  const { site_code, tab } = useParams();
+  const { site_code, tab, rect_no: urlRectNo, bank_no: urlBankNo } = useParams();
   const navigate = useNavigate();
-  const activeTab = tab || 'master';
+  const activeTab = (tab || (window.location.pathname.includes('/battery') ? 'battery' : 'master'));
 
   const [selectedSite, setSelectedSite] = useState(null);
   const [inspector, setInspector] = useState('');
@@ -507,6 +507,7 @@ export default function App() {
           } 
         />
         <Route path="/workorder/:site_code" element={<Navigate to="master" replace />} />
+        <Route path="/workorder/:site_code/battery/:rect_no?/:bank_no?" element={<ErrorBoundary><WorkOrderPanel /></ErrorBoundary>} />
         <Route path="/workorder/:site_code/:tab" element={<ErrorBoundary><WorkOrderPanel /></ErrorBoundary>} />
         <Route path="/admin/fields" element={<FieldSettings />} />
         <Route path="/admin/users" element={<ManageUsers />} />

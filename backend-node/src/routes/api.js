@@ -965,15 +965,12 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
     let bank_id;
     if (bankResult.rows.length > 0) {
       bank_id = bankResult.rows[0].bank_id;
-      // COALESCE: an empty/blank value here means "not submitted this
-      // time" (e.g. stale client state), not "clear this field" -- keep
-      // whatever is already saved in that case.
       await db.query(
         `UPDATE rectifier_banks SET
-          brand = COALESCE($1, brand),
-          capacity = COALESCE($2, capacity),
-          installed_date = COALESCE($3, installed_date),
-          warrantee_date = COALESCE($4, warrantee_date)
+          brand = $1,
+          capacity = $2,
+          installed_date = $3,
+          warrantee_date = $4
         WHERE bank_id = $5;`,
         [brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
       );
@@ -1052,31 +1049,23 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
       );
 
       if (existingTest.rows.length > 0) {
-        // Use COALESCE so that if this cell was not actually submitted
-        // (hasVoltage/hasIr false -> we pass NULL as the "new" value),
-        // Postgres keeps the row's existing value instead of wiping it.
-        // If the client DID submit a value, it always wins (even if it's
-        // being changed back to something else).
         await db.query(
           `UPDATE battery_tests SET
-            voltage = COALESCE($1, voltage),
-            internal_resistance = COALESCE($2, internal_resistance),
+            voltage = $1,
+            internal_resistance = $2,
             status = $3,
             battery_img = $4,
             installed_date = $5,
             warrantee_date = $6
           WHERE bat_id = $7;`,
           [
-            hasVoltage ? toNumOrNull(voltage) : null,
-            hasIr ? toNumOrNull(internal_resistance) : null,
+            toNumOrNull(voltage),
+            toNumOrNull(internal_resistance),
             status, combinedImg, cleanDate(installed_date), cleanDate(warrantee_date),
             existingTest.rows[0].bat_id
           ]
         );
       } else {
-        // No existing row yet, so there's nothing to preserve — insert
-        // whatever was submitted (possibly still empty/null, which is fine
-        // for a brand-new cell).
         await db.query(
           `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img, installed_date, warrantee_date)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
