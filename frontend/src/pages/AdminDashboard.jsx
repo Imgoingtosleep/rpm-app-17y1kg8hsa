@@ -630,7 +630,51 @@ export default function AdminDashboard() {
                           <InfoCell label="Battery Type" value={r.battery_type} />
                           <InfoCell label="SOH / SOC" value={`${r.battery_soh || '-'}% / ${r.battery_soc || '-'}%`} highlight />
                           <InfoCell label="Surge Status" value={r.surge_status} />
-                          <InfoCell label="จำนวน Bank" value={r.battery_qty_bank} />
+                          <InfoCell label="จำนวน Bank" value={r.battery_type === 'VRLA AGM + Lithium' ? `VRLA: ${r.vrla_qty_bank || 0} / Lithium: ${r.lithium_qty_bank || 0}` : r.battery_qty_bank} />
+                          {(r.battery_type === 'Lithium' || r.battery_type === 'VRLA AGM + Lithium') && (
+                            <div className="col-span-2 mt-2 pt-2 border-t border-dark-border/40">
+                              <p className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-1.5">
+                                ข้อมูลราย Bank ของ Lithium ({r.lithium_brand || 'ไม่ระบุยี่ห้อ'})
+                              </p>
+                              <div className="space-y-1.5">
+                                {(() => {
+                                  const parseList = (val) => {
+                                    if (!val) return [];
+                                    if (Array.isArray(val)) return val;
+                                    if (typeof val === 'string') {
+                                      if (val.trim().startsWith('[') || val.trim().startsWith('{')) {
+                                        try { return JSON.parse(val); } catch (e) {}
+                                      }
+                                      return val.split('|');
+                                    }
+                                    return [];
+                                  };
+
+                                  const caps = parseList(r.lithium_capacity);
+                                  const runs = parseList(r.battery_run);
+                                  const sohs = parseList(r.battery_soh);
+                                  const socs = parseList(r.battery_soc);
+                                  const capPercents = parseList(r.battery_capacity_percent);
+                                  const alarms = parseList(r.battery_alarm);
+                                  const qty = parseInt(r.battery_type === 'VRLA AGM + Lithium' ? r.lithium_qty_bank : r.battery_qty_bank, 10) || caps.length || 1;
+
+                                  return Array.from({ length: qty }, (_, idx) => {
+                                    const bNum = idx + 1;
+                                    return (
+                                      <div key={idx} className="bg-dark-bg/60 p-2 rounded border border-dark-border/40 text-[11px] grid grid-cols-2 sm:grid-cols-3 gap-1">
+                                        <div className="font-bold text-indigo-400">Lithium Bank {bNum}</div>
+                                        <div><span className="text-gray-400">ความจุ:</span> <strong className="text-gray-200">{caps[idx] || '-'}</strong></div>
+                                        <div><span className="text-gray-400">RUN:</span> <strong className="text-gray-200">{runs[idx] || '-'}</strong></div>
+                                        <div><span className="text-gray-400">SOH:</span> <strong className="text-emerald-400">{sohs[idx] !== undefined && sohs[idx] !== '' ? `${sohs[idx]}%` : '-'}</strong></div>
+                                        <div><span className="text-gray-400">SOC:</span> <strong className="text-cyan-400">{socs[idx] !== undefined && socs[idx] !== '' ? `${socs[idx]}%` : '-'}</strong></div>
+                                        <div><span className="text-gray-400">Alarm:</span> <strong className={alarms[idx] && alarms[idx] !== 'Normal' ? 'text-rose-400' : 'text-gray-300'}>{alarms[idx] || 'Normal'}</strong></div>
+                                      </div>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
