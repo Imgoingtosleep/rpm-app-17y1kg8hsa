@@ -9,6 +9,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
   const [localTime, setLocalTime] = useState(inspectionTime || '');
   const [isSaving, setIsSaving] = useState(false);
   const [fieldConfigs, setFieldConfigs] = useState([]);
+  const [loadedInspector, setLoadedInspector] = useState('');
 
   const getUserRole = () => {
     try {
@@ -90,6 +91,9 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           setLocalDate(resData.data.inspection_date ? resData.data.inspection_date.split('T')[0] : defaultDate);
           setLocalTime(resData.data.inspection_time ? resData.data.inspection_time.substring(0, 5) : defaultTime);
           
+          if (resData.data.inspector_name) {
+            setLoadedInspector(resData.data.inspector_name);
+          }
           if (resData.data.rpm_id && setRpmId) {
             setRpmId(resData.data.rpm_id);
           }
@@ -123,6 +127,16 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       return;
     }
 
+    // Get actual logged-in user name
+    let currentInspector = inspector;
+    try {
+      const uStr = localStorage.getItem('user');
+      if (uStr) {
+        const uObj = JSON.parse(uStr);
+        if (uObj.name) currentInspector = uObj.name;
+      }
+    } catch (err) {}
+
     setIsSaving(true);
     try {
       const res = await fetch(`/api/workorder/${rpmId}/master`, {
@@ -136,7 +150,8 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           rectifier_qty_uih: parseInt(rectifierQtyUih, 10),
           rpm_cycle: rpmCycle || '',
           inspection_date: localDate || null,
-          inspection_time: localTime || null
+          inspection_time: localTime || null,
+          inspector_name: currentInspector || null
         })
       });
       if (res.ok) {
@@ -221,7 +236,7 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ผู้ตรวจสอบ</label>
             <div className="w-full bg-dark-bg/60 border border-dark-border rounded-lg p-3 text-sm text-gray-200 font-semibold truncate">
-              {inspector || 'ไม่ได้ระบุ'}
+              {loadedInspector || inspector || 'ไม่ได้ระบุ'}
             </div>
           </div>
           <div>

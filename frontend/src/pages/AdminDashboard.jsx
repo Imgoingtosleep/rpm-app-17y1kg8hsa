@@ -142,7 +142,13 @@ export default function AdminDashboard() {
     if (detailData[rpmId]) return;
     setDetailLoading(prev => ({ ...prev, [rpmId]: true }));
     try {
-      const res = await fetch(`/api/workorder/${rpmId}/export-detail`);
+      const userObj = getUserObj();
+      const res = await fetch(`/api/workorder/${rpmId}/export-detail`, {
+        headers: {
+          'x-user-role': userObj.role || 'Admin',
+          'x-user-id': userObj.user_id ? String(userObj.user_id) : ''
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setDetailData(prev => ({ ...prev, [rpmId]: data }));
@@ -239,13 +245,32 @@ export default function AdminDashboard() {
   const exportSingleXLSX = async (wo) => {
     setExportingId(wo.rpm_id);
     try {
-      const res = await fetch(`/api/workorder/${wo.rpm_id}/export-detail`);
-      if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
+      const userObj = getUserObj();
+      const res = await fetch(`/api/workorder/${wo.rpm_id}/export-detail`, {
+        headers: {
+          'x-user-role': userObj.role || 'Admin',
+          'x-user-id': userObj.user_id ? String(userObj.user_id) : ''
+        }
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'ไม่สามารถดึงข้อมูลได้ (HTTP ' + res.status + ')');
+      }
       const data = await res.json();
 
       const wb = XLSX.utils.book_new();
 
       // 1. Master Sheet
+      const formatSystemEntryTime = (createdAt) => {
+        if (!createdAt) return '-';
+        try {
+          const d = new Date(createdAt);
+          return d.toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.';
+        } catch (e) {
+          return createdAt;
+        }
+      };
+
       const masterRows = [
         ['หัวข้อ', 'รายละเอียด'],
         ['รหัสสถานี (Site Code)', wo.site_code || ''],
@@ -255,6 +280,8 @@ export default function AdminDashboard() {
         ['เขต/พื้นที่ (Area)', wo.area || ''],
         ['พื้นที่ย่อย (Subarea)', wo.subarea || ''],
         ['รอบการตรวจ (RPM Cycle)', wo.rpm_cycle || ''],
+        ['ผู้ตรวจสอบ (Inspector)', data.master?.inspector_name || wo.inspector_name || '-'],
+        ['เวลาเปิดเข้าสู่ระบบ (System Entry Time)', formatSystemEntryTime(data.master?.created_at || wo.created_at)],
         ['วันที่ตรวจ (Inspection Date)', wo.inspection_date ? wo.inspection_date.split('T')[0] : ''],
         ['เวลาตรวจ (Inspection Time)', wo.inspection_time || ''],
         ['สถานะใบงาน (Status)', wo.status || ''],
@@ -294,7 +321,7 @@ export default function AdminDashboard() {
         const rectHeaders = [
           'ตู้ที่', 'ยี่ห้อ/รุ่น', 'ขนาดสาย AC', 'ขนาด Breaker', 'Breaker Phase 1', 'Breaker Phase 2', 'Breaker Phase 3',
           'จำนวน Module ทั้งหมด', 'จำนวน Module เสีย', 'กระแส Input AC (A)', 'กระแส Output DC (A)',
-          'สถานะ Surge', 'ชนิดแบตเตอรี่', 'SOH (%)', 'SOC (%)', 'จำนวน Bank'
+          'สถานะ Surge', 'ชนิดแบตเตอรี่', 'ยี่ห้อ Lithium', 'ความจุ Lithium', 'SOH (%)', 'SOC (%)', 'จำนวน Bank'
         ];
         const rectDataRows = data.rectifiers.map(r => [
           r.rect_no,
@@ -310,29 +337,81 @@ export default function AdminDashboard() {
           r.output_current_dc ?? '-',
           r.surge_status || '-',
           r.battery_type || '-',
+          r.lithium_brand || '-',
+          r.lithium_capacity || '-',
           r.battery_soh ?? '-',
           r.battery_soc ?? '-',
-          r.battery_qty_bank ?? '-'
+          r.battery_type === 'VRLA AGM + Lithium' ? `VRLA: ${r.vrla_qty_bank || 0} / Lithium: ${r.lithium_qty_bank || 0}` : (r.battery_qty_bank ?? '-')
         ]);
         const wsRect = XLSX.utils.aoa_to_sheet([rectHeaders, ...rectDataRows]);
         XLSX.utils.book_append_sheet(wb, wsRect, 'Rectifier Systems');
+
+        // Create dedicated Lithium Banks Sheet if any Lithium battery exists
+        const lithiumRows = [];
+        data.rectifiers.forEach(r => {
+          if (r.battery_type === 'Lithium' || r.battery_type === 'VRLA AGM + Lithium') {
+            const parseList = (val) => {
+              if (!val) return [];
+              if (Array.isArray(val)) return val;
+              if (typeof val === 'string') {
+                if (val.trim().startsWith('[') || val.trim().startsWith('{')) {
+                  try { return JSON.parse(val); } catch (e) {}
+                }
+                return val.split('|');
+              }
+              return [];
+            };
+
+            const caps = parseList(r.lithium_capacity);
+            const runs = parseList(r.battery_run);
+            const sohs = parseList(r.battery_soh);
+            const socs = parseList(r.battery_soc);
+            const capPercents = parseList(r.battery_capacity_percent);
+            const alarms = parseList(r.battery_alarm);
+            const qty = parseInt(r.battery_type === 'VRLA AGM + Lithium' ? r.lithium_qty_bank : r.battery_qty_bank, 10) || caps.length || 1;
+
+            for (let idx = 0; idx < qty; idx++) {
+              lithiumRows.push([
+                r.rect_no,
+                `Lithium Bank ${idx + 1}`,
+                r.lithium_brand || '-',
+                caps[idx] || '-',
+                runs[idx] || '-',
+                sohs[idx] !== undefined && sohs[idx] !== '' ? `${sohs[idx]}%` : '-',
+                socs[idx] !== undefined && socs[idx] !== '' ? `${socs[idx]}%` : '-',
+                capPercents[idx] || '-',
+                alarms[idx] || 'Normal'
+              ]);
+            }
+          }
+        });
+
+        if (lithiumRows.length > 0) {
+          const lithiumHeaders = ['ตู้ที่', 'Lithium Bank', 'ยี่ห้อ Lithium', 'ขนาดความจุ', 'กระแส RUN (A)', 'SOH (%)', 'SOC (%)', 'Capacity (%)', 'Alarm Status'];
+          const wsLithium = XLSX.utils.aoa_to_sheet([lithiumHeaders, ...lithiumRows]);
+          XLSX.utils.book_append_sheet(wb, wsLithium, 'Lithium Banks');
+        }
       }
 
-      // 4. Batteries Sheet
+      // 4. Batteries Sheet (with Image Paths)
       if (data.batteries && data.batteries.length > 0) {
-        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'วันที่ติดตั้ง', 'วันหมดประกัน', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานภายใน IR (mΩ)', 'สถานะ'];
-        const batDataRows = data.batteries.map(b => [
-          `ตู้ที่ ${b.rect_no || '-'}`,
-          b.bank_name || '-',
-          b.brand || '-',
-          b.capacity || '-',
-          b.installed_date ? b.installed_date.split('T')[0] : '-',
-          b.warrantee_date ? b.warrantee_date.split('T')[0] : '-',
-          b.cell_no ?? '-',
-          b.voltage ?? '-',
-          b.internal_resistance ?? '-',
-          b.status || 'ปกติ'
-        ]);
+        const batHeaders = ['ตู้ที่', 'ชื่อ Bank', 'ยี่ห้อแบตเตอรี่', 'ความจุ (AH)', 'วันที่ติดตั้ง', 'วันหมดประกัน', 'ลูกที่', 'แรงดันไฟฟ้า (V)', 'ความต้านทานภายใน IR (mΩ)', 'สถานะ', 'พาธรูปภาพถ่าย'];
+        const batDataRows = data.batteries.map(b => {
+          const imgs = Array.isArray(b.battery_img) ? b.battery_img.join(', ') : (b.battery_img || '-');
+          return [
+            `ตู้ที่ ${b.rect_no || '-'}`,
+            b.bank_name || '-',
+            b.brand || '-',
+            b.capacity || '-',
+            b.installed_date ? b.installed_date.split('T')[0] : '-',
+            b.warrantee_date ? b.warrantee_date.split('T')[0] : '-',
+            b.cell_no ?? '-',
+            b.voltage ?? '-',
+            b.internal_resistance ?? '-',
+            b.status || 'ปกติ',
+            imgs
+          ];
+        });
         const wsBat = XLSX.utils.aoa_to_sheet([batHeaders, ...batDataRows]);
         XLSX.utils.book_append_sheet(wb, wsBat, 'Battery Test Results');
       }
@@ -370,6 +449,17 @@ export default function AdminDashboard() {
         XLSX.utils.book_append_sheet(wb, wsFac, 'Facilities & Systems');
       }
 
+      // 6. Summary Issue Sheet
+      if (data.master?.summary_issue || wo.summary_issue) {
+        const issueText = data.master?.summary_issue || wo.summary_issue || '';
+        const issueRows = [
+          ['หัวข้อ', 'รายละเอียดสรุปปัญหาหน้างาน'],
+          ['สรุปปัญหาหน้างาน / เหตุผลตีกลับ', issueText]
+        ];
+        const wsIssue = XLSX.utils.aoa_to_sheet(issueRows);
+        XLSX.utils.book_append_sheet(wb, wsIssue, 'Summary Issue');
+      }
+
       XLSX.writeFile(wb, `RPM_${wo.site_code}_${wo.rpm_cycle || 'export'}.xlsx`);
     } catch (e) {
       alert('เกิดข้อผิดพลาดในการ Export XLSX: ' + e.message);
@@ -382,16 +472,19 @@ export default function AdminDashboard() {
     if (filteredWorkorders.length === 0) return;
     const headers = [
       'Site Code', 'Site Name', 'Area', 'Subarea', 'Site Type', 'Site Grade',
-      'RPM Cycle', 'SL6 Number', 'SAP Number', 'วันที่ตรวจ', 'เวลาตรวจ',
+      'RPM Cycle', 'ผู้ตรวจสอบ', 'เวลาเปิดเข้าสู่ระบบ', 'SL6 Number', 'SAP Number', 'วันที่ตรวจ', 'เวลาตรวจ',
       'จำนวน Rectifier', 'สถานะใบงาน', 'มีข้อมูล AC Main', 'จำนวน Rectifier ที่บันทึก', 'มีข้อมูล Facilities'
     ];
-    const rows = filteredWorkorders.map(wo => [
-      wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
-      wo.rpm_cycle || '', wo.job_number_sl6 || '', wo.sap_number || '',
-      wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
-      wo.rectifier_qty_uih || 0, wo.status || 'Pending',
-      Number(wo.has_ac) > 0 ? 'ใช่' : 'ไม่', wo.rectifier_count || 0, Number(wo.has_facilities) > 0 ? 'ใช่' : 'ไม่'
-    ]);
+    const rows = filteredWorkorders.map(wo => {
+      const entryTime = wo.created_at ? new Date(wo.created_at).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.' : '-';
+      return [
+        wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
+        wo.rpm_cycle || '', wo.inspector_name || '-', entryTime, wo.job_number_sl6 || '', wo.sap_number || '',
+        wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
+        wo.rectifier_qty_uih || 0, wo.status || 'Pending',
+        Number(wo.has_ac) > 0 ? 'ใช่' : 'ไม่', wo.rectifier_count || 0, Number(wo.has_facilities) > 0 ? 'ใช่' : 'ไม่'
+      ];
+    });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -402,8 +495,17 @@ export default function AdminDashboard() {
   const exportSingleCSV = async (wo) => {
     setExportingId(wo.rpm_id);
     try {
-      const res = await fetch(`/api/workorder/${wo.rpm_id}/export-detail`);
-      if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
+      const userObj = getUserObj();
+      const res = await fetch(`/api/workorder/${wo.rpm_id}/export-detail`, {
+        headers: {
+          'x-user-role': userObj.role || 'Admin',
+          'x-user-id': userObj.user_id ? String(userObj.user_id) : ''
+        }
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'ไม่สามารถดึงข้อมูลได้ (HTTP ' + res.status + ')');
+      }
       const data = await res.json();
       const csvContent = buildCSVContent(wo, data);
       downloadCSV(csvContent, `RPM_${wo.site_code}_${wo.rpm_cycle || 'export'}.csv`);
@@ -418,29 +520,36 @@ export default function AdminDashboard() {
     if (filteredWorkorders.length === 0) return;
     const headers = [
       'Site Code', 'Site Name', 'Area', 'Subarea', 'Site Type', 'Site Grade',
-      'RPM Cycle', 'SL6 Number', 'SAP Number', 'วันที่ตรวจ', 'เวลาตรวจ',
+      'RPM Cycle', 'ผู้ตรวจสอบ', 'เวลาเปิดเข้าสู่ระบบ', 'SL6 Number', 'SAP Number', 'วันที่ตรวจ', 'เวลาตรวจ',
       'จำนวน Rectifier', 'สรุปปัญหา', 'สถานะ',
       'มีข้อมูล AC Main', 'จำนวน Rectifier ที่บันทึก', 'มีข้อมูล Facilities'
     ];
-    const rows = filteredWorkorders.map(wo => [
-      wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
-      wo.rpm_cycle || '', wo.job_number_sl6 || '', wo.sap_number || '',
-      wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
-      wo.rectifier_qty_uih || 0, `"${(wo.summary_issue || '').replace(/"/g, '""')}"`, wo.status || 'Pending',
-      Number(wo.has_ac) > 0 ? 'ใช่' : 'ไม่', wo.rectifier_count || 0, Number(wo.has_facilities) > 0 ? 'ใช่' : 'ไม่'
-    ]);
+    const rows = filteredWorkorders.map(wo => {
+      const entryTime = wo.created_at ? new Date(wo.created_at).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.' : '-';
+      return [
+        wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
+        wo.rpm_cycle || '', wo.inspector_name || '-', entryTime, wo.job_number_sl6 || '', wo.sap_number || '',
+        wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
+        wo.rectifier_qty_uih || 0, `"${(wo.summary_issue || '').replace(/"/g, '""')}"`, wo.status || 'Pending',
+        Number(wo.has_ac) > 0 ? 'ใช่' : 'ไม่', wo.rectifier_count || 0, Number(wo.has_facilities) > 0 ? 'ใช่' : 'ไม่'
+      ];
+    });
     const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     downloadCSV(csv, `RPM_Dashboard_Export_${new Date().toISOString().slice(0,10)}.csv`);
   };
 
   const buildCSVContent = (wo, data) => {
+    const entryTime = (data.master?.created_at || wo.created_at) 
+      ? new Date(data.master?.created_at || wo.created_at).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' น.' 
+      : '-';
+
     const lines = [];
     lines.push('\uFEFF');
     lines.push('=== ข้อมูลหลักสถานี (Master) ===');
-    lines.push(['รหัสสถานี', 'ชื่อสถานี', 'Area', 'Subarea', 'ประเภท', 'เกรด', 'รอบตรวจ', 'SL6 No.', 'SAP No.', 'วันที่ตรวจ', 'เวลาตรวจ', 'จำนวน Rectifier', 'สถานะ'].join(','));
+    lines.push(['รหัสสถานี', 'ชื่อสถานี', 'Area', 'Subarea', 'ประเภท', 'เกรด', 'รอบตรวจ', 'ผู้ตรวจสอบ', 'เวลาเปิดเข้าสู่ระบบ', 'SL6 No.', 'SAP No.', 'วันที่ตรวจ', 'เวลาตรวจ', 'จำนวน Rectifier', 'สถานะ'].join(','));
     lines.push([
       wo.site_code, wo.site_name, wo.area || '', wo.subarea || '', wo.site_type || '', wo.site_grade || '',
-      wo.rpm_cycle || '', wo.job_number_sl6 || '', wo.sap_number || '',
+      wo.rpm_cycle || '', data.master?.inspector_name || wo.inspector_name || '-', entryTime, wo.job_number_sl6 || '', wo.sap_number || '',
       wo.inspection_date ? wo.inspection_date.split('T')[0] : '', wo.inspection_time || '',
       wo.rectifier_qty_uih || 0, wo.status || ''
     ].join(','));

@@ -121,7 +121,8 @@ function WorkOrderPanel() {
         inspection_date: storedDate || null,
         inspection_time: storedTime || null,
         job_number_sl6: storedJob || null,
-        sap_number: storedSap || null
+        sap_number: storedSap || null,
+        inspector_name: storedInspector || null
       })
     })
       .then(res => res.json())

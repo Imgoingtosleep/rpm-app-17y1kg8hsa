@@ -294,7 +294,7 @@ router.post('/sites/bulk', async (req, res) => {
 
 // 2. Load or Start Work Order
 router.post('/workorder/start', async (req, res) => {
-  const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih } = req.body;
+  const { site_code, job_number_sl6, sap_number, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih, inspector_name } = req.body;
   try {
     // 1. Check if master record exists for this specific site and cycle
     const existing = await db.query(
@@ -303,6 +303,10 @@ router.post('/workorder/start', async (req, res) => {
     );
 
     if (existing.rows.length > 0) {
+      if (inspector_name && !existing.rows[0].inspector_name) {
+        await db.query('UPDATE rpm_records_master SET inspector_name = $1 WHERE rpm_id = $2;', [inspector_name, existing.rows[0].rpm_id]);
+        existing.rows[0].inspector_name = inspector_name;
+      }
       return res.json({ message: 'Loaded existing record', data: existing.rows[0], isNew: false });
     }
 
@@ -321,9 +325,10 @@ router.post('/workorder/start', async (req, res) => {
              job_number_sl6 = COALESCE($2, job_number_sl6), 
              sap_number = COALESCE($3, sap_number), 
              inspection_date = COALESCE($4, inspection_date), 
-             inspection_time = COALESCE($5, inspection_time)
-         WHERE rpm_id = $6 RETURNING *;`,
-        [rpm_cycle || null, job_number_sl6 || null, sap_number || null, inspection_date || null, inspection_time || null, targetId]
+             inspection_time = COALESCE($5, inspection_time),
+             inspector_name = COALESCE($6, inspector_name)
+         WHERE rpm_id = $7 RETURNING *;`,
+        [rpm_cycle || null, job_number_sl6 || null, sap_number || null, inspection_date || null, inspection_time || null, inspector_name || null, targetId]
       );
       return res.json({ message: 'Linked unassigned imported record', data: updated.rows[0], isNew: false });
     }
@@ -332,8 +337,8 @@ router.post('/workorder/start', async (req, res) => {
     const finalSl6 = job_number_sl6 || `SL6-${site_code}-${Date.now()}`;
     const finalSap = sap_number || `SAP-${site_code}-${Date.now()}`;
     const newRecord = await db.query(
-      "INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, inspection_date, inspection_time, rectifier_qty_uih) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7) RETURNING *;",
-      [site_code, finalSl6, finalSap, rpm_cycle || null, inspection_date || null, inspection_time || null, rectifier_qty_uih || null]
+      "INSERT INTO rpm_records_master (site_code, job_number_sl6, sap_number, rpm_cycle, status, inspection_date, inspection_time, rectifier_qty_uih, inspector_name) VALUES ($1, $2, $3, $4, 'Pending', $5, $6, $7, $8) RETURNING *;",
+      [site_code, finalSl6, finalSap, rpm_cycle || null, inspection_date || null, inspection_time || null, rectifier_qty_uih || null, inspector_name || null]
     );
 
     res.status(201).json({ message: 'Started new work order', data: newRecord.rows[0], isNew: true });
@@ -358,11 +363,11 @@ router.get('/workorder/:rpm_id/master', async (req, res) => {
 
 router.put('/workorder/:rpm_id/master', async (req, res) => {
   const { rpm_id } = req.params;
-  const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih } = req.body;
+  const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih, inspector_name } = req.body;
   try {
     const result = await db.query(
-      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date = $5, inspection_time = $6, rectifier_qty_uih = $7 WHERE rpm_id = $8 RETURNING *;',
-      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date || null, inspection_time || null, rectifier_qty_uih || null, rpm_id]
+      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date = $5, inspection_time = $6, rectifier_qty_uih = $7, inspector_name = COALESCE($8, inspector_name) WHERE rpm_id = $9 RETURNING *;',
+      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date || null, inspection_time || null, rectifier_qty_uih || null, inspector_name || null, rpm_id]
     );
     res.json(result.rows[0]);
   } catch (err) {
