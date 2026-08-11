@@ -48,30 +48,16 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   const [loadedBankRect, setLoadedBankRect] = useState({ bank: '', rect: null });
   const [rectifierQtyUih, setRectifierQtyUih] = useState(rectifierQtyUihProp !== undefined ? rectifierQtyUihProp : 6);
 
-  // ===== BANK CACHE: stores per-bank data in memory to prevent data loss when switching banks =====
-  const bankCacheRef = React.useRef({}); // key: `${rectId}_${normalizedBankName}` → { cells, brand, capacity, installedDate, warranteeDate, isCustomBrand }
-  const prevBankRef = React.useRef({ bank: 'Bank 1', rectId: null }); // track previous bank to save before switching
+  // NEW: tracks whether the currently-selected bank's data has finished loading
+  // from the server. Saving before this is true would overwrite existing DB
+  // records with the empty default state, which is what was causing bank
+  // data to disappear after a second save.
+  const [isBankLoaded, setIsBankLoaded] = useState(false);
 
   const normalizeBank = (str) => (str || '').toString().trim().toLowerCase();
 
-  // Save current UI state into the cache for the given bank
-  const saveToBankCache = (rectId, bankName, cellsData, metaData) => {
-    const key = `${rectId}_${normalizeBank(bankName)}`;
-    bankCacheRef.current[key] = {
-      cells: JSON.parse(JSON.stringify(cellsData)), // deep clone to avoid reference issues
-      brand: metaData.brand,
-      capacity: metaData.capacity,
-      installedDate: metaData.installedDate,
-      warranteeDate: metaData.warranteeDate,
-      isCustomBrand: metaData.isCustomBrand,
-    };
-  };
-
-  // Load bank state from cache, or from batteries array, or return empty defaults
+  // Load bank state from batteries array (DB data) or return empty defaults
   const loadBankState = React.useCallback((rectId, bankName, batteriesArr) => {
-    const key = `${rectId}_${normalizeBank(bankName)}`;
-    const cached = bankCacheRef.current[key];
-
     const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
     const formatDateForInput = (dateStr) => {
       if (!dateStr) return '';
@@ -79,7 +65,6 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       return dateStr;
     };
 
-    // Try loading from batteries array (DB data)
     const curBankKey = normalizeBank(bankName);
     const bankBatteries = (batteriesArr || []).filter(b => normalizeBank(b.bank_name) === curBankKey);
 
@@ -93,58 +78,33 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     bankBatteries.forEach(bat => {
       const cellNo = bat.cell_no;
       if (dbCells[cellNo]) {
-        dbCells[cellNo].voltage = (bat.voltage !== null && bat.voltage !== undefined) ? parseFloat(bat.voltage) : '';
-        dbCells[cellNo].ir = (bat.internal_resistance !== null && bat.internal_resistance !== undefined) ? parseFloat(bat.internal_resistance) : '';
+        const vNum = (bat.voltage !== null && bat.voltage !== undefined && bat.voltage !== '') ? parseFloat(bat.voltage) : NaN;
+        const irNum = (bat.internal_resistance !== null && bat.internal_resistance !== undefined && bat.internal_resistance !== '') ? parseFloat(bat.internal_resistance) : NaN;
+
+        dbCells[cellNo].voltage = !isNaN(vNum) ? vNum : '';
+        dbCells[cellNo].ir = !isNaN(irNum) ? irNum : '';
         dbCells[cellNo].existingPath = toArray(bat.battery_img);
         dbCells[cellNo].status = bat.status || 'Good';
       }
     });
 
-    const matchedBank = bankBatteries[0]; // metadata from first row
-    const dbMeta = matchedBank ? {
-      brand: matchedBank.brand || '',
-      capacity: matchedBank.capacity || '100AH',
-      installedDate: formatDateForInput(matchedBank.installed_date),
-      warranteeDate: formatDateForInput(matchedBank.warrantee_date),
+    // Search across all rows for non-empty bank metadata
+    const metaBrand = bankBatteries.find(b => b.brand)?.brand || '';
+    const metaCap = bankBatteries.find(b => b.capacity)?.capacity || '100AH';
+    const metaInstDate = bankBatteries.find(b => b.installed_date)?.installed_date || '';
+    const metaWarrDate = bankBatteries.find(b => b.warrantee_date)?.warrantee_date || '';
+
+    const dbMeta = {
+      brand: metaBrand,
+      capacity: metaCap,
+      installedDate: formatDateForInput(metaInstDate),
+      warranteeDate: formatDateForInput(metaWarrDate),
       isCustomBrand: (() => {
-        const bBrand = matchedBank.brand || '';
-        const isKnown = BATTERY_MODELS.some(m => m.brand === bBrand);
-        return bBrand !== '' && !isKnown;
+        const isKnown = BATTERY_MODELS.some(m => m.brand === metaBrand);
+        return metaBrand !== '' && !isKnown;
       })(),
-    } : { brand: '', capacity: '100AH', installedDate: '', warranteeDate: '', isCustomBrand: false };
+    };
 
-    // If we have a cache entry, merge: use cache cells but update existingPath from DB (in case new images were saved)
-    if (cached) {
-      const mergedCells = { ...cached.cells };
-      [1, 2, 3, 4].forEach(num => {
-        if (mergedCells[num]) {
-          // Always use the latest existingPath from DB
-          mergedCells[num].existingPath = dbCells[num].existingPath;
-          // If DB has voltage/ir data and cache doesn't (shouldn't happen, but safety), use DB
-          if ((mergedCells[num].voltage === '' || mergedCells[num].voltage === undefined) && dbCells[num].voltage !== '') {
-            mergedCells[num].voltage = dbCells[num].voltage;
-          }
-          if ((mergedCells[num].ir === '' || mergedCells[num].ir === undefined) && dbCells[num].ir !== '') {
-            mergedCells[num].ir = dbCells[num].ir;
-          }
-          if (!mergedCells[num].status && dbCells[num].status) {
-            mergedCells[num].status = dbCells[num].status;
-          }
-        }
-      });
-      return {
-        cells: mergedCells,
-        meta: {
-          brand: cached.brand || dbMeta.brand,
-          capacity: cached.capacity || dbMeta.capacity,
-          installedDate: cached.installedDate || dbMeta.installedDate,
-          warranteeDate: cached.warranteeDate || dbMeta.warranteeDate,
-          isCustomBrand: cached.isCustomBrand || dbMeta.isCustomBrand,
-        }
-      };
-    }
-
-    // No cache, use DB data
     return { cells: dbCells, meta: dbMeta };
   }, []);
 
@@ -187,67 +147,78 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       .catch(err => console.error("Error fetching field configs:", err));
   }, [rpmId]);
 
-  // 2. Resolve active rect_id when selectedRect name changes
+  // 2. Resolve active rect_id when selectedRect name or rectifiers list changes
   useEffect(() => {
+    if (!rectifiers || rectifiers.length === 0) {
+      if (activeRectId !== null) setActiveRectId(null);
+      setBatteries([]);
+      return;
+    }
+
     const normalizeRectName = (str) => str ? str.replace(/[^0-9]/g, '') : '';
     const selectedNum = normalizeRectName(selectedRect);
-    const found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || rectifiers.find(r => r.rect_no === selectedRect);
+    
+    // Find matching rectifier by number or exact string, fallback to first rectifier
+    const found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || 
+                  rectifiers.find(r => r.rect_no === selectedRect) || 
+                  rectifiers[0];
+                  
     if (found) {
-      setActiveRectId(found.rect_id);
+      if (found.rect_no && found.rect_no !== selectedRect) {
+        setSelectedRect(found.rect_no);
+      }
+      if (found.rect_id !== activeRectId) {
+        setActiveRectId(found.rect_id);
+      }
     } else {
-      setActiveRectId(null);
+      if (activeRectId !== null) setActiveRectId(null);
       setBatteries([]);
     }
-  }, [selectedRect, rectifiers]);
+  }, [selectedRect, rectifiers, activeRectId]);
 
   // 3. Fetch batteries for active rectifier
   const fetchBatteries = React.useCallback(() => {
-    if (!activeRectId) return Promise.resolve();
+    if (!activeRectId) {
+      setBatteries([]);
+      return Promise.resolve();
+    }
     return fetch(`/api/rectifier/${activeRectId}/batteries`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
           setBatteries(data);
+          const loaded = loadBankState(activeRectId, bankNo, data);
+          setCells(loaded.cells);
+          setBrand(loaded.meta.brand);
+          setCapacity(loaded.meta.capacity);
+          setInstalledDate(loaded.meta.installedDate);
+          setWarranteeDate(loaded.meta.warranteeDate);
+          setIsCustomBrand(loaded.meta.isCustomBrand);
+          setIsBankLoaded(true);
+        } else {
+          setBatteries([]);
         }
       })
-      .catch(err => console.error("Error fetching batteries:", err));
-  }, [activeRectId]);
+      .catch(err => {
+        console.error("Error fetching batteries:", err);
+        setBatteries([]);
+      });
+  }, [activeRectId, bankNo, loadBankState]);
 
   // Fetch batteries when activeRectId changes
   useEffect(() => {
     fetchBatteries();
   }, [activeRectId, fetchBatteries]);
 
-  // 4. When bankNo changes: save current bank to cache, then load new bank from cache/DB
+  // NEW: mark bank data as "not loaded yet" whenever the target bank/rectifier
+  // changes, so the Save button is disabled until the fresh data actually
+  // arrives (prevents saving stale/empty state on top of real DB data).
   useEffect(() => {
-    const prev = prevBankRef.current;
-
-    // Save the PREVIOUS bank's state to cache before switching
-    if (prev.rectId && prev.bank) {
-      saveToBankCache(prev.rectId, prev.bank, cells, {
-        brand, capacity, installedDate, warranteeDate, isCustomBrand
-      });
-    }
-
-    // Load the NEW bank's state from cache or batteries
-    const loaded = loadBankState(activeRectId, bankNo, batteries);
-    setCells(loaded.cells);
-    setBrand(loaded.meta.brand);
-    setCapacity(loaded.meta.capacity);
-    setInstalledDate(loaded.meta.installedDate);
-    setWarranteeDate(loaded.meta.warranteeDate);
-    setIsCustomBrand(loaded.meta.isCustomBrand);
-    setLoadedBankRect({ bank: bankNo, rect: activeRectId });
-
-    // Update prev ref
-    prevBankRef.current = { bank: bankNo, rectId: activeRectId };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setIsBankLoaded(false);
   }, [bankNo, activeRectId]);
 
-  // 5. When batteries data arrives from server (after fetch), refresh the current bank's display
+  // 4. When bankNo or batteries change: load data from batteries array
   useEffect(() => {
-    if (!batteries || batteries.length === 0) return;
-
     const loaded = loadBankState(activeRectId, bankNo, batteries);
     setCells(loaded.cells);
     setBrand(loaded.meta.brand);
@@ -255,32 +226,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     setInstalledDate(loaded.meta.installedDate);
     setWarranteeDate(loaded.meta.warranteeDate);
     setIsCustomBrand(loaded.meta.isCustomBrand);
-
-    // Also update the cache with latest DB data for all banks
-    const allBankNames = [...new Set(batteries.map(b => b.bank_name).filter(Boolean))];
-    allBankNames.forEach(bn => {
-      const key = `${activeRectId}_${normalizeBank(bn)}`;
-      if (!bankCacheRef.current[key]) {
-        // Only populate cache for banks we haven't edited yet
-        const bankState = loadBankState(activeRectId, bn, batteries);
-        bankCacheRef.current[key] = {
-          cells: bankState.cells,
-          ...bankState.meta,
-        };
-      } else {
-        // Update existingPath (images) from DB for cached banks
-        const toArray = (val) => Array.isArray(val) ? val : (val ? [val] : []);
-        const bankBatteries = batteries.filter(b => normalizeBank(b.bank_name) === normalizeBank(bn));
-        const cachedEntry = bankCacheRef.current[key];
-        bankBatteries.forEach(bat => {
-          if (cachedEntry.cells && cachedEntry.cells[bat.cell_no]) {
-            cachedEntry.cells[bat.cell_no].existingPath = toArray(bat.battery_img);
-          }
-        });
-      }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batteries]);
+    setIsBankLoaded(true); // data for this bank/rect is now in sync with the server
+  }, [bankNo, activeRectId, batteries, loadBankState]);
 
   const handleCellChange = (num, field, value) => {
     if (field === 'file') {
@@ -381,36 +328,20 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     warrantee_date: getFieldConfig('warrantee_date'),
   };
 
-  const handleSaveCell = async (num) => {
+  const handleSaveAllBank = async () => {
     if (!activeRectId) {
-      alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกแบตเตอรี่ครับ!');
+      alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกข้อมูลกลุ่มแบตเตอรี่ครับ!');
       return;
     }
 
-    const cell = cells[num];
-
-    // Validation: check if required fields are filled (not default/empty)
-    if (configsMap.voltage.isEnabled && configsMap.voltage.isRequired) {
-      if (cell.voltage === '' || cell.voltage === null || cell.voltage === undefined) {
-        alert(`กรุณากรอกค่า Volt สำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
-        return;
-      }
-    }
-    if (configsMap.internal_resistance.isEnabled && configsMap.internal_resistance.isRequired) {
-      if (cell.ir === '' || cell.ir === null || cell.ir === undefined) {
-        alert(`กรุณากรอกค่า IR สำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
-        return;
-      }
-    }
-
-    // Check if image required
-    if (configsMap.status.isEnabled && configsMap.status.isRequired) {
-      const hasNew = cell.file && cell.file.length > 0;
-      const hasExisting = cell.existingPath && cell.existingPath.length > 0;
-      if (!hasNew && !hasExisting) {
-        alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num} ก่อนทำการบันทึก!`);
-        return;
-      }
+    // NEW GUARD: block saving until the current bank's data has actually
+    // finished loading from the server. Without this, clicking Save while
+    // the fetch chain (rectifiers -> activeRectId -> batteries -> loadBankState)
+    // is still in flight would submit the empty default cells/meta and wipe
+    // out whatever was already saved for this bank.
+    if (!isBankLoaded) {
+      alert('ระบบกำลังโหลดข้อมูล Bank นี้อยู่ กรุณารอสักครู่แล้วลองบันทึกอีกครั้ง');
+      return;
     }
 
     // Bank metadata validation
@@ -431,106 +362,100 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       return;
     }
 
-    const status = cell.status || 'Good';
-    const formData = new FormData();
-    formData.append('bank_name', bankNo);
-    formData.append('cell_no', num);
-    formData.append('voltage', configsMap.voltage.isEnabled ? cell.voltage : 0.0);
-    formData.append('internal_resistance', configsMap.internal_resistance.isEnabled ? cell.ir : 0.0);
-    formData.append('status', configsMap.status.isEnabled ? status : 'Good');
+    // Validate filled cells
+    for (let num = 1; num <= 4; num++) {
+      const cell = cells[num];
+      if (!cell) continue;
 
-    // Add VRLA bank metadata
-    formData.append('brand', configsMap.brand.isEnabled ? brand : '');
-    formData.append('capacity', configsMap.capacity.isEnabled ? capacity : '');
-    formData.append('installed_date', configsMap.installed_date.isEnabled ? installedDate : '');
-    formData.append('warrantee_date', configsMap.warrantee_date.isEnabled ? warranteeDate : '');
+      const hasVolt = cell.voltage !== '' && cell.voltage !== null && cell.voltage !== undefined;
+      const hasIr = cell.ir !== '' && cell.ir !== null && cell.ir !== undefined;
+      const hasNewImg = cell.file && cell.file.length > 0;
+      const hasExistImg = cell.existingPath && cell.existingPath.length > 0;
 
-    if (configsMap.status.isEnabled) {
-      if (cell.file && cell.file.length > 0) {
-        cell.file.forEach(f => {
-          formData.append('battery_img', f);
-        });
-      }
-      if (cell.existingPath && cell.existingPath.length > 0) {
-        cell.existingPath.forEach(p => formData.append('battery_img_path', p));
+      // If user started entering data for cell num, validate required fields
+      if (hasVolt || hasIr || hasNewImg || hasExistImg) {
+        if (configsMap.voltage.isEnabled && configsMap.voltage.isRequired && !hasVolt) {
+          alert(`กรุณากรอกค่า Volt สำหรับแบตเตอรี่ลูกที่ ${num}!`);
+          return;
+        }
+        if (configsMap.internal_resistance.isEnabled && configsMap.internal_resistance.isRequired && !hasIr) {
+          alert(`กรุณากรอกค่า IR สำหรับแบตเตอรี่ลูกที่ ${num}!`);
+          return;
+        }
+        if (configsMap.status.isEnabled && configsMap.status.isRequired && !hasNewImg && !hasExistImg) {
+          alert(`กรุณาอัปโหลดรูปถ่ายสำหรับแบตเตอรี่ลูกที่ ${num}!`);
+          return;
+        }
       }
     }
 
     try {
-      const res = await fetch(`/api/rectifier/${activeRectId}/battery?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
+      const formData = new FormData();
+      formData.append('bank_name', bankNo);
+      formData.append('brand', configsMap.brand.isEnabled ? brand : '');
+      formData.append('capacity', configsMap.capacity.isEnabled ? capacity : '');
+      formData.append('installed_date', configsMap.installed_date.isEnabled ? installedDate : '');
+      formData.append('warrantee_date', configsMap.warrantee_date.isEnabled ? warranteeDate : '');
+      formData.append('rect_no', selectedRect);
+
+      const cellsPayload = {};
+      [1, 2, 3, 4].forEach(num => {
+        const cell = cells[num] || {};
+        const hasVolt = cell.voltage !== '' && cell.voltage !== null && cell.voltage !== undefined;
+        const hasIr = cell.ir !== '' && cell.ir !== null && cell.ir !== undefined;
+        const status = cell.status || 'Good';
+
+        cellsPayload[num] = {
+          voltage: configsMap.voltage.isEnabled && hasVolt ? cell.voltage : '',
+          ir: configsMap.internal_resistance.isEnabled && hasIr ? cell.ir : '',
+          status: configsMap.status.isEnabled ? status : 'Good',
+        };
+
+        if (configsMap.status.isEnabled) {
+          if (cell.file && cell.file.length > 0) {
+            cell.file.forEach(f => formData.append(`battery_img_${num}`, f));
+          }
+          if (cell.existingPath && cell.existingPath.length > 0) {
+            cell.existingPath.forEach(p => formData.append(`battery_img_path_${num}`, p));
+          }
+        }
+      });
+
+      formData.append('cells', JSON.stringify(cellsPayload));
+
+      const resSave = await fetch(`/api/rectifier/${activeRectId}/bank-save?site_code=${encodeURIComponent(site.code)}&rpm_id=${rpmId}&rect_no=${encodeURIComponent(selectedRect)}&rpm_cycle=${encodeURIComponent(rpmCycle || '')}`, {
         method: 'POST',
         body: formData
       });
-      if (res.ok) {
-        alert(`บันทึกข้อมูลแบตเตอรี่ลูกที่ ${num} (${status}) และข้อมูล Bank เรียบร้อยแล้ว!`);
-        setFileInputKey(Date.now());
-        // Save current state to cache before re-fetching
-        saveToBankCache(activeRectId, bankNo, cells, {
-          brand, capacity, installedDate, warranteeDate, isCustomBrand
-        });
-        // Invalidate cache for current bank so fresh DB data replaces it
-        const cacheKey = `${activeRectId}_${normalizeBank(bankNo)}`;
-        delete bankCacheRef.current[cacheKey];
-        fetchBatteries(); // Reload batteries list
-        if (onComplete) onComplete();
-      } else {
-        const errorData = await res.json();
-        alert('เกิดข้อผิดพลาด: ' + errorData.error);
+
+      if (!resSave.ok) {
+        const errJson = await resSave.json();
+        throw new Error(errJson.error || 'Server error');
       }
+
+      const resBatteries = await fetch(`/api/rectifier/${activeRectId}/batteries`);
+      const dataBatteries = await resBatteries.json();
+      if (Array.isArray(dataBatteries)) {
+        setBatteries(dataBatteries);
+        const loaded = loadBankState(activeRectId, bankNo, dataBatteries);
+        setCells(loaded.cells);
+        setBrand(loaded.meta.brand);
+        setCapacity(loaded.meta.capacity);
+        setInstalledDate(loaded.meta.installedDate);
+        setWarranteeDate(loaded.meta.warranteeDate);
+        setIsCustomBrand(loaded.meta.isCustomBrand);
+        setIsBankLoaded(true);
+      }
+
+      alert(`บันทึกข้อมูล ${bankNo} (ข้อมูลกลุ่ม + ลูกที่ 1 - 4) ครบถ้วนเสร็จสมบูรณ์!`);
+      setFileInputKey(Date.now());
+      if (onComplete) onComplete();
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + err.message);
     }
   };
 
-  const handleSaveBankMeta = async () => {
-    if (!activeRectId) {
-      alert('กรุณากรอกข้อมูลและบันทึกตู้ Rectifier ก่อนทำการบันทึกข้อมูลกลุ่มแบตเตอรี่ครับ!');
-      return;
-    }
 
-    if (configsMap.brand.isEnabled && configsMap.brand.isRequired && !brand) {
-      alert('กรุณากรอก/เลือกยี่ห้อ Bank แบตเตอรี่!');
-      return;
-    }
-    if (configsMap.capacity.isEnabled && configsMap.capacity.isRequired && !capacity) {
-      alert('กรุณาเลือก Capacity แบตเตอรี่!');
-      return;
-    }
-    if (configsMap.installed_date.isEnabled && configsMap.installed_date.isRequired && !installedDate) {
-      alert('กรุณาเลือกวันที่ติดตั้งแบตเตอรี่!');
-      return;
-    }
-    if (configsMap.warrantee_date.isEnabled && configsMap.warrantee_date.isRequired && !warranteeDate) {
-      alert('กรุณาเลือกวันหมดประกันแบตเตอรี่!');
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/rectifier/${activeRectId}/bank-meta`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bank_name: bankNo,
-          brand: configsMap.brand.isEnabled ? brand : '',
-          capacity: configsMap.capacity.isEnabled ? capacity : '',
-          installed_date: configsMap.installed_date.isEnabled ? installedDate : '',
-          warrantee_date: configsMap.warrantee_date.isEnabled ? warranteeDate : ''
-        })
-      });
-      if (res.ok) {
-        alert(`บันทึกข้อมูลกลุ่มแบตเตอรี่ ${bankNo} เรียบร้อยแล้ว!`);
-        // Invalidate cache for current bank so fresh DB data replaces it
-        const cacheKey = `${activeRectId}_${normalizeBank(bankNo)}`;
-        delete bankCacheRef.current[cacheKey];
-        fetchBatteries();
-      } else {
-        const err = await res.json();
-        alert('เกิดข้อผิดพลาดในการบันทึก: ' + (err.error || 'Unknown error'));
-      }
-    } catch (err) {
-      alert('เกิดข้อผิดพลาด: ' + err.message);
-    }
-  };
 
   // Resolve active rectifier object and its battery_type with normalized comparison
   const normalizeRectName = (str) => {
@@ -633,7 +558,6 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       {abnormalBatterySummary.failList.length > 0 && (
         <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-4 space-y-2 shadow-lg">
           <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
-            <span className="text-lg">❌</span>
             <span>รายการแบตเตอรี่เสีย / เสื่อมสภาพ (Battery Fail List) - {abnormalBatterySummary.failList.length} ลูก</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
@@ -661,7 +585,6 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       {abnormalBatterySummary.warningList.length > 0 && (
         <div className="bg-amber-950/30 border border-amber-500/50 rounded-xl p-4 space-y-2 shadow-lg">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <span className="text-lg">⚠️</span>
             <span>รายการแบตเตอรี่เฝ้าระวัง 90% (Battery Warning List) - {abnormalBatterySummary.warningList.length} ลูก</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
@@ -685,9 +608,78 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         </div>
       )}
 
+      {/* Overview Card for Saved Battery Banks */}
+      {batteries && batteries.length > 0 && (
+        <div className="bg-dark-bg/40 border border-dark-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+              สรุปข้อมูล Bank ที่บันทึกไว้แล้วในระบบ ({selectedRect})
+            </h4>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fetchBatteries()}
+                className="px-2.5 py-1 bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-300 rounded text-[11px] font-semibold transition-all"
+              >
+                ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์
+              </button>
+              <span className="text-[10px] text-gray-400">คลิกที่การ์ดเพื่อสลับดูข้อมูล Bank นั้นๆ ได้ทันที</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(() => {
+              const bankGroups = {};
+              batteries.forEach(b => {
+                const bName = b.bank_name || 'Bank 1';
+                if (!bankGroups[bName]) bankGroups[bName] = { name: bName, brand: b.brand, capacity: b.capacity, cellsCount: 0, items: [] };
+                if (b.brand && !bankGroups[bName].brand) bankGroups[bName].brand = b.brand;
+                if (b.capacity && !bankGroups[bName].capacity) bankGroups[bName].capacity = b.capacity;
+                if (b.voltage || b.internal_resistance) bankGroups[bName].cellsCount++;
+                bankGroups[bName].items.push(b);
+              });
+
+              return Object.values(bankGroups).map((g) => {
+                const isCurrent = normalizeBank(g.name) === normalizeBank(bankNo);
+                return (
+                  <div
+                    key={g.name}
+                    onClick={() => setBankNo(g.name)}
+                    className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'bg-indigo-950/40 border-indigo-500 text-white shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500'
+                        : 'bg-dark-bg/60 border-dark-border text-gray-300 hover:border-indigo-500/60 hover:bg-dark-bg'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold mb-1">
+                      <span className="text-indigo-300 font-extrabold">{g.name}</span>
+                      <span className="px-2 py-0.5 text-[9px] rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        บันทึกแล้ว ({g.cellsCount}/4 ลูก)
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 space-y-0.5">
+                      <div><strong className="text-gray-300">ยี่ห้อ:</strong> {g.brand || '-'}</div>
+                      <div><strong className="text-gray-300">Capacity:</strong> {g.capacity || '-'}</div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-dark-bg/50 p-4 rounded-lg border border-dark-border">
         <div>
-          <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">ระบุตู้ Rectifier</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-semibold uppercase text-gray-400">ระบุตู้ Rectifier</label>
+            {/* <button
+              type="button"
+              onClick={() => fetchBatteries()}
+              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1"
+            >
+              <span>ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์</span>
+            </button> */}
+          </div>
           <select 
             disabled={isReadOnly || rectifierQtyUih === 0}
             className="w-full bg-dark-bg border border-dark-border rounded-lg p-2.5 text-sm text-gray-200 focus:border-indigo-500 outline-none disabled:opacity-50 font-medium"
@@ -744,6 +736,56 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         )}
       </div>
 
+      {!isLithiumMode && (
+        <div className="bg-dark-bg/30 p-3 rounded-xl border border-dark-border space-y-2">
+          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+            แท็บเลือก Bank แบตเตอรี่ด่วน (Quick Bank Switcher):
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(() => {
+              let availableQty = 12;
+              if (activeRectObj) {
+                if (activeRectObj.battery_type === 'VRLA AGM + Lithium' && activeRectObj.vrla_qty_bank) {
+                  availableQty = parseInt(activeRectObj.vrla_qty_bank, 10);
+                } else if (activeRectObj.battery_qty_bank) {
+                  availableQty = parseInt(activeRectObj.battery_qty_bank, 10);
+                }
+              }
+              const count = (!isNaN(availableQty) && availableQty > 0) ? Math.min(Math.max(availableQty, 1), 12) : 12;
+              const defaultList = Array.from({ length: count }, (_, i) => `Bank ${i + 1}`);
+              const savedBanks = (batteries || []).map(b => b.bank_name).filter(Boolean);
+              const allBankNames = Array.from(new Set([...defaultList, ...savedBanks]));
+
+              return allBankNames.map((bName) => {
+                const isActive = normalizeBank(bName) === normalizeBank(bankNo);
+                const bankRows = (batteries || []).filter(b => normalizeBank(b.bank_name) === normalizeBank(bName));
+                const hasSavedData = bankRows.length > 0 && bankRows.some(r => r.voltage !== null || r.internal_resistance !== null || r.brand);
+
+                return (
+                  <button
+                    key={bName}
+                    type="button"
+                    onClick={() => setBankNo(bName)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                      isActive
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                        : hasSavedData
+                        ? 'bg-dark-accent/60 border-indigo-500/40 text-indigo-300 hover:bg-dark-accent hover:border-indigo-500'
+                        : 'bg-dark-bg/60 border-dark-border text-gray-400 hover:border-gray-500'
+                    }`}
+                  >
+                    <span>{bName}</span>
+                    {hasSavedData && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" title="มีข้อมูลในระบบ"></span>
+                    )}
+                  </button>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+
       {isLithiumMode ? (
         <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-6 text-center space-y-3">
           <div className="text-indigo-300 font-bold text-base">
@@ -752,7 +794,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
           <p className="text-gray-400 text-xs max-w-xl mx-auto">
             สำหรับแบตเตอรี่ประเภท Lithium ข้อมูลสถานะ สเปก การทำงาน และ % SOH / % SOC จะถูกบันทึกรวบยอดอยู่ที่ส่วน "ข้อมูลแบตเตอรี่ควบคุม (Battery Settings)" ในหน้าตู้ Rectifier เรียบร้อยแล้ว จึงไม่มีการแยกกรอก Bank หรือ Cell รายลูกในหน้านี้
           </p>
-          <button
+          {/* <button
             type="button"
             onClick={() => {
               const rectTabBtn = document.querySelector('button[data-tab="rectifier"]');
@@ -761,7 +803,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
             className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-all shadow-md inline-block"
           >
             ไปที่หน้าตู้ Rectifier เพื่อตรวจสอบข้อมูล Lithium &rarr;
-          </button>
+          </button> */}
         </div>
       ) : (
         <>
@@ -769,14 +811,11 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       <div className="bg-dark-bg/40 p-6 rounded-xl border border-dark-border space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-white text-sm">ข้อมูลกลุ่มแบตเตอรี่ (Battery Bank Meta)</h4>
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={handleSaveBankMeta}
-              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-bold transition-all shadow"
-            >
-              บันทึกข้อมูลกลุ่มแบตเตอรี่ ({bankNo})
-            </button>
+          {!isBankLoaded && (
+            <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-1.5">
+              <span className="h-3 w-3 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin"></span>
+              กำลังโหลดข้อมูล Bank นี้...
+            </span>
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -919,8 +958,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       </div>
 
       <div className="space-y-6 pt-4">
-        <div className="flex justify-between items-center border-b border-dark-border pb-2">
-          <h4 className="font-bold text-white text-md">บันทึกข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
+        <div className="border-b border-dark-border pb-3">
+          <h4 className="font-bold text-white text-md">ข้อมูลและภาพถ่ายรายลูก (ลูกที่ 1-4)</h4>
         </div>
         
         {[1, 2, 3, 4].map((num) => {
@@ -1054,24 +1093,22 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
                   <div className="col-span-2 opacity-40 bg-dark-bg/20 p-2 border border-dark-border/40 rounded text-xs text-gray-500 line-through flex items-center justify-center">Status & Photo Upload (Disabled)</div>
                 )}
               </div>
-
-              <div>
-                {!isReadOnly ? (
-                  <button 
-                    onClick={() => handleSaveCell(num)}
-                    className="w-full lg:w-auto px-4 py-2 bg-dark-accent border border-dark-border hover:border-indigo-500 text-gray-200 font-semibold rounded text-xs transition-colors"
-                  >
-                    บันทึกข้อมูลลูกที่ {num}
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-gray-500 font-medium italic">
-                    โหมดอ่านอย่างเดียว
-                  </span>
-                )}
-              </div>
             </div>
           );
         })}
+
+        {!isReadOnly && (
+          <div className="pt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveAllBank}
+              disabled={!isBankLoaded}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>{isBankLoaded ? `บันทึกข้อมูล ${bankNo} ทั้งหมด (ลูกที่ 1-4)` : 'กำลังโหลดข้อมูล...'}</span>
+            </button>
+          </div>
+        )}
       </div>
     </>
   )}

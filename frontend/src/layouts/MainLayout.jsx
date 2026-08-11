@@ -205,7 +205,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
         <div className="p-4 border-t border-dark-border">
           <div className="p-3 bg-dark-bg/60 rounded-xl border border-dark-border/40 text-center">
             <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">UIH RPM System</p>
-            <p className="text-xs text-gray-400 font-bold mt-0.5">v1.0.2 (Production)</p>
+            <p className="text-xs text-amber-400/90 font-bold mt-0.5">Demo</p>
           </div>
         </div>
       </aside>

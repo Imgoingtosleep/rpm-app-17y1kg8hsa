@@ -543,9 +543,9 @@ export default function AdminDashboard() {
   );
 
   const InfoCell = ({ label, value, highlight }) => (
-    <div className="flex flex-col">
-      <span className="text-[10px] text-gray-500 uppercase font-semibold">{label}</span>
-      <span className={`text-xs font-medium ${highlight ? 'text-indigo-400' : 'text-gray-300'}`}>{value || '-'}</span>
+    <div className="flex flex-col min-w-0 py-1">
+      <span className="text-[10px] text-gray-400 uppercase font-semibold leading-tight break-words">{label}</span>
+      <span className={`text-xs font-medium leading-normal break-words mt-0.5 ${highlight ? 'text-indigo-400 font-bold' : 'text-gray-200'}`}>{value || '-'}</span>
     </div>
   );
 

@@ -721,7 +721,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
                     <option value="">-- เลือกชนิดแบตเตอรี่ --</option>
                     <option value="VRLA AGM">VRLA AGM</option>
                     <option value="Lithium">Lithium</option>
-                    <option value="VRLA AGM + Lithium">VRLA AGM + Lithium (ใช้งานผสม)</option>
+                    {/* <option value="VRLA AGM + Lithium">VRLA AGM + Lithium (ใช้งานผสม)</option> */}
                   </select>
                 </div>
               ) : (

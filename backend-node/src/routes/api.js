@@ -651,7 +651,7 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           breaker_phase1 = $12, breaker_phase2 = $13, breaker_phase3 = $14, battery_type = $15,
           lithium_capacity = $16, battery_run = $17, battery_soh = $18, battery_soc = $19,
           battery_capacity_percent = $20, battery_alarm = $21, battery_qty_bank = $22,
-          lithium_bank_imgs = $23, vrla_qty_bank = $24
+          lithium_bank_imgs = $23, vrla_qty_bank = $24, rect_type = $15
         WHERE rect_id = $25 RETURNING *;`,
         [
           model, ac_cable_size, breaker_size, breaker_img,
@@ -675,8 +675,8 @@ router.post('/workorder/:rpm_id/rectifier', handleRectifierUpload, async (req, r
           modules_all, modules_fail, input_current_ac, output_current_dc, pdb_temp_img, surge_status, surge_rect_img,
           breaker_phase1, breaker_phase2, breaker_phase3, battery_type,
           lithium_capacity, battery_run, battery_soh, battery_soc,
-          battery_capacity_percent, battery_alarm, battery_qty_bank, lithium_bank_imgs, vrla_qty_bank
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) RETURNING *;`,
+          battery_capacity_percent, battery_alarm, battery_qty_bank, lithium_bank_imgs, vrla_qty_bank, rect_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $15) RETURNING *;`,
         [
           rpm_id, rect_no, model, ac_cable_size, breaker_size, breaker_img, 
           toNumOrNull(modules_all), toNumOrNull(modules_fail),
@@ -718,6 +718,37 @@ router.get('/workorder/:rpm_id/all-batteries', async (req, res) => {
   }
 });
 
+// Lookup full hierarchy (rectifier type, battery type, banks) by Site Code
+router.get('/site/:site_code/rectifiers', async (req, res) => {
+  const { site_code } = req.params;
+  try {
+    const result = await db.query(
+      `SELECT 
+         m.site_code,
+         m.rpm_id,
+         r.rect_id,
+         r.rect_no,
+         COALESCE(r.rect_type, r.battery_type) AS rect_type,
+         r.battery_type,
+         rb.bank_id,
+         rb.bank_name,
+         rb.brand AS bank_brand,
+         rb.capacity AS bank_capacity,
+         rb.installed_date AS bank_installed_date,
+         rb.warrantee_date AS bank_warrantee_date
+       FROM rpm_records_master m
+       JOIN power_rectifier r ON m.rpm_id = r.rpm_id
+       LEFT JOIN rectifier_banks rb ON r.rect_id = rb.rect_id
+       WHERE LOWER(m.site_code) = LOWER($1)
+       ORDER BY r.rect_no, rb.bank_name;`,
+      [site_code]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/rectifier/:rect_id/batteries', async (req, res) => {
   const { rect_id } = req.params;
   try {
@@ -725,10 +756,10 @@ router.get('/rectifier/:rect_id/batteries', async (req, res) => {
       `SELECT 
          rb.bank_id, 
          rb.bank_name, 
-         rb.brand, 
-         rb.capacity, 
-         COALESCE(bt.installed_date::text, rb.installed_date::text) AS installed_date, 
-         COALESCE(bt.warrantee_date::text, rb.warrantee_date::text) AS warrantee_date,
+         COALESCE(rb.brand, '') AS brand, 
+         COALESCE(rb.capacity, '100AH') AS capacity, 
+         COALESCE(rb.installed_date::text, bt.installed_date::text) AS installed_date, 
+         COALESCE(rb.warrantee_date::text, bt.warrantee_date::text) AS warrantee_date,
          bt.test_id,
          bt.cell_no,
          bt.voltage,
@@ -856,24 +887,22 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
       [bank_id, cell_no]
     );
 
-    // Merge existing battery images array
+    // Combine existing image paths sent from frontend and newly uploaded files
     let batteryImgArr = [];
-    const existingRow = existing.rows[0] || null;
-    if (existingRow && Array.isArray(existingRow.battery_img)) {
-      batteryImgArr = [...existingRow.battery_img];
-    } else if (existingRow && existingRow.battery_img) {
-      batteryImgArr = [existingRow.battery_img];
+    if (req.body.battery_img_path) {
+      const pathVal = req.body.battery_img_path;
+      if (Array.isArray(pathVal)) {
+        batteryImgArr = [...pathVal];
+      } else if (typeof pathVal === 'string' && pathVal.trim() !== '') {
+        batteryImgArr = [pathVal];
+      }
     }
 
     newBatteryImgs.forEach(img => {
-      batteryImgArr.push(img);
+      if (!batteryImgArr.includes(img)) {
+        batteryImgArr.push(img);
+      }
     });
-
-    if (req.body.battery_img_path) {
-      const pathVal = req.body.battery_img_path;
-      if (Array.isArray(pathVal)) batteryImgArr = pathVal;
-      else if (typeof pathVal === 'string' && !batteryImgArr.includes(pathVal)) batteryImgArr.push(pathVal);
-    }
     if (batteryImgArr.length > 10) {
       const discarded = batteryImgArr.slice(0, batteryImgArr.length - 10);
       deletePhysicalFiles(discarded);
@@ -896,6 +925,169 @@ router.post('/rectifier/:rect_id/battery', upload.array('battery_img', 10), asyn
     }
     res.json(result.rows[0]);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated Batch Save API for Bank + Cells 1-4
+router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
+  const { rect_id } = req.params;
+  const { bank_name, brand, capacity, installed_date, warrantee_date, cells: cellsJson } = req.body;
+  let rpm_id = req.query.rpm_id || 'UNKNOWN';
+  let site_code = req.query.site_code || req.body.site_code || 'UNKNOWN';
+
+  if (rpm_id === 'UNKNOWN' || site_code === 'UNKNOWN') {
+    const rectQuery = await db.query(
+      'SELECT r.rpm_id, m.site_code FROM power_rectifier r JOIN rpm_records_master m ON r.rpm_id = m.rpm_id WHERE r.rect_id = $1;',
+      [rect_id]
+    );
+    if (rectQuery.rows.length > 0) {
+      rpm_id = rectQuery.rows[0].rpm_id;
+      site_code = rectQuery.rows[0].site_code;
+    }
+  }
+
+  const cleanDate = (d) => (d && typeof d === 'string' && d.trim() !== '') ? d.trim() : null;
+
+  try {
+    let cellsData = {};
+    if (typeof cellsJson === 'string') {
+      try { cellsData = JSON.parse(cellsJson); } catch (e) {}
+    } else if (typeof cellsJson === 'object' && cellsJson !== null) {
+      cellsData = cellsJson;
+    }
+
+    let bankResult = await db.query(
+      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND LOWER(bank_name) = LOWER($2);',
+      [rect_id, bank_name || 'Bank 1']
+    );
+
+    let bank_id;
+    if (bankResult.rows.length > 0) {
+      bank_id = bankResult.rows[0].bank_id;
+      // COALESCE: an empty/blank value here means "not submitted this
+      // time" (e.g. stale client state), not "clear this field" -- keep
+      // whatever is already saved in that case.
+      await db.query(
+        `UPDATE rectifier_banks SET
+          brand = COALESCE($1, brand),
+          capacity = COALESCE($2, capacity),
+          installed_date = COALESCE($3, installed_date),
+          warrantee_date = COALESCE($4, warrantee_date)
+        WHERE bank_id = $5;`,
+        [brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
+      );
+    } else {
+      const newBank = await db.query(
+        'INSERT INTO rectifier_banks (rect_id, bank_name, brand, capacity, installed_date, warrantee_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING bank_id;',
+        [rect_id, bank_name || 'Bank 1', brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date)]
+      );
+      bank_id = newBank.rows[0].bank_id;
+    }
+
+    const filesByField = {};
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(f => {
+        if (!filesByField[f.fieldname]) filesByField[f.fieldname] = [];
+        filesByField[f.fieldname].push(f);
+      });
+    }
+
+    const getCleanRectNo = (rNo) => {
+      const rawNo = rNo || 'rect_1';
+      if (rawNo.includes('ตู้ที่')) return 'rect_' + rawNo.replace(/[^0-9]/g, '');
+      return rawNo.replace(/\s+/g, '_').toLowerCase();
+    };
+
+    const getCleanBankName = (bName) => {
+      const rawName = bName || 'bank_1';
+      return rawName.replace(/\s+/g, '_').toLowerCase();
+    };
+
+    let rect_no = req.body.rect_no || 'rect_1';
+    const rectQuery = await db.query('SELECT rect_no FROM power_rectifier WHERE rect_id = $1;', [rect_id]);
+    if (rectQuery.rows.length > 0) {
+      rect_no = rectQuery.rows[0].rect_no;
+    }
+    const cycleDir = req.query.rpm_cycle || req.body.rpm_cycle || rpm_id || 'UNKNOWN';
+
+    // Process cell numbers 1 to 4
+    for (let num = 1; num <= 4; num++) {
+      const cell = cellsData[num] || cellsData[String(num)] || {};
+      const voltage = cell.voltage;
+      const internal_resistance = cell.ir !== undefined ? cell.ir : cell.internal_resistance;
+      const status = cell.status || 'Good';
+
+      // A cell counts as "actually submitted" if the payload carries a real
+      // voltage/IR value. If neither is present, the cell was simply never
+      // touched in this request (e.g. stale/empty form state on the client) —
+      // in that case we must NOT let NULL overwrite whatever is already
+      // saved in the DB for this cell.
+      const hasVoltage = voltage !== undefined && voltage !== null && voltage !== '';
+      const hasIr = internal_resistance !== undefined && internal_resistance !== null && internal_resistance !== '';
+
+      const fieldName = `battery_img_${num}`;
+      const uploadedFiles = filesByField[fieldName] || [];
+      const newImgPaths = uploadedFiles.map(f => `/storage/db_img/${site_code}/${cycleDir}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${num}/${f.filename}`);
+
+      const existingPathKey = `battery_img_path_${num}`;
+      let existingImgPaths = [];
+      if (req.body[existingPathKey]) {
+        const val = req.body[existingPathKey];
+        if (Array.isArray(val)) existingImgPaths = val;
+        else if (typeof val === 'string' && val.trim() !== '') existingImgPaths = [val];
+      } else if (cell.existingPath) {
+        if (Array.isArray(cell.existingPath)) existingImgPaths = cell.existingPath;
+        else if (typeof cell.existingPath === 'string') existingImgPaths = [cell.existingPath];
+      }
+
+      let combinedImg = [...existingImgPaths];
+      newImgPaths.forEach(p => {
+        if (!combinedImg.includes(p)) combinedImg.push(p);
+      });
+
+      const existingTest = await db.query(
+        'SELECT * FROM battery_tests WHERE bank_id = $1 AND cell_no = $2;',
+        [bank_id, num]
+      );
+
+      if (existingTest.rows.length > 0) {
+        // Use COALESCE so that if this cell was not actually submitted
+        // (hasVoltage/hasIr false -> we pass NULL as the "new" value),
+        // Postgres keeps the row's existing value instead of wiping it.
+        // If the client DID submit a value, it always wins (even if it's
+        // being changed back to something else).
+        await db.query(
+          `UPDATE battery_tests SET
+            voltage = COALESCE($1, voltage),
+            internal_resistance = COALESCE($2, internal_resistance),
+            status = $3,
+            battery_img = $4,
+            installed_date = $5,
+            warrantee_date = $6
+          WHERE bat_id = $7;`,
+          [
+            hasVoltage ? toNumOrNull(voltage) : null,
+            hasIr ? toNumOrNull(internal_resistance) : null,
+            status, combinedImg, cleanDate(installed_date), cleanDate(warrantee_date),
+            existingTest.rows[0].bat_id
+          ]
+        );
+      } else {
+        // No existing row yet, so there's nothing to preserve — insert
+        // whatever was submitted (possibly still empty/null, which is fine
+        // for a brand-new cell).
+        await db.query(
+          `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img, installed_date, warrantee_date)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+          [bank_id, num, toNumOrNull(voltage), toNumOrNull(internal_resistance), status, combinedImg, cleanDate(installed_date), cleanDate(warrantee_date)]
+        );
+      }
+    }
+
+    res.json({ message: 'บันทึกข้อมูล Bank และลูกที่ 1-4 สำเร็จ', bank_id });
+  } catch (err) {
+    console.error('[BANK BATCH SAVE ERROR]', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1698,4 +1890,3 @@ router.post('/query/execute', async (req, res) => {
 });
 
 module.exports = router;
-

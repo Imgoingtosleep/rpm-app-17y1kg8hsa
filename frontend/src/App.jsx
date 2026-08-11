@@ -171,9 +171,9 @@ function WorkOrderPanel() {
     }));
   };
 
-  const [hasVrlaBattery, setHasVrlaBattery] = useState(false);
+  const [isLithiumOnly, setIsLithiumOnly] = useState(false);
 
-  // Check if any rectifier uses VRLA AGM battery
+  // Check rectifier battery types
   useEffect(() => {
     if (!rpmId) return;
     const checkBatteryType = () => {
@@ -182,9 +182,12 @@ function WorkOrderPanel() {
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
             const hasVrla = data.some(r => r.battery_type === 'VRLA AGM' || r.battery_type === 'VRLA AGM + Lithium');
+            const allLithium = data.every(r => r.battery_type === 'Lithium');
             setHasVrlaBattery(hasVrla);
+            setIsLithiumOnly(allLithium);
           } else {
             setHasVrlaBattery(false);
+            setIsLithiumOnly(false);
           }
         })
         .catch(err => console.error("Error checking rectifier battery types:", err));
@@ -209,7 +212,7 @@ function WorkOrderPanel() {
   // Hide Rectifier and Battery Bank tabs if rectifierQtyUih === 0
   const tabList = allTabs.filter(t => {
     if (t.id === 'rectifier' && rectifierQtyUih === 0) return false;
-    if (t.id === 'battery' && (rectifierQtyUih === 0 || !hasVrlaBattery)) return false;
+    if (t.id === 'battery' && rectifierQtyUih === 0) return false;
     return true;
   });
 
