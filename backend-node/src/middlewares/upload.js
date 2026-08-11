@@ -18,9 +18,9 @@ const storage = multer.diskStorage({
 
     // Helper sanitization for folder names to match rectifier spec
     const getCleanRectNo = () => {
-      const rNo = req.body.rect_no || req.query.rect_no || 'rectifier_1';
+      const rNo = req.body.rect_no || req.query.rect_no || 'rect_1';
       if (rNo.includes('ตู้ที่')) {
-        return 'rectifier_' + rNo.replace(/[^0-9]/g, '');
+        return 'rect_' + rNo.replace(/[^0-9]/g, '');
       }
       return rNo.replace(/\s+/g, '_').toLowerCase();
     };
@@ -31,6 +31,9 @@ const storage = multer.diskStorage({
     };
 
     const getCellNo = () => {
+      if (file.fieldname.startsWith('battery_img_')) {
+        return file.fieldname.replace('battery_img_', '');
+      }
       return req.body.cell_no || req.query.cell_no || '1';
     };
 
@@ -40,13 +43,13 @@ const storage = multer.diskStorage({
         file.fieldname.startsWith('mdb_temp') || file.fieldname.startsWith('ground')) {
       targetSubpath = 'power_ac_main';
     } else if (file.fieldname.startsWith('breaker') || file.fieldname.startsWith('pdb_temp') || file.fieldname.startsWith('surge_rect')) {
-      // power_rectifier/rectifier_[no]/
+      // power_rectifier/rect_[no]/
       targetSubpath = path.join('power_rectifier', getCleanRectNo());
     } else if (file.fieldname.startsWith('lithium_bank_img_')) {
       const bankIdx = file.fieldname.replace('lithium_bank_img_', '');
       targetSubpath = path.join('power_rectifier', getCleanRectNo(), `bank_${bankIdx}`);
     } else if (file.fieldname.startsWith('battery')) {
-      // power_rectifier/rectifier_[no]/bank_[bank_no]/batt_[cell_no]/
+      // power_rectifier/rect_[no]/bank_[bank_no]/batt_[cell_no]/
       targetSubpath = path.join('power_rectifier', getCleanRectNo(), getCleanBankName(), `batt_${getCellNo()}`);
     } else if (file.fieldname.startsWith('alarm')) {
       targetSubpath = path.join('system_and_facilities', 'alarm');
