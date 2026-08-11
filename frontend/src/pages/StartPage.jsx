@@ -90,23 +90,23 @@ export default function StartPage() {
   const handleMockLogin = (role) => {
     const mockUsers = {
       Admin: {
-        name: 'Admin Developer (Demo)',
+        name: 'Alex Vance',
         email: 'admin.dev@rpm.com',
-        avatar: 'AD',
+        avatar: 'AV',
         role: 'Admin',
         area: 'All',
         subarea: 'All'
       },
       'Team Lead': {
-        name: 'Wichai TeamLead (Demo)',
+        name: 'William Turner',
         email: 'wichai.tl@rpm.com',
-        avatar: 'TL',
+        avatar: 'WT',
         role: 'Team Lead',
         area: '["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี"]',
         subarea: null
       },
       Inspector: {
-        name: 'Somchai Inspector (Demo)',
+        name: 'Samuel Ingham',
         email: 'somchai.ins@rpm.com',
         avatar: 'SI',
         role: 'Inspector',
@@ -114,7 +114,7 @@ export default function StartPage() {
         subarea: '["นนทบุรี"]'
       },
       Viewer: {
-        name: 'Guest Viewer (Demo)',
+        name: 'Grace Vance',
         email: 'guest.view@rpm.com',
         avatar: 'GV',
         role: 'Viewer',
@@ -124,7 +124,7 @@ export default function StartPage() {
     };
 
     const mockUser = mockUsers[role] || {
-      name: `${role} User (Demo)`,
+      name: `${role} User`,
       email: `${role.toLowerCase()}@rpm.com`,
       avatar: role.substring(0, 2).toUpperCase(),
       role: role,

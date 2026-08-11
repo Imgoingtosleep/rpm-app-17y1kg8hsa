@@ -165,11 +165,11 @@ CREATE TABLE IF NOT EXISTS field_configs (
 );
 
 INSERT INTO users (email, name, role, area, subarea) VALUES
-('admin.dev@rpm.com', 'Admin Developer (Demo)', 'Admin', 'All', 'All'),
-('wichai.tl@rpm.com', 'Wichai TeamLead (Demo)', 'Team Lead', '["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี"]', NULL),
-('somchai.ins@rpm.com', 'Somchai Inspector (Demo)', 'Inspector', '["กรุงเทพมหานคร","เชียงใหม่"]', '["นนทบุรี"]'),
-('guest.view@rpm.com', 'Guest Viewer (Demo)', 'Viewer', '["ยโสธร","อุบลราชธานี"]', NULL)
-ON CONFLICT (email) DO UPDATE SET area = EXCLUDED.area, subarea = EXCLUDED.subarea;
+('admin.dev@rpm.com', 'Alex Vance', 'Admin', 'All', 'All'),
+('wichai.tl@rpm.com', 'William Turner', 'Team Lead', '["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี"]', NULL),
+('somchai.ins@rpm.com', 'Samuel Ingham', 'Inspector', '["กรุงเทพมหานคร","เชียงใหม่"]', '["นนทบุรี"]'),
+('guest.view@rpm.com', 'Grace Vance', 'Viewer', '["ยโสธร","อุบลราชธานี"]', NULL)
+ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, area = EXCLUDED.area, subarea = EXCLUDED.subarea;
 
 -- Seed field configs for Master Site Tab
 INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES

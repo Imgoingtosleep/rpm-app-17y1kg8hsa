@@ -579,6 +579,12 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
                       <span className="text-gray-400">เลข SAP ID:</span>
                       <span className="text-white font-bold">{sapNo || '-'}</span>
                     </div>
+                    <div className="flex justify-between text-xs pt-1 border-t border-dark-border/40">
+                      <span className="text-gray-400">เวลาเปิดเข้าสู่ระบบ:</span>
+                      <span className="text-emerald-400 font-bold">
+                        {new Date().toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} น.
+                      </span>
+                    </div>
                   </div>
                 )
               )}
