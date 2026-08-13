@@ -388,8 +388,8 @@ router.put('/workorder/:rpm_id/master', async (req, res) => {
   const { job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date, inspection_time, rectifier_qty_uih, inspector_name } = req.body;
   try {
     const result = await db.query(
-      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = $3, rpm_cycle = $4, inspection_date = $5, inspection_time = $6, rectifier_qty_uih = $7, inspector_name = COALESCE($8, inspector_name) WHERE rpm_id = $9 RETURNING *;',
-      [job_number_sl6, sap_number, summary_issue, rpm_cycle, inspection_date || null, inspection_time || null, rectifier_qty_uih || null, inspector_name || null, rpm_id]
+      'UPDATE rpm_records_master SET job_number_sl6 = $1, sap_number = $2, summary_issue = COALESCE($3, summary_issue), rpm_cycle = $4, inspection_date = $5, inspection_time = $6, rectifier_qty_uih = $7, inspector_name = COALESCE($8, inspector_name) WHERE rpm_id = $9 RETURNING *;',
+      [job_number_sl6, sap_number, summary_issue || null, rpm_cycle, inspection_date || null, inspection_time || null, rectifier_qty_uih || null, inspector_name || null, rpm_id]
     );
     res.json(result.rows[0]);
   } catch (err) {
