@@ -1,23 +1,36 @@
+-- เปิดการใช้งาน Extensions ที่จำเป็น
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ----------------------------------------------------------------------------
 -- 1. ตารางสิทธิ์ผู้ใช้งาน (Users & Roles)
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Team Lead', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
+    area TEXT,                        -- JSON หรือ Comma-separated list ของพื้นที่ดูแล
+    subarea TEXT,                     -- JSON หรือ Comma-separated list ของพื้นที่ย่อย
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ----------------------------------------------------------------------------
 -- 2. ตารางข้อมูลหลักสถานี (Sites Master)
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sites (
     site_id SERIAL PRIMARY KEY,
-    site_code VARCHAR(50) UNIQUE NOT NULL, -- ใช้เป็น Unique สำหรับอ้างอิงภายนอก
+    site_code VARCHAR(50) UNIQUE NOT NULL,
     site_name VARCHAR(255) NOT NULL,
-    site_grade VARCHAR(10) CHECK (site_grade IN ('A', 'B', 'C')), -- บังคับเกรด A, B, C ตาม Scope of Work
+    site_grade VARCHAR(10) CHECK (site_grade IN ('A', 'B', 'C')),
     site_type VARCHAR(50) CHECK (site_type IN ('Indoor', 'Outdoor')),
+    area VARCHAR(100),
+    subarea VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. ตารางบันทึกประวัติใบงานหลัก (RPM Records Master)
+-- ----------------------------------------------------------------------------
+-- 3. ตารางบันทึกประวัติใบงานหลัก (RPM Records Master)
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS rpm_records_master (
     rpm_id SERIAL PRIMARY KEY,
     site_code VARCHAR(50) NOT NULL REFERENCES sites(site_code) ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -30,16 +43,18 @@ CREATE TABLE IF NOT EXISTS rpm_records_master (
     inspection_date DATE,                        -- วันที่เข้าตรวจสอบ
     inspection_time TIME,                        -- เวลาที่เข้าตรวจสอบ
     rectifier_qty_uih INT,                       -- จำนวนตู้ Rectifier
-    status VARCHAR(50) DEFAULT 'Pending',         -- สถานะใบงาน เช่น Pending, Submitted
+    status VARCHAR(50) DEFAULT 'Pending',         -- สถานะใบงาน (Pending, Submitted, TL Approved, Approved, Rejected)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. ตารางระบบไฟฟ้าเมนหลัก (Power Main AC) [1-to-1 กับใบงาน]
+-- ----------------------------------------------------------------------------
+-- 4. ตารางระบบไฟฟ้าเมนหลัก (Power Main AC) [1-to-1 กับใบงาน]
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS power_main_ac (
     main_ac_id SERIAL PRIMARY KEY,
-    rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE, -- 1 ใบงานมีได้ 1 บันทึก AC
+    rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
     meter_ac_size VARCHAR(100),
-    meter_ac_img VARCHAR(500)[], -- เก็บเป็น Path รูปภาพ
+    meter_ac_img VARCHAR(500)[],
     cable_status VARCHAR(100),
     cable_img VARCHAR(500)[],
     change_over_switch VARCHAR(100),
@@ -60,7 +75,9 @@ CREATE TABLE IF NOT EXISTS power_main_ac (
     site_temp VARCHAR(50)
 );
 
--- 4. ตารางระบบตู้ Rectifier (Power Rectifier) - สัมพันธ์แบบ 1 ใบงาน มีได้หลายตู้ (1-to-Many)
+-- ----------------------------------------------------------------------------
+-- 5. ตารางระบบตู้ Rectifier (Power Rectifier) [1-to-Many กับใบงาน]
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS power_rectifier (
     rect_id SERIAL PRIMARY KEY,
     rpm_id INT NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
@@ -82,18 +99,23 @@ CREATE TABLE IF NOT EXISTS power_rectifier (
     battery_type VARCHAR(50),
     lithium_capacity VARCHAR(50),
     battery_run VARCHAR(50),
-    battery_soh NUMERIC(5,2),
-    battery_soc NUMERIC(5,2),
+    battery_soh TEXT,
+    battery_soc TEXT,
     battery_capacity_percent VARCHAR(50),
     battery_alarm VARCHAR(50),
-    battery_qty_bank INT
+    battery_qty_bank INT,
+    lithium_bank_imgs JSONB,
+    vrla_qty_bank INT,
+    rect_type VARCHAR(100)
 );
 
--- 5. ตารางชั้น Bank (Rectifier Banks) [1 ตู้ มีหลาย Bank]
+-- ----------------------------------------------------------------------------
+-- 6. ตารางกลุ่มแบตเตอรี่ (Rectifier Banks) [1-to-Many กับตู้ Rectifier]
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS rectifier_banks (
     bank_id SERIAL PRIMARY KEY,
     rect_id INT NOT NULL REFERENCES power_rectifier(rect_id) ON DELETE CASCADE,
-    bank_name VARCHAR(50) NOT NULL, -- เช่น 'Bank 1', 'Bank 2'
+    bank_name VARCHAR(50) NOT NULL, -- เช่น Bank 1, Bank 2
     brand VARCHAR(100),
     capacity VARCHAR(50),
     installed_date VARCHAR(50),
@@ -101,20 +123,24 @@ CREATE TABLE IF NOT EXISTS rectifier_banks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. ตารางตรวจสอบแบตเตอรี่รายลูก (Battery Tests) [1 Bank มี 4 ลูก]
+-- ----------------------------------------------------------------------------
+-- 7. ตารางตรวจสอบแบตเตอรี่รายลูก VRLA (Battery Tests) [4 ลูก ต่อ 1 Bank]
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS battery_tests (
     bat_id SERIAL PRIMARY KEY,
-    bank_id INT NOT NULL REFERENCES rectifier_banks(bank_id) ON DELETE CASCADE, -- อ้างอิง Bank แทน Rectifier
-    cell_no INT NOT NULL,          -- ลูกที่ 1, 2, 3, 4
-    voltage NUMERIC(10,2),          -- เช่น 13.21
-    internal_resistance NUMERIC(10,2), -- ค่า IR (มิลลิโอห์ม)
-    status VARCHAR(100),           -- ปกติ / เสื่อม
+    bank_id INT NOT NULL REFERENCES rectifier_banks(bank_id) ON DELETE CASCADE,
+    cell_no INT NOT NULL,              -- ลูกที่ 1, 2, 3, 4
+    voltage NUMERIC(10,2),              -- ค่าแรงดัน (Volt)
+    internal_resistance NUMERIC(10,2), -- ค่าความต้านทานภายใน IR (mΩ)
+    status VARCHAR(100),               -- ปกติ / เสื่อม (Good, Warning, Fail)
     installed_date DATE,
     warrantee_date DATE,
     battery_img VARCHAR(500)[]
 );
 
--- 7. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) [1-to-1 กับใบงาน]
+-- ----------------------------------------------------------------------------
+-- 8. ตารางระบบ Alarm และสิ่งอำนวยความสะดวก (Systems And Facilities) [1-to-1]
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS systems_and_facilities (
     facility_id SERIAL PRIMARY KEY,
     rpm_id INT UNIQUE NOT NULL REFERENCES rpm_records_master(rpm_id) ON DELETE CASCADE,
@@ -132,39 +158,57 @@ CREATE TABLE IF NOT EXISTS systems_and_facilities (
     vent_dc_fan_hood VARCHAR(100), vent_dc_fan_hood_img VARCHAR(500)[],
     vent_air_cond VARCHAR(100), vent_air_cond_img VARCHAR(500)[],
     vent_filters VARCHAR(100), vent_filters_img VARCHAR(500)[],
-    -- หมวด Site Facility
-    fac_site_sign VARCHAR(100), fac_site_sign_img VARCHAR(500)[],
-    fac_outdoor_clean VARCHAR(100), fac_outdoor_clean_img VARCHAR(500)[],
-    fac_indoor_clean VARCHAR(100), fac_indoor_clean_img VARCHAR(500)[],
-    fac_lighting VARCHAR(100), fac_lighting_img VARCHAR(500)[],
-    fac_grass_cut VARCHAR(100), fac_grass_cut_img VARCHAR(500)[],
     vent_filter_door VARCHAR(100), vent_filter_door_img VARCHAR(500)[],
     vent_filter_window VARCHAR(100), vent_filter_window_img VARCHAR(500)[],
     vent_equip_fan VARCHAR(100), vent_equip_fan_img VARCHAR(500)[],
     vent_filter_equip VARCHAR(100), vent_filter_equip_img VARCHAR(500)[],
     air_owner VARCHAR(100), air_owner_img VARCHAR(500)[],
     control_air_type VARCHAR(100), control_air_type_img VARCHAR(500)[],
-    control_air_status VARCHAR(100), control_air_status_img VARCHAR(500)[]
+    control_air_status VARCHAR(100), control_air_status_img VARCHAR(500)[],
+    -- หมวด Site Facility
+    fac_site_sign VARCHAR(100), fac_site_sign_img VARCHAR(500)[],
+    fac_outdoor_clean VARCHAR(100), fac_outdoor_clean_img VARCHAR(500)[],
+    fac_indoor_clean VARCHAR(100), fac_indoor_clean_img VARCHAR(500)[],
+    fac_lighting VARCHAR(100), fac_lighting_img VARCHAR(500)[],
+    fac_grass_cut VARCHAR(100), fac_grass_cut_img VARCHAR(500)[]
 );
 
--- สร้าง Index
-CREATE INDEX IF NOT EXISTS idx_rpm_site ON rpm_records_master(site_code);
-CREATE INDEX IF NOT EXISTS idx_rect_rpm ON power_rectifier(rpm_id);
-CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
-CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);
-CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
-
--- Table for Admin field management
+-- ----------------------------------------------------------------------------
+-- 9. ตารางการตั้งค่าเปิด/ปิดฟิลด์ข้อมูล (Field Configs for Admin)
+-- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS field_configs (
     field_id SERIAL PRIMARY KEY,
     tab_name VARCHAR(100) NOT NULL,
     field_name VARCHAR(100) NOT NULL,
     is_required BOOLEAN DEFAULT TRUE,
     is_enabled BOOLEAN DEFAULT TRUE,
-    dropdown_options TEXT[], -- รายการตัวเลือกเพิ่มเติมสำหรับฟิลด์ Dropdown
+    dropdown_options TEXT[],
     UNIQUE(tab_name, field_name)
 );
 
+-- ----------------------------------------------------------------------------
+-- 10. ตารางรอบการตรวจเช็ค (RPM Cycles)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rpm_cycles (
+    cycle_id SERIAL PRIMARY KEY,
+    cycle_name VARCHAR(50) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- ดัชนีเพิ่มความเร็วในการค้นหา (Indexes)
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_rpm_site ON rpm_records_master(site_code);
+CREATE INDEX IF NOT EXISTS idx_rect_rpm ON power_rectifier(rpm_id);
+CREATE INDEX IF NOT EXISTS idx_bank_rect ON rectifier_banks(rect_id);
+CREATE INDEX IF NOT EXISTS idx_bat_bank ON battery_tests(bank_id);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
+
+-- ============================================================================
+-- ข้อมูลเริ่มต้น (Initial Seed Data)
+-- ============================================================================
+
+-- 1. ผู้ใช้งานเริ่มต้น
 INSERT INTO users (email, name, role, area, subarea) VALUES
 ('admin.dev@rpm.com', 'Alex Vance', 'Admin', 'All', 'All'),
 ('wichai.tl@rpm.com', 'William Turner', 'Team Lead', '["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี"]', NULL),
@@ -172,19 +216,21 @@ INSERT INTO users (email, name, role, area, subarea) VALUES
 ('guest.view@rpm.com', 'Grace Vance', 'Viewer', '["ยโสธร","อุบลราชธานี"]', NULL)
 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, area = EXCLUDED.area, subarea = EXCLUDED.subarea;
 
--- Seed field configs for Master Site Tab
+-- 2. รอบการตรวจเริ่มต้น
+INSERT INTO rpm_cycles (cycle_name) VALUES
+('2026-R1'),
+('2026-R2'),
+('2026-R3')
+ON CONFLICT (cycle_name) DO NOTHING;
+
+-- 3. การตั้งค่าฟิลด์เริ่มต้น (Field Configs)
 INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+-- Master Site
 ('master', 'job_number_sl6', true, true),
-('master', 'sap_number', true, true)
-ON CONFLICT (tab_name, field_name) DO NOTHING;
-
--- Seed field configs for Summary Tab
-INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
-('summary', 'summary_issue', false, true)
-ON CONFLICT (tab_name, field_name) DO NOTHING;
-
--- Seed field configs for AC Main Tab
-INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('master', 'sap_number', true, true),
+-- Summary
+('summary', 'summary_issue', false, true),
+-- AC Main
 ('acmain', 'meter_ac_size', true, true),
 ('acmain', 'cable_status', true, true),
 ('acmain', 'change_over_switch', true, true),
@@ -198,11 +244,8 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('acmain', 'current_p1', true, true),
 ('acmain', 'current_p2', true, true),
 ('acmain', 'current_p3', true, true),
-('acmain', 'ground_resistance', true, true)
-ON CONFLICT (tab_name, field_name) DO NOTHING;
-
--- Seed field configs for Rectifier Tab
-INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('acmain', 'ground_resistance', true, true),
+-- Rectifier
 ('rectifier', 'model', true, true),
 ('rectifier', 'ac_cable_size', true, true),
 ('rectifier', 'breaker_size', true, true),
@@ -221,22 +264,16 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('rectifier', 'battery_soc', true, true),
 ('rectifier', 'battery_capacity_percent', true, true),
 ('rectifier', 'battery_alarm', true, true),
-('rectifier', 'battery_qty_bank', true, true)
-ON CONFLICT (tab_name, field_name) DO NOTHING;
-
--- Seed field configs for Battery Tab
-INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('rectifier', 'battery_qty_bank', true, true),
+-- Battery
 ('battery', 'voltage', true, true),
 ('battery', 'internal_resistance', true, true),
 ('battery', 'status', true, true),
 ('battery', 'brand', true, true),
 ('battery', 'capacity', true, true),
 ('battery', 'installed_date', true, true),
-('battery', 'warrantee_date', true, true)
-ON CONFLICT (tab_name, field_name) DO NOTHING;
-
--- Seed field configs for Facilities Tab
-INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
+('battery', 'warrantee_date', true, true),
+-- Facilities
 ('facilities', 'alarm_door', true, true),
 ('facilities', 'alarm_ac_fail', true, true),
 ('facilities', 'alarm_low_bat', true, true),

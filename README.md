@@ -66,8 +66,7 @@ rpm-app/
 │   │   ├── services/     # Utility services (PDF generator, etc.)
 │   │   └── server.js     # Entry point server
 │   ├── Dockerfile
-│   ├── init.sql          # Initial database schema setup
-│   └── migration.sql     # Database migration scripts
+│   └── init.sql          # Initial database schema setup
 │
 ├── frontend/             # Frontend Web Application (React + Vite + Tailwind)
 │   ├── src/
