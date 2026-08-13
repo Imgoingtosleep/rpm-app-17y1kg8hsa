@@ -70,7 +70,7 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   // data to disappear after a second save.
   const [isBankLoaded, setIsBankLoaded] = useState(false);
 
-  const normalizeBank = (str) => (str || '').toString().trim().toLowerCase();
+  const normalizeBank = (str) => (str || '').toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // Load bank state from batteries array (DB data) or return empty defaults
   const loadBankState = React.useCallback((rectId, bankName, batteriesArr) => {
@@ -130,10 +130,14 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     }
   }, [rectifierQtyUihProp]);
 
-  // 1. Fetch rectifiers for current workorder
+  // 1. Fetch rectifiers for current workorder (with site_code fallback for F5 page refresh)
   useEffect(() => {
-    if (!rpmId) return;
-    fetch(`/api/workorder/${rpmId}/rectifiers`)
+    const targetSiteCode = site_code || (site && site.code);
+    if (!rpmId && !targetSiteCode) return;
+
+    const rectUrl = rpmId ? `/api/workorder/${rpmId}/rectifiers` : `/api/site/${targetSiteCode}/rectifiers`;
+
+    fetch(rectUrl)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -142,15 +146,17 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
       })
       .catch(err => console.error("Error fetching rectifiers:", err));
 
-    // Fetch master record for rectifier_qty_uih
-    fetch(`/api/workorder/${rpmId}/master`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.rectifier_qty_uih !== undefined && data.rectifier_qty_uih !== null) {
-          setRectifierQtyUih(parseInt(data.rectifier_qty_uih, 10));
-        }
-      })
-      .catch(err => console.error("Error fetching master record:", err));
+    if (rpmId) {
+      // Fetch master record for rectifier_qty_uih
+      fetch(`/api/workorder/${rpmId}/master`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.rectifier_qty_uih !== undefined && data.rectifier_qty_uih !== null) {
+            setRectifierQtyUih(parseInt(data.rectifier_qty_uih, 10));
+          }
+        })
+        .catch(err => console.error("Error fetching master record:", err));
+    }
 
     // Fetch configs
     fetch('/api/field-configs')
@@ -161,43 +167,51 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
         }
       })
       .catch(err => console.error("Error fetching field configs:", err));
-  }, [rpmId]);
+  }, [rpmId, site_code, site]);
 
   // 2. Resolve active rect_id when selectedRect name or rectifiers list changes
   useEffect(() => {
-    if (!rectifiers || rectifiers.length === 0) {
-      if (activeRectId !== null) setActiveRectId(null);
-      setBatteries([]);
-      return;
-    }
+    if (!rectifiers || rectifiers.length === 0) return;
 
     const normalizeRectName = (str) => str ? str.replace(/[^0-9]/g, '') : '';
     const selectedNum = normalizeRectName(selectedRect);
     
-    // Find matching rectifier by number, or exact string
+    // Find matching rectifier by URL/selection, or auto-pick first VRLA rectifier if available
     let found = rectifiers.find(r => normalizeRectName(r.rect_no) === selectedNum) || 
-                rectifiers.find(r => r.rect_no === selectedRect) ||
-                rectifiers[0];
+                rectifiers.find(r => r.rect_no === selectedRect);
+
+    // If paramRectNo was not specified, prefer first VRLA cabinet over Lithium cabinet
+    if (!paramRectNo) {
+      const vrlaRect = rectifiers.find(r => r.battery_type === 'VRLA AGM' || r.battery_type === 'VRLA AGM + Lithium');
+      if (vrlaRect) found = vrlaRect;
+    }
+
+    if (!found) found = rectifiers[0];
                   
     if (found) {
+      if (found.rect_no && found.rect_no !== selectedRect && !paramRectNo) {
+        setSelectedRect(found.rect_no);
+      }
       if (found.rect_id !== activeRectId) {
         setActiveRectId(found.rect_id);
       }
-    } else {
-      if (activeRectId !== null) setActiveRectId(null);
-      setBatteries([]);
     }
-  }, [selectedRect, rectifiers, activeRectId]);
+  }, [selectedRect, rectifiers, activeRectId, paramRectNo]);
 
-  // 3. Fetch batteries for active rectifier
-  const fetchBatteries = React.useCallback(() => {
+  // 3. Fetch batteries whenever activeRectId changes
+  useEffect(() => {
     if (!activeRectId) {
       setBatteries([]);
-      return Promise.resolve();
+      setIsBankLoaded(true);
+      return;
     }
-    return fetch(`/api/rectifier/${activeRectId}/batteries`)
+
+    let isMounted = true;
+    setIsBankLoaded(false);
+    fetch(`/api/rectifier/${activeRectId}/batteries`)
       .then(res => res.json())
       .then(data => {
+        if (!isMounted) return;
         if (Array.isArray(data)) {
           setBatteries(data);
           const loaded = loadBankState(activeRectId, bankNo, data);
@@ -208,25 +222,23 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
           setWarranteeDate(loaded.meta.warranteeDate);
           setIsCustomBrand(loaded.meta.isCustomBrand);
           setFileInputKey(Date.now());
-          setIsBankLoaded(true);
         } else {
           setBatteries([]);
-          setIsBankLoaded(true);
         }
+        setIsBankLoaded(true);
       })
       .catch(err => {
         console.error("Error fetching batteries:", err);
-        setBatteries([]);
-        setIsBankLoaded(true);
+        if (isMounted) {
+          setBatteries([]);
+          setIsBankLoaded(true);
+        }
       });
+
+    return () => { isMounted = false; };
   }, [activeRectId, bankNo, loadBankState]);
 
-  // Fetch batteries when activeRectId changes
-  useEffect(() => {
-    fetchBatteries();
-  }, [activeRectId, fetchBatteries]);
-
-  // Sync state if URL params change externally (e.g. back/forward button)
+  // Sync selectedRect and bankNo when URL params change (e.g., F5 refresh or navigate)
   useEffect(() => {
     if (paramRectNo) {
       const parsedRect = parseRectParam(paramRectNo);
@@ -234,7 +246,18 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
     }
     if (paramBankNo) {
       const parsedBank = parseBankParam(paramBankNo);
-      if (parsedBank !== bankNo) setBankNo(parsedBank);
+      if (parsedBank !== bankNo) {
+        setBankNo(parsedBank);
+        if (batteries && batteries.length > 0) {
+          const loaded = loadBankState(activeRectId, parsedBank, batteries);
+          setCells(loaded.cells);
+          setBrand(loaded.meta.brand);
+          setCapacity(loaded.meta.capacity);
+          setInstalledDate(loaded.meta.installedDate);
+          setWarranteeDate(loaded.meta.warranteeDate);
+          setIsCustomBrand(loaded.meta.isCustomBrand);
+        }
+      }
     }
   }, [paramRectNo, paramBankNo]);
 
@@ -254,15 +277,6 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
   const handleBankChange = (targetBank) => {
     setBankNo(targetBank);
     updateUrlParams(selectedRect, targetBank);
-    const loaded = loadBankState(activeRectId, targetBank, batteries);
-    setCells(loaded.cells);
-    setBrand(loaded.meta.brand);
-    setCapacity(loaded.meta.capacity);
-    setInstalledDate(loaded.meta.installedDate);
-    setWarranteeDate(loaded.meta.warranteeDate);
-    setIsCustomBrand(loaded.meta.isCustomBrand);
-    setFileInputKey(Date.now());
-    setIsBankLoaded(true);
   };
 
   const handleCellChange = (num, field, value) => {

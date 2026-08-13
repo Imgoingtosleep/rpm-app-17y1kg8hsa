@@ -146,6 +146,11 @@ function WorkOrderPanel() {
             setInspectionTime(resData.data.inspection_time);
             localStorage.setItem('inspectionTime', resData.data.inspection_time);
           }
+          if (resData.data.rectifier_qty_uih !== undefined && resData.data.rectifier_qty_uih !== null) {
+            setRectifierQtyUih(parseInt(resData.data.rectifier_qty_uih, 10));
+          } else {
+            setRectifierQtyUih(6);
+          }
         }
       })
       .catch(err => console.error("Error starting workorder:", err));
@@ -174,20 +179,19 @@ function WorkOrderPanel() {
 
   const [isLithiumOnly, setIsLithiumOnly] = useState(false);
 
-  // Check rectifier battery types
+  // Check rectifier battery types (with site_code fallback for F5 refresh)
   useEffect(() => {
-    if (!rpmId) return;
+    if (!rpmId && !site_code) return;
+    const rectUrl = rpmId ? `/api/workorder/${rpmId}/rectifiers` : `/api/site/${site_code}/rectifiers`;
+
     const checkBatteryType = () => {
-      fetch(`/api/workorder/${rpmId}/rectifiers`)
+      fetch(rectUrl)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
-            const hasVrla = data.some(r => r.battery_type === 'VRLA AGM' || r.battery_type === 'VRLA AGM + Lithium');
             const allLithium = data.every(r => r.battery_type === 'Lithium');
-            setHasVrlaBattery(hasVrla);
             setIsLithiumOnly(allLithium);
           } else {
-            setHasVrlaBattery(false);
             setIsLithiumOnly(false);
           }
         })
@@ -199,7 +203,7 @@ function WorkOrderPanel() {
     return () => window.removeEventListener('rectifierSaved', checkBatteryType);
   }, [rpmId, activeTab, site_code]);
 
-  const [rectifierQtyUih, setRectifierQtyUih] = useState(0);
+  const [rectifierQtyUih, setRectifierQtyUih] = useState(6);
 
   const allTabs = [
     { id: 'master', label: 'Master Site' },

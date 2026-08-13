@@ -963,7 +963,7 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
     }
 
     let bankResult = await db.query(
-      'SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND LOWER(bank_name) = LOWER($2);',
+      "SELECT bank_id FROM rectifier_banks WHERE rect_id = $1 AND LOWER(REPLACE(bank_name, ' ', '')) = LOWER(REPLACE($2, ' ', ''));",
       [rect_id, bank_name || 'Bank 1']
     );
 
@@ -972,12 +972,13 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
       bank_id = bankResult.rows[0].bank_id;
       await db.query(
         `UPDATE rectifier_banks SET
-          brand = $1,
-          capacity = $2,
-          installed_date = $3,
-          warrantee_date = $4
-        WHERE bank_id = $5;`,
-        [brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
+          bank_name = $1,
+          brand = $2,
+          capacity = $3,
+          installed_date = $4,
+          warrantee_date = $5
+        WHERE bank_id = $6;`,
+        [bank_name || 'Bank 1', brand || null, capacity || null, cleanDate(installed_date), cleanDate(warrantee_date), bank_id]
       );
     } else {
       const newBank = await db.query(
@@ -1027,7 +1028,6 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
       // saved in the DB for this cell.
       const hasVoltage = voltage !== undefined && voltage !== null && voltage !== '';
       const hasIr = internal_resistance !== undefined && internal_resistance !== null && internal_resistance !== '';
-
       const fieldName = `battery_img_${num}`;
       const uploadedFiles = filesByField[fieldName] || [];
       const newImgPaths = uploadedFiles.map(f => `/storage/db_img/${site_code}/${cycleDir}/power_rectifier/${getCleanRectNo(rect_no)}/${getCleanBankName(bank_name)}/batt_${num}/${f.filename}`);
@@ -1048,12 +1048,19 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
         if (!combinedImg.includes(p)) combinedImg.push(p);
       });
 
+      const hasImages = combinedImg.length > 0;
+
       const existingTest = await db.query(
         'SELECT * FROM battery_tests WHERE bank_id = $1 AND cell_no = $2;',
         [bank_id, num]
       );
 
       if (existingTest.rows.length > 0) {
+        const oldRow = existingTest.rows[0];
+        const finalVoltage = hasVoltage ? toNumOrNull(voltage) : oldRow.voltage;
+        const finalIr = hasIr ? toNumOrNull(internal_resistance) : oldRow.internal_resistance;
+        const finalStatus = (hasVoltage || hasIr) ? status : (oldRow.status || 'Good');
+
         await db.query(
           `UPDATE battery_tests SET
             voltage = $1,
@@ -1064,13 +1071,13 @@ router.post('/rectifier/:rect_id/bank-save', upload.any(), async (req, res) => {
             warrantee_date = $6
           WHERE bat_id = $7;`,
           [
-            toNumOrNull(voltage),
-            toNumOrNull(internal_resistance),
-            status, combinedImg, cleanDate(installed_date), cleanDate(warrantee_date),
-            existingTest.rows[0].bat_id
+            finalVoltage,
+            finalIr,
+            finalStatus, combinedImg, cleanDate(installed_date), cleanDate(warrantee_date),
+            oldRow.bat_id
           ]
         );
-      } else {
+      } else if (hasVoltage || hasIr || hasImages) {
         await db.query(
           `INSERT INTO battery_tests (bank_id, cell_no, voltage, internal_resistance, status, battery_img, installed_date, warrantee_date)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
