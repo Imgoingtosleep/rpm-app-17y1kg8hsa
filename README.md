@@ -1,100 +1,139 @@
-# 🚀 NetOps Portal (RPM App)
+# NetOps Portal (RPM App)
 
-ระบบบันทึกผลการเข้าตรวจบำรุงรักษาอุปกรณ์ตามรอบการปฏิบัติงาน (Routine Preventive Maintenance - RPM) สำหรับสถานี (Sites) ของทีมวิศวกรรมเครือข่าย
-
----
-
-## 📋 ภาพรวมโครงการ (Project Overview)
-
-**NetOps Portal (RPM App)** เป็นเว็บแอปพลิเคชันแบบ Full-stack ที่ออกแบบมาเพื่อช่วยอำนวยความสะดวกในการจัดเก็บข้อมูลการตรวจรับงาน Preventive Maintenance (PM) ของสถานีหลักต่าง ๆ รองรับการเก็บข้อมูลระบบไฟฟ้า (Power Main AC), ตู้แปลงกระแสไฟฟ้า (Power Rectifier), แบตเตอรี่สำรอง (Rectifier Banks & Battery Tests) และอุปกรณ์ประกอบอื่น ๆ (Systems & Facilities)
-
-### ฟังก์ชันเด่น (Key Features)
-* 📝 **RPM Forms**: กรอกแบบฟอร์มตรวจสอบสถานะพร้อมอัปโหลดรูปภาพของอุปกรณ์แยกประเภท
-* 🔍 **OCR Processing**: ถอดความภาพถ่ายตัวเลขมิเตอร์หรือป้ายสถิติผ่านการประมวลผล OCR (Tesseract.js) ในหลังบ้าน
-* 📄 **Auto PDF Export**: ออกรายงานสรุปผลการทำงาน (Report PDF) ของใบงานโดยอัตโนมัติ
-* 📦 **Data Backup**: ส่งออกข้อมูลดิบในรูปแบบ JSON Backup
-* 🐳 **Dockerized Setup**: ติดตั้งและเริ่มใช้งานง่ายผ่าน Docker Compose สำหรับทั้งฐานข้อมูล (PostgreSQL), ระบบจัดการ (pgAdmin), หลังบ้าน (Node.js/Express) และหน้าบ้าน (React/Vite)
+ระบบบันทึกและจัดการผลการเข้าตรวจบำรุงรักษาอุปกรณ์ตามรอบการปฏิบัติงาน (**Routine Preventive Maintenance - RPM**) สำหรับสถานี (Sites) ของทีมวิศวกรรมเครือข่าย
 
 ---
 
-## 🛠️ โครงสร้างสแต็คเทคโนโลยี (Tech Stack)
+## ภาพรวมโครงการ (Project Overview)
+
+**NetOps Portal (RPM App)** เป็นเว็บแอปพลิเคชันระดับองค์กรแบบ Full-stack (React + Node.js + PostgreSQL) สำหรับบริหารจัดการและจัดเก็บข้อมูลการตรวจรับงาน Preventive Maintenance (PM) รายสถานี มีระบบจำกัดสิทธิ์ผู้ใช้งานตามขอบเขตพื้นที่ (**Multi-Area & Sub-Area Scoping**), การบันทึกสถานะแบตเตอรี่สำรองแบบไดนามิก (VRLA AGM & Lithium), การอัปโหลดภาพถ่ายประกอบพร้อมการตรวจเช็คจำนวนรูปภาพ, การออกรายงาน PDF สรุปผลอัตโนมัติ และระบบบันทึกประวัติการแก้ไข (**Audit Logging**)
+
+### ฟังก์ชันเด่น (Key Features & Current Logic)
+
+1. **Dynamic RPM Work Order Tabs**:
+   - **Master Site**: บันทึกข้อมูลใบงานหลัก, เลข Job SL6, SAP ID, ผู้ตรวจสอบ, จำนวนตู้ Rectifier, วันเวลาที่เข้าตรวจ และสรุปปัญหาหน้างาน
+   - **AC Main**: บันทึกมิเตอร์ไฟ, สายไฟ, Changeover Switch, Surge Protection, อุณหภูมิ MDB, ค่าแรงดัน/กระแสไฟ (3-Phase) และค่าต้านทานกราวด์
+   - **Rectifier**: บันทึกรุ่น, AC Cable, Breaker (Phase 1-3), โมดูลปกติ/เสีย, ค่ากระแส Input/Output, Surge และเลือกประเภทแบตเตอรี่ (VRLA AGM หรือ Lithium)
+   - **Battery Bank (Dynamic Logic)**:
+     - รองรับแบตเตอรี่ประเภท **VRLA AGM** (กรอกรายละเอียดรายลูก 1-4 ค่า Volt, IR, แบรนด์, สเปก วันที่ติดตั้ง/ประกัน และรูปถ่าย)
+     - รองรับแบตเตอรี่ประเภท **Lithium** (บันทึกสเปกความจุ, สถานะการทำงาน RUN, SOH%, SOC%, Capacity%, LED Alarm และรูปถ่ายภาพรวม Bank)
+     - ระบบปรับแต่ง State การค้นหาและสลับ Bank อัตโนมัติ ป้องกันข้อมูลสูญหายเมื่อเปลี่ยน Bank หรือกด F5 Refresh
+   - **Facilities**: ตรวจสอบระบบความปลอดภัย (Security, Fire Alarm, FM200), พัดลมระบายอากาศ, แผ่นกรองอากาศ, เครื่องปรับอากาศ และความสะอาดสถานี
+   - **Summary**: หน้าสรุปสถานะใบงาน พร้อมการกดส่งอนุมัติ (**Submit Work Order**) หรือการปลดล็อกใบงาน (**Unlock**) สำหรับ Admin / Team Lead
+
+2. **Role-Based Access Control & Scope Access**:
+   - แบ่งสิทธิ์ออกเป็น **Admin**, **Team Lead**, **Inspector**, และ **Viewer**
+   - **Multi-Area & Sub-Area Scope**: กำหนดสิทธิ์ช่าง/ผู้ตรวจสอบให้มองเห็นเฉพาะสถานีที่อยู่ในเขตพื้นที่ (Area) หรือพื้นที่ย่อย (Sub-Area) ที่ได้รับมอบหมายเท่านั้น
+   - **Audit Logging**: บันทึกการแก้ไข (POST, PUT, DELETE) ลงไฟล์ `audit_log.txt` ใน `/storage/db_text` พร้อมระบุตัวตนผู้ทำรายการและเวลา Asia/Bangkok
+
+3. **Automated PDF Report & Backup**:
+   - ระบบสร้างรายงานสรุปผลการตรวจรับงาน (`report-[rpm_id].pdf`) และไฟล์สำรองข้อมูลดิบ (`backup-[rpm_id].json`) ลงในระบบจัดเก็บไฟล์โดยอัตโนมัติ
+
+4. **Field Configuration System**:
+   - ปรับแต่งการเปิด/ปิด (Enable/Disable) และการบังคับกรอก (Required) ของแต่ละฟิลด์ข้อมูลได้จากหน้าแอดมิน (`/admin/fields`)
+
+5. **Dockerized Microservices Setup**:
+   - บริหารจัดการผ่าน Docker Compose ประกอบด้วย PostgreSQL 15, Node.js Express Backend, React Vite Frontend และ pgAdmin 4 GUI
+
+---
+
+## สแต็คเทคโนโลยี (Tech Stack)
 
 * **Frontend**:
-  * React (v18)
-  * Vite (เครื่องมือจัดเตรียมและรันโค้ดรวดเร็ว)
-  * Tailwind CSS (การออกแบบและตกแต่งสไตล์)
-  * React Router DOM (จัดการเส้นทางและหน้าเพจ)
+  * **React 18** (Vite Bundler)
+  * **Tailwind CSS** (Custom Styling Framework)
+  * **React Router DOM v6** (Nested & Param-based Routing)
 * **Backend**:
-  * Node.js & Express
-  * PostgreSQL (ฐานข้อมูลความสัมพันธ์)
-  * PDFKit (สำหรับสร้าง PDF Report)
-  * Tesseract.js (สำหรับงาน OCR ค้นหาข้อความจากภาพ)
-  * Archiver (สำหรับบีบอัดและจัดการไฟล์)
-* **DevOps / Database Tools**:
-  * Docker & Docker Compose
-  * pgAdmin 4 (เครื่องมือจัดการ Database GUI)
+  * **Node.js** & **Express**
+  * **PostgreSQL 15** (pg pool with SSL support)
+  * **Multer** (จัดการไฟล์อัปโหลดและสร้าง Structure ไดเรกทอรีอัตโนมัติ)
+  * **PDFKit** (สร้างเอกสารรายงาน PDF)
+* **DevOps & Tools**:
+  * **Docker** & **Docker Compose**
+  * **pgAdmin 4** (Database Management UI)
 
 ---
 
-## 📂 โครงสร้างโฟลเดอร์ของโปรเจกต์ (Project Directory Structure)
+## โครงสร้างโปรเจกต์ (Project Structure)
 
 ```text
 rpm-app/
-├── backend-node/         # ซอร์สโค้ดฝั่ง Server (Node.js + Express)
+├── backend-node/         # Backend API Server (Node.js + Express)
 │   ├── src/
-│   │   ├── config/       # ตัวกำหนดค่าระบบ เช่น ฐานข้อมูล
-│   │   ├── middlewares/  # มิดเดิลแวร์คัดกรองคำขอ (เช่น อัปโหลดไฟล์)
-│   │   ├── routes/       # จัดการเส้นทาง API (api.js)
-│   │   ├── services/     # ตัวประมวลผลงานเฉพาะด้าน (PDF, OCR, DB query)
-│   │   └── server.js     # จุดเริ่มรันเซิร์ฟเวอร์หลัก
+│   │   ├── config/       # Database & Environment configuration
+│   │   ├── middlewares/  # Auth & File Upload (Multer) Middlewares
+│   │   ├── routes/       # API endpoints definitions (api.js)
+│   │   ├── services/     # Utility services (PDF generator, etc.)
+│   │   └── server.js     # Entry point server
 │   ├── Dockerfile
-│   ├── init.sql          # สคริปต์เตรียมฐานข้อมูลเริ่มต้น
-│   └── migration.sql     # สคริปต์ปรับปรุงโครงสร้างตารางเพิ่มเติม
+│   ├── init.sql          # Initial database schema setup
+│   └── migration.sql     # Database migration scripts
 │
-├── frontend/             # ซอร์สโค้ดฝั่ง Client (React + Vite + Tailwind)
-│   ├── src/              # ส่วนประกอบของเว็บ, หน้าจอ (Pages), และ Logic หน้าบ้าน
-│   ├── Dockerfile        # สำหรับ Production
-│   ├── Dockerfile.dev    # สำหรับโหมด Development
-│   ├── vite.config.js
-│   └── tailwind.config.js
+├── frontend/             # Frontend Web Application (React + Vite + Tailwind)
+│   ├── src/
+│   │   ├── components/   # Shared UI components (ImagePreview, Navbars)
+│   │   ├── layouts/      # MainLayout & Navigation Sidebars
+│   │   ├── pages/        # Gatekeeper, Admin Pages, WorkOrder Tabs
+│   │   │   └── WorkOrder/ # Master, AcMain, Rectifier, Battery, Facilities, Summary Tabs
+│   │   ├── utils/        # Scope Access Filtering & Helpers
+│   │   └── App.jsx       # Main Application Routing & React State Context
+│   ├── Dockerfile
+│   └── vite.config.js
 │
-├── storage/              # พื้นที่จัดเก็บไฟล์อัปโหลดและรายงาน (ดูรายละเอียดด้านล่าง)
-├── .env                  # การตั้งค่าตัวแปรระบบ (Environment Variables)
-├── docker-compose.yml    # ไฟล์เชื่อมโยง Services ทั้งหมด
-├── rebuild.sh            # สคริปต์สำหรับ Clean Build Docker ใหม่ทั้งหมดแบบไม่ใช้ Cache
-└── update.sh             # สคริปต์สำหรับ Git Pull, Build และรันอัตโนมัติพร้อมตรวจสอบ Health Check
+├── storage/              # Physical storage for uploaded images & PDF reports
+├── .env                  # Environment Variables Configuration
+├── docker-compose.yml    # Docker orchestration setup
+├── rebuild.sh            # Complete No-Cache Docker Rebuild script
+└── update.sh             # Automated Deployment & Health-check script
 ```
 
 ---
 
-## 💾 โครงสร้างการจัดเก็บไฟล์อัปโหลด (File Storage Directory Tree)
+## โครงสร้างจัดเก็บไฟล์ (File Storage Directory Tree)
 
-อ้างอิงตามข้อกำหนด [file_structure_spec.md](file_structure_spec.md) ระบบจะสร้างไดเรกทอรีจัดเก็บไฟล์แยกตามรายสถานี (`site_code`) ดังนี้:
+ไฟล์อัปโหลดและเอกสารจะถูกจัดเก็บเข้าไดเรกทอรีใน `storage/` ตามโครงสร้างมาตรฐานดังนี้:
 
 ```text
-storage/sites/
-└── [site_code]/                           # รหัสสถานีหลัก (เช่น BKK-999)
-    ├── db_img/                            # เก็บรูปภาพประกอบแยกตามหมวดหมู่
-    │   ├── power_main_ac/                 # ระบบไฟฟ้าเมนหลัก
-    │   ├── power_rectifier/               # ระบบตู้แปลงไฟ (แยกตาม [rect_no])
-    │   └── systems_and_facilities/        # ระบบเตือนภัยและความสะอาด
-    └── db_text/                           # ไฟล์รายงานเชิงอักษร
-        ├── report-[rpm_id].pdf            * ไฟล์ PDF สรุปผลงานตรวจรับ
-        └── backup-[rpm_id].json           * ไฟล์ JSON แบ็กอัปข้อมูลดิบ
+storage/
+├── db_text/
+│   ├── audit_log.txt                      # บันทึกประวัติการแก้ไขระบบ (Audit Logs)
+│   ├── report-[rpm_id].pdf                # เอกสาร PDF รายงานสรุปผลงาน
+│   └── backup-[rpm_id].json               # ไฟล์สำรองข้อมูลดิบ JSON
+└── db_img/
+    └── [site_code]/                       # รหัสสถานี (เช่น BKK-5005-UR)
+        └── [rpm_cycle]/                   # รอบการตรวจ (เช่น 2026-R1)
+            ├── power_main_ac/             # รูปภาพระบบ AC Main
+            ├── power_rectifier/           # รูปภาพระบบ Rectifier & Battery
+            └── systems_and_facilities/    # รูปภาพระบบ Facilities & Security
 ```
 
 ---
 
-## 🚀 วิธีการติดตั้งและเริ่มใช้งาน (Getting Started)
+## โครงสร้างฐานข้อมูล (Database Schema)
 
-### 1. การเตรียมไฟล์ค่าติดตั้ง (.env)
-ให้สร้างไฟล์ `.env` ที่โฟลเดอร์ราก (Root Directory) ของโปรเจกต์ โดยตั้งค่าระบบดังตัวอย่างนี้:
+1. `users`: บัญชีผู้ใช้, รหัสผ่าน, สิทธิ์ (`Admin`, `Team Lead`, `Inspector`, `Viewer`), พื้นที่ดูแล (`area`, `subarea`)
+2. `sites`: ข้อมูลสถานี (`site_code`, `site_name`, `site_grade`, `site_type`, `area`, `subarea`)
+3. `rpm_records_master`: ข้อมูลหลักของใบงาน (`job_number_sl6`, `sap_number`, `rpm_cycle`, `status`, `inspection_date`, `inspection_time`)
+4. `power_main_ac`: บันทึกระบบไฟฟ้าเมนหลัก AC
+5. `power_rectifier`: บันทึกข้อมูลตู้ Rectifier และประเภทแบตเตอรี่
+6. `rectifier_banks`: ข้อมูลกลุ่มแบตเตอรี่ (`bank_name`, `brand`, `capacity`, `installed_date`, `warrantee_date`)
+7. `battery_tests`: บันทึกผลทดสอบแบตเตอรี่ VRLA รายลูก (Cell 1-4: `voltage`, `internal_resistance`, `status`, `battery_img`)
+8. `systems_and_facilities`: บันทึกระบบความปลอดภัย สภาพแวดล้อม และเครื่องปรับอากาศ
+9. `field_configs`: การตั้งค่าเปิด/ปิดฟิลด์กรอกข้อมูลในแต่ละแท็บ
+10. `rpm_cycles`: รายการตัวเลือกรอบการตรวจ (เช่น 2026-R1, 2026-R2)
+
+---
+
+## ขั้นตอนการติดตั้งและรันระบบ (Getting Started)
+
+### 1. การเตรียมไฟล์ Environment Variables (`.env`)
+สร้างไฟล์ `.env` ไว้ที่โฟลเดอร์ Root ของโปรเจกต์:
 ```ini
 NODE_ENV=development
 
 # Database Configuration
 DB_USER=postgres
-DB_PASSWORD=your_password
+DB_PASSWORD=your_secure_password
 DB_NAME=rpm_db
 DB_PORT_EXTERNAL=5432
 
@@ -102,58 +141,35 @@ DB_PORT_EXTERNAL=5432
 PGADMIN_EMAIL=admin@netops.local
 PGADMIN_PASSWORD=admin_password
 
-# Port Settings
+# Application Ports
 BACKEND_PORT=8001
 FRONTEND_PORT=3000
 
-# API Endpoints
+# API Configuration
 VITE_API_URL=http://localhost:8001
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
-### 2. การสั่งรันผ่าน Docker Compose
-เริ่มระบบทั้งหมด (Database, pgAdmin, Backend, Frontend) ในโหมดเบื้องหลัง (Background/Detached):
+### 2. สั่งรันผ่าน Docker Compose
 ```bash
 docker-compose up -d
 ```
 
-### 3. การเข้าใช้งานพอร์ตต่าง ๆ
-* **Frontend**: เข้าใช้งานได้ที่ [http://localhost:3000](http://localhost:3000)
-* **Backend API Docs / Health**: [http://localhost:8001](http://localhost:8001) หรือ ตรวจสอบสถานะการทำงานผ่าน `/health`
-* **pgAdmin**: เข้าสู่ระบบเพื่อควบคุมฐานข้อมูลได้ที่ [http://localhost:5050](http://localhost:5050)
-  * *Username*: อีเมลตามที่ตั้งค่าใน `PGADMIN_EMAIL`
-  * *Password*: รหัสผ่านตามที่ตั้งค่าใน `PGADMIN_PASSWORD`
+### 3. การเข้าใช้งานผ่านเบราว์เซอร์
+* **Frontend Web App**: [http://localhost:3000](http://localhost:3000)
+* **Backend API / Health**: [http://localhost:8001/health](http://localhost:8001/health)
+* **pgAdmin 4 GUI**: [http://localhost:5050](http://localhost:5050)
 
 ---
 
-## 🛠️ สคริปต์ผู้ดูแลระบบ (Admin Scripts)
+## สคริปต์สำหรับการดูแลระบบ (Admin Utilities)
 
-ในโฟลเดอร์โครงการ มีสคริปต์ Bash เพื่ออำนวยความสะดวกในการดูแลระบบและการติดตั้ง:
-
-### 1. สคริปต์ Clean Rebuild (`./rebuild.sh`)
-ใช้สำหรับล้าง Cache ทั้งหมดของ Docker และบังคับให้ Build ภาพอิมเมจใหม่ตั้งแต่บรรทัดแรก:
-```bash
-chmod +x rebuild.sh
-./rebuild.sh
-```
-
-### 2. สคริปต์อัปเดตอัตโนมัติ (`./update.sh`)
-สคริปต์ระดับมืออาชีพสำหรับใช้ในการดึงโค้ดล่าสุดจาก GitHub, ตรวจสอบ Docker Daemon, ทำการ Build ใหม่, เช็กสถานะการทำงานของบริการหลังบ้าน (Health Check), และล้าง Image ส่วนเกินอัตโนมัติ:
-```bash
-chmod +x update.sh
-./update.sh
-```
-
----
-
-## 🗄️ โครงสร้างฐานข้อมูล (Database Schema)
-
-ตารางข้อมูลหลักที่ใช้งานภายในระบบ (สามารถศึกษาเพิ่มเติมได้ใน [init.sql](file:///home/rachatacnx13/Desktop/Project/rpm-app/backend-node/init.sql) และ [migration.sql](file:///home/rachatacnx13/Desktop/Project/rpm-app/backend-node/migration.sql)):
-1. `users`: ข้อมูลสมาชิกและสิทธิ์การเข้าถึง (`Admin`, `Inspector`, `Viewer`)
-2. `sites`: ข้อมูลสถานีและเกรดของแต่ละพื้นที่
-3. `rpm_records_master`: ข้อมูลใบงานหลักและการตรวจสอบ
-4. `power_main_ac`: การวัดกระแสไฟฟ้า, แรงดัน, ค่ากราวด์ และรูปถ่ายมิเตอร์ AC
-5. `power_rectifier`: ข้อมูลเบรกเกอร์และรายละเอียดแบตเตอรี่ในแต่ละตู้ Rectifier
-6. `rectifier_banks`: ข้อมูลรุ่น/แบรนด์/วันรับประกันของธนาคารแบตเตอรี่ (Battery Bank)
-7. `battery_tests`: ผลการทดสอบแรงดันและความต้านทานภายในของเซลล์แบตเตอรี่รายลูก
-8. `systems_and_facilities`: บันทึกระบบความปลอดภัย, พัดลมระบายอากาศ, เครื่องปรับอากาศ และความสะอาดของสถานที่
+* **Clean Rebuild (ล้างแคชและบิลด์อิมเมจใหม่)**:
+  ```bash
+  chmod +x rebuild.sh
+  ./rebuild.sh
+  ```
+* **Auto Deploy & Health Check**:
+  ```bash
+  chmod +x update.sh
+  ./update.sh
+  ```
