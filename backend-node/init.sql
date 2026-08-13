@@ -273,7 +273,7 @@ INSERT INTO field_configs (tab_name, field_name, is_required, is_enabled) VALUES
 ('battery', 'capacity', true, true),
 ('battery', 'installed_date', true, true),
 ('battery', 'warrantee_date', true, true),
--- Facilities
+-- Facilities           
 ('facilities', 'alarm_door', true, true),
 ('facilities', 'alarm_ac_fail', true, true),
 ('facilities', 'alarm_low_bat', true, true),

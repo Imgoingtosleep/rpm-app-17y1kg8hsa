@@ -82,6 +82,8 @@ tmp/
 temp/
 .temp/
 .tmp/
+data/
+.data/
 
 # Python & Helper Script Environments
 __pycache__/
