@@ -97,7 +97,9 @@ storage/
 ├── db_text/
 │   ├── audit_log.txt                      # บันทึกประวัติการแก้ไขระบบ (Audit Logs)
 │   │   # ตัวอย่างรูปแบบบรรทัดบันทึกประวัติ (Audit Log Format):
-│   │   # [YYYY-MM-DD HH:mm:ss] | WHO: Name (Role: RoleName) | ACTION: Action Name | SITE: Site Code | PATH: API Endpoint
+│   │   # [YYYY-MM-DD HH:mm:ss] | WHO: Name (Role: RoleName) | ACTION: Action Description | SITE: Site Code | PATH: API Endpoint
+│   │   # - ตัวอย่างสิทธิ์/พื้นที่: WHO: Alex (Role: Admin) | ACTION: มอบหมายสิทธิ์และพื้นที่ให้ผู้ใช้งาน [Samuel] -> สิทธิ์: Inspector | พื้นที่ (Area): ["กรุงเทพมหานคร"] | พื้นที่ย่อย (Subarea): ["นนทบุรี"]
+│   │   # - ตัวอย่างตั้งค่าฟิลด์: WHO: Alex (Role: Admin) | ACTION: ตั้งค่าฟิลด์ข้อมูล [แท็บ: acmain -> ฟิลด์: meter_ac_size] -> เปิดใช้งาน (Enabled), บังคับกรอก (Required) | ตัวเลือก Dropdown: [15A, 30A, 50A]
 │   ├── report-[rpm_id].pdf                # เอกสาร PDF รายงานสรุปผลงาน
 │   └── backup-[rpm_id].json               # ไฟล์สำรองข้อมูลดิบ JSON
 └── db_img/

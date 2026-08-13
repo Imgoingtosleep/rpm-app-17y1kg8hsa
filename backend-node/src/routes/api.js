@@ -76,9 +76,23 @@ router.use((req, res, next) => {
         else if (url.includes('/admin-approve')) action = `อนุมัติใบงานขั้นสุดท้าย (Admin Approved Work Order)`;
         else if (url.includes('/reject')) action = `ปฏิเสธ/ตีกลับใบงาน (Reason: ${req.body?.reason || 'ไม่ได้ระบุเหตุผล'})`;
         else if (url.includes('/unlock')) action = `ปลดล็อกใบงาน (Unlock Work Order)`;
-        else if (url.includes('/users/update-role')) action = `แก้ไขสิทธิ์ผู้ใช้งาน (ID: ${req.body?.userId || '-'} -> สิทธิ์: ${req.body?.role || '-'})`;
-        else if (url.includes('/users/update-scope')) action = `แก้ไขเขตพื้นที่ดูแลของผู้ใช้งาน (ID: ${req.body?.userId || '-'})`;
-        else if (url.includes('/field-configs/update')) action = `แก้ไขการตั้งค่าบังคับกรอกฟิลด์ข้อมูล (Field Configs)`;
+        else if (url.includes('/users/update-role')) {
+          const targetName = data?.user?.name || req.body?.targetName || `User ID ${req.body?.userId || '-'}`;
+          const assignedRole = req.body?.role || '-';
+          const assignedArea = req.body?.area ? req.body.area : 'ไม่จำกัดพื้นที่ (All)';
+          const assignedSubarea = req.body?.subarea ? req.body.subarea : 'ไม่ระบุพื้นที่ย่อย (All)';
+          action = `มอบหมายสิทธิ์และพื้นที่ให้ผู้ใช้งาน [${targetName}] -> สิทธิ์: ${assignedRole} | พื้นที่ (Area): ${assignedArea} | พื้นที่ย่อย (Subarea): ${assignedSubarea}`;
+        }
+        else if (url.includes('/field-configs/update')) {
+          const tab = req.body?.tab_name || '-';
+          const field = req.body?.field_name || '-';
+          const isReq = req.body?.is_required !== undefined ? (req.body.is_required ? 'บังคับกรอก (Required)' : 'ไม่บังคับกรอก (Optional)') : '';
+          const isEna = req.body?.is_enabled !== undefined ? (req.body.is_enabled ? 'เปิดใช้งาน (Enabled)' : 'ปิดใช้งาน (Disabled)') : '';
+          const opts = Array.isArray(req.body?.dropdown_options) ? ` | ตัวเลือก Dropdown: [${req.body.dropdown_options.join(', ')}]` : '';
+          
+          const details = [isEna, isReq].filter(Boolean).join(', ');
+          action = `ตั้งค่าฟิลด์ข้อมูล [แท็บ: ${tab} -> ฟิลด์: ${field}] -> ${details}${opts}`;
+        }
         else if (url.includes('/storage/delete')) action = `ลบรูปภาพในคลังจัดเก็บ (Delete Storage Image)`;
         else if (url.includes('/sites/bulk')) {
           const count = Array.isArray(req.body?.sites) ? req.body.sites.length : (data?.count || 0);
