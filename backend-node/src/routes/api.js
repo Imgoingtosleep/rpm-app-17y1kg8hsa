@@ -46,36 +46,51 @@ router.use((req, res, next) => {
         const email = req.headers['x-user-email'] || 'System/Anonymous';
         const name = req.headers['x-user-name'] || 'Anonymous';
         const role = req.headers['x-user-role'] || 'Viewer';
-        const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00';
-        const logDir = path.resolve(__dirname, '../../storage/db_text');
         
+        // Format Timestamp: YYYY-MM-DD HH:mm:ss (Bangkok Time)
+        const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', ' ');
+
+        const logDir = path.resolve(__dirname, '../../storage/db_text');
         if (!fs.existsSync(logDir)) {
           fs.mkdirSync(logDir, { recursive: true });
         }
         
-        // Extract site code from body, query or path if present
-        let siteCode = req.body.site_code || req.query.site_code || req.body.siteCode || '';
-        if (!siteCode && req.params.site_code) siteCode = req.params.site_code;
-        
-        let action = `Method: ${req.method} on ${req.originalUrl}`;
-        // Map common endpoints to clear descriptions
-        if (req.originalUrl.includes('/workorder/start')) action = `เริ่มต้นใบงาน (Start Work Order)`;
-        else if (req.originalUrl.includes('/master')) action = `แก้ไขข้อมูลใบงานหลัก (Edit Master Details)`;
-        else if (req.originalUrl.includes('/acmain')) action = `แก้ไขข้อมูลระบบไฟฟ้า AC (Edit AC Main)`;
-        else if (req.originalUrl.includes('/battery')) action = `แก้ไขข้อมูลแบตเตอรี่ (Edit Battery Cell)`;
-        else if (req.originalUrl.includes('/rectifier')) action = `แก้ไขข้อมูลตู้ Rectifier (Edit Rectifier)`;
-        else if (req.originalUrl.includes('/facilities')) action = `แก้ไขข้อมูลระบบ Facilities (Edit Facilities)`;
-        else if (req.originalUrl.includes('/summary')) action = `แก้ไขข้อมูลสรุปปัญหาหน้างาน (Edit Summary Issue)`;
-        else if (req.originalUrl.includes('/submit')) action = `ส่งใบงาน (Submit Work Order)`;
-        else if (req.originalUrl.includes('/unlock')) action = `ปลดล็อกใบงาน (Unlock Work Order)`;
-        else if (req.originalUrl.includes('/users/update-role')) action = `แก้ไขสิทธิ์ผู้ใช้งาน (Update User Role) ให้กับ ID ${req.body.userId || ''} เป็น ${req.body.role || ''}`;
-        else if (req.originalUrl.includes('/field-configs/update')) action = `แก้ไขการตั้งค่าฟิลด์กรอกข้อมูล (Update Field Config)`;
-        else if (req.originalUrl.includes('/storage/delete')) action = `ลบไฟล์ในคลังภาพ (Delete Storage Files)`;
-        else if (req.originalUrl.includes('/sites/bulk')) action = `นำเข้าข้อมูลสถานีแบบกลุ่ม (Bulk Import Sites)`;
-        else if (req.originalUrl.includes('/sites')) action = `เพิ่ม/แก้ไขข้อมูลสถานี (Add/Edit Site)`;
-        
+        // Extract site code from body, query, params, or response data
+        let siteCode = req.body?.site_code || req.query?.site_code || req.body?.siteCode || req.params?.site_code || '';
+        if (!siteCode && data?.data?.site_code) siteCode = data.data.site_code;
+        if (!siteCode && data?.site_code) siteCode = data.site_code;
+
+        let action = `${req.method} ${req.originalUrl}`;
+        const url = req.originalUrl;
+
+        // Structured Action Mapping
+        if (url.includes('/workorder/start')) action = `เริ่มต้นเปิดใบงาน (Start Work Order)`;
+        else if (url.includes('/master')) action = `บันทึก/แก้ไขข้อมูลใบงานหลัก (Master Site)`;
+        else if (url.includes('/acmain')) action = `บันทึก/แก้ไขข้อมูลระบบไฟฟ้า AC (AC Main)`;
+        else if (url.includes('/bank-save')) action = `บันทึก/แก้ไขข้อมูลแบตเตอรี่ (Battery Bank & Cell Tests)`;
+        else if (url.includes('/rectifier')) action = `บันทึก/แก้ไขข้อมูลตู้ Rectifier`;
+        else if (url.includes('/facilities')) action = `บันทึก/แก้ไขข้อมูลระบบความปลอดภัยและสภาพแวดล้อม (Facilities)`;
+        else if (url.includes('/summary')) action = `แก้ไขข้อมูลสรุปปัญหาหน้างาน (Summary Issues)`;
+        else if (url.includes('/submit')) action = `ส่งอนุมัติใบงาน (Submit Work Order)`;
+        else if (url.includes('/tl-approve')) action = `อนุมัติใบงานขั้นต้น (TL Approved Work Order)`;
+        else if (url.includes('/admin-approve')) action = `อนุมัติใบงานขั้นสุดท้าย (Admin Approved Work Order)`;
+        else if (url.includes('/reject')) action = `ปฏิเสธ/ตีกลับใบงาน (Reason: ${req.body?.reason || 'ไม่ได้ระบุเหตุผล'})`;
+        else if (url.includes('/unlock')) action = `ปลดล็อกใบงาน (Unlock Work Order)`;
+        else if (url.includes('/users/update-role')) action = `แก้ไขสิทธิ์ผู้ใช้งาน (ID: ${req.body?.userId || '-'} -> สิทธิ์: ${req.body?.role || '-'})`;
+        else if (url.includes('/users/update-scope')) action = `แก้ไขเขตพื้นที่ดูแลของผู้ใช้งาน (ID: ${req.body?.userId || '-'})`;
+        else if (url.includes('/field-configs/update')) action = `แก้ไขการตั้งค่าบังคับกรอกฟิลด์ข้อมูล (Field Configs)`;
+        else if (url.includes('/storage/delete')) action = `ลบรูปภาพในคลังจัดเก็บ (Delete Storage Image)`;
+        else if (url.includes('/sites/bulk')) action = `นำเข้าข้อมูลสถานีแบบกลุ่ม (Bulk Import Sites)`;
+        else if (url.includes('/sites/')) action = `แก้ไขข้อมูลสถานี (Update Site Details)`;
+        else if (url.includes('/sites')) action = `สร้างสถานีใหม่ (Create New Site)`;
+        else if (url.includes('/rpm-cycles')) action = `${req.method === 'DELETE' ? 'ลบ' : 'เพิ่ม'}รอบการตรวจเช็ค RPM Cycle`;
+
+        const who = `${name} (Role: ${role})`;
+        const site = siteCode ? siteCode : 'N/A';
         const logFile = path.join(logDir, 'audit_log.txt');
-        const logEntry = `[${timestamp}] User: ${name} (${email}, Role: ${role}) | Action: ${action}${siteCode ? ` | Site: ${siteCode}` : ''} | Path: ${req.originalUrl}\n`;
+        
+        // Formatted log line answering: ตอนไหน | ใคร | ทำอะไร (Action) | ที่ site ไหน | Path
+        const logEntry = `[${timestamp}] | WHO: ${who} | ACTION: ${action} | SITE: ${site} | PATH: ${req.originalUrl}\n`;
         
         fs.appendFile(logFile, logEntry, 'utf8', (err) => {
           if (err) console.error('Failed to write audit log:', err);

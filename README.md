@@ -97,6 +97,8 @@ rpm-app/
 storage/
 ├── db_text/
 │   ├── audit_log.txt                      # บันทึกประวัติการแก้ไขระบบ (Audit Logs)
+│   │   # ตัวอย่างรูปแบบบรรทัดบันทึกประวัติ (Audit Log Format):
+│   │   # [YYYY-MM-DD HH:mm:ss] | WHO: Name (Role: RoleName) | ACTION: Action Name | SITE: Site Code | PATH: API Endpoint
 │   ├── report-[rpm_id].pdf                # เอกสาร PDF รายงานสรุปผลงาน
 │   └── backup-[rpm_id].json               # ไฟล์สำรองข้อมูลดิบ JSON
 └── db_img/
