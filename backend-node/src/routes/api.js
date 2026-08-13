@@ -80,7 +80,14 @@ router.use((req, res, next) => {
         else if (url.includes('/users/update-scope')) action = `แก้ไขเขตพื้นที่ดูแลของผู้ใช้งาน (ID: ${req.body?.userId || '-'})`;
         else if (url.includes('/field-configs/update')) action = `แก้ไขการตั้งค่าบังคับกรอกฟิลด์ข้อมูล (Field Configs)`;
         else if (url.includes('/storage/delete')) action = `ลบรูปภาพในคลังจัดเก็บ (Delete Storage Image)`;
-        else if (url.includes('/sites/bulk')) action = `นำเข้าข้อมูลสถานีแบบกลุ่ม (Bulk Import Sites)`;
+        else if (url.includes('/sites/bulk')) {
+          const count = Array.isArray(req.body?.sites) ? req.body.sites.length : (data?.count || 0);
+          const sampleCodes = Array.from(new Set((req.body?.sites || []).map(s => s.site_code).filter(Boolean))).slice(0, 5).join(', ');
+          action = `นำเข้าข้อมูลสถานีและใบงานแบบกลุ่ม (Bulk Import Sites: ${count} รายการ)`;
+          if (!siteCode && sampleCodes) {
+            siteCode = `${sampleCodes}${count > 5 ? `... (+${count - 5} สถานี)` : ''}`;
+          }
+        }
         else if (url.includes('/sites/')) action = `แก้ไขข้อมูลสถานี (Update Site Details)`;
         else if (url.includes('/sites')) action = `สร้างสถานีใหม่ (Create New Site)`;
         else if (url.includes('/rpm-cycles')) action = `${req.method === 'DELETE' ? 'ลบ' : 'เพิ่ม'}รอบการตรวจเช็ค RPM Cycle`;
