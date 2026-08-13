@@ -745,6 +745,25 @@ router.get('/workorder/:rpm_id/all-batteries', async (req, res) => {
   }
 });
 
+router.get('/site/:site_code/all-batteries', async (req, res) => {
+  const { site_code } = req.params;
+  try {
+    const result = await db.query(
+      `SELECT bt.*, rb.bank_name, rb.brand, rb.capacity, pr.rect_no, pr.battery_type
+       FROM battery_tests bt 
+       JOIN rectifier_banks rb ON bt.bank_id = rb.bank_id 
+       JOIN power_rectifier pr ON rb.rect_id = pr.rect_id
+       JOIN rpm_records_master m ON pr.rpm_id = m.rpm_id
+       WHERE LOWER(m.site_code) = LOWER($1)
+       ORDER BY pr.rect_no, rb.bank_name, bt.cell_no;`,
+      [site_code]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Lookup full hierarchy (rectifier type, battery type, banks) by Site Code
 router.get('/site/:site_code/rectifiers', async (req, res) => {
   const { site_code } = req.params;

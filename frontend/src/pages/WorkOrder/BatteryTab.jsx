@@ -519,10 +519,12 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   const [allWorkorderBatteries, setAllWorkorderBatteries] = useState([]);
 
-  // Fetch all batteries across all rectifiers for top warning/failed summary banner
+  // Fetch all batteries across all rectifiers for top warning/failed summary banner (with site_code fallback)
   const fetchAllWorkorderBatteries = () => {
-    if (!rpmId) return;
-    fetch(`/api/workorder/${rpmId}/all-batteries`)
+    const targetSiteCode = site_code || (site && site.code);
+    if (!rpmId && !targetSiteCode) return;
+    const url = rpmId ? `/api/workorder/${rpmId}/all-batteries` : `/api/site/${targetSiteCode}/all-batteries`;
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
