@@ -1,3 +1,14 @@
+# AI Coding Assistants & Agent Caches
+.gemini/
+.claude/
+.cursor/
+.cursorrules
+.copilot/
+.chat/
+*.prompt
+agent_scratch/
+brain/
+
 # Dependencies
 node_modules/
 /frontend/node_modules/
@@ -8,74 +19,94 @@ dist/
 /frontend/dist/
 build/
 
-# Environment variables
+# Environment variables & secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
+*.pem
+*.key
+*.pub
+*client_secret*.json
+credentials.json
 
-# Logs
+# Storage & Uploaded Files (Keep directory structure if needed, ignore generated contents)
+storage/
+!storage/.gitkeep
+postgres_data/
+
+# Logs & Audit Dumps
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
-logs/
-*.log
 
-# Editor and IDE configurations
+# Testing, E2E, and Coverage Reports
+coverage/
+.nyc_output/
+*.lcov
+playwright-report/
+test-results/
+cypress/videos/
+cypress/screenshots/
+.jest/
+
+# Editor, IDE, & OS Files
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# OS metadata files
 .DS_Store
 Thumbs.db
+ejournal*.txt
 
-# Docker and Local Database Volumes
-postgres_data/
-storage/
-
-# Temporary files
+# Build Caches & Temporary Files
+.vite/
+/frontend/.vite/
+.eslintcache
+.parcel-cache
+.tsbuildinfo
 tmp/
 temp/
 .temp/
 .tmp/
 
-# Docker Local Overrides
-docker-compose.override.yml
-
-# Google Auth and Security Credentials (Future use)
-*client_secret*.json
-credentials.json
-*.pem
-*.key
-*.pub
-.well-known/
-
-# Testing and Coverage
-coverage/
-.nyc_output/
-*.lcov
-playwright-report/
-test-results/
-
-# Build caches
-.vite/
-.eslintcache
-.parcel-cache
-.tsbuildinfo
-
-# Python & Script Virtual Environments (if helper scripts are added)
+# Python & Helper Script Environments
 __pycache__/
 *.pyc
 .venv/
 venv/
 env/
 python_env/
+
+# Docker & Local Container Persistence
+postgres_data/
+pgadmin_data/
+docker-compose.override.yml
+
+# Package Manager Caches & Native Build Outputs
+.npm/
+.yarn/
+.pnpm-store/
+build/Release/
+*.node
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.tmp
+*.orig
+*.rej
