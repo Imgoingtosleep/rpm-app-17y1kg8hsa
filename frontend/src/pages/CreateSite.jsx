@@ -248,9 +248,9 @@ export default function CreateSite() {
                 value={siteGrade}
                 onChange={(e) => setSiteGrade(e.target.value)}
               >
-                <option value="A">Grade A (ความสำคัญสูงสุด)</option>
-                <option value="B">Grade B (ความสำคัญปานกลาง)</option>
-                <option value="C">Grade C (ความสำคัญปกติ)</option>
+                <option value="A">Grade A</option>
+                <option value="B">Grade B</option>
+                <option value="C">Grade C</option>
               </select>
             </div>
             <div>

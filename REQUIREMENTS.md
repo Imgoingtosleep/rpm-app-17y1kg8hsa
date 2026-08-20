@@ -1,9 +1,21 @@
 # RPM Application - System Dependencies Specification Document
-# เอกสารอธิบายรายละเอียดความต้องการและไลบรารีของระบบ RPM (Backend & Frontend)
+# เอกสารอธิบายรายละเอียดความต้องการและไลบรารีของระบบ RPM (Full-Stack Specification)
 
 ---
 
-## 🟢 1. BACKEND DEPENDENCIES (Node.js & Express Stack)
+## 🐳 1. INFRASTRUCTURE & CONTAINER ENVIRONMENT
+ไฟล์ตั้งค่า: `docker-compose.yml`
+
+| Component | เวอร์ชัน / Image | หน้าที่การทำงาน |
+| :--- | :--- | :--- |
+| **Docker Compose** | `3.8` | ระบบ Orchestration รวมศูนย์ควบคุม Services ทั้งหมด |
+| **Node.js (Alpine)** | `node:18-alpine` | Runtime สิ่งแวดล้อมหลักสำหรับ Backend & Frontend Containers |
+| **PostgreSQL** | `postgres:15-alpine` | ฐานข้อมูลหลัก (จัดเก็บตาราง Users, Sites, Work Orders, Battery Logs) |
+| **pgAdmin 4** | `dpage/pgadmin4` | Web Interface GUI สำหรับจัดการฐานข้อมูล PostgreSQL |
+
+---
+
+## 🟢 2. BACKEND DEPENDENCIES (Node.js & Express Stack)
 ไฟล์ตั้งค่า: `backend-node/package.json`
 
 ### 📦 Core System Packages (Dependencies)
@@ -18,7 +30,7 @@
 
 3. **`cors` (`^2.8.5`)**
    - **คำอธิบาย**: Cross-Origin Resource Sharing Middleware
-   - **หน้าที่การทำงาน**: อนุญาตและควบคุมการเข้าถึง API จากต่างโดเมน/พอร์ต (เช่น อนุญาตให้ Frontend ที่รันคนละพอร์ตสามารถเรียกใช้ Backend API ได้อย่างปลอดภัย)
+   - **หน้าที่การทำงาน**: อนุญาตและควบคุมการเข้าถึง API จากต่างโดเมน/พอร์ต (อนุญาตให้ Frontend ที่รันคนละพอร์ตสามารถเรียกใช้ Backend API ได้อย่างปลอดภัย)
 
 4. **`dotenv` (`^16.4.5`)**
    - **คำอธิบาย**: Environment Variable Loader
@@ -40,8 +52,6 @@
    - **คำอธิบาย**: Streaming Archive & Zip Builder
    - **หน้าที่การทำงาน**: บีบอัดไฟล์รูปภาพและเอกสารหลายๆ ไฟล์รวมกันเป็นไฟล์ `.zip` สำหรับให้ Admin ดาวน์โหลดไฟล์ภาพย้อนหลังทั้งหมดของสถานี
 
----
-
 ### 🛠️ Backend Development Tools (DevDependencies)
 
 1. **`nodemon` (`^3.1.4`)**
@@ -50,7 +60,7 @@
 
 ---
 
-## 🔵 2. FRONTEND DEPENDENCIES (React & Vite Stack)
+## 🔵 3. FRONTEND DEPENDENCIES (React & Vite Stack)
 ไฟล์ตั้งค่า: `frontend/package.json`
 
 ### 📦 Core UI Packages (Dependencies)
@@ -67,7 +77,9 @@
    - **คำอธิบาย**: Client-Side Routing Library
    - **หน้าที่การทำงาน**: จัดการเปลี่ยนหน้าเว็บและ URL ภายในแอปพลิเคชัน (เช่น หน้าเลือกสถานี `/select-site`, หน้าตาราง Admin `/admin/dashboard`, หน้าสิทธิ์ `/admin/users`) โดยไม่ต้องโหลดหน้าใหม่ทั้งหน้า
 
----
+4. **`xlsx` (`^0.18.5`)**
+   - **คำอธิบาย**: Spreadsheet Parser & Exporter Library
+   - **หน้าที่การทำงาน**: ใช้สำหรับประมวลผลไฟล์ Excel (`.xlsx`, `.xls`, `.csv`) ในการ Import และ Export ข้อมูลสถานีและใบงาน
 
 ### 🛠️ Frontend Development & Styling Tools (DevDependencies)
 
@@ -77,7 +89,7 @@
 
 2. **`tailwindcss` (`^3.4.4`)**
    - **คำอธิบาย**: Utility-First CSS Framework
-   - **หน้าที่การทำงาน**: ใช้สำหรับตกแต่งดีไซน์ UI หน้าจอทั้งหมด (เช่น การกำหนดโทนสีมืด Glassmorphism, Responsive Grid, Buttons, Alerts, Modals)
+   - **หน้าที่การทำงาน**: ใช้สำหรับตกแต่งดีไซน์ UI หน้าจอทั้งหมด (เช่น การกำหนดโทนสี Glassmorphism, Responsive Grid, Buttons, Alerts, Modals)
 
 3. **`postcss` (`^8.4.38`) & `autoprefixer` (`^10.4.19`)**
    - **คำอธิบาย**: CSS Processor & Vendor Prefixing Tools

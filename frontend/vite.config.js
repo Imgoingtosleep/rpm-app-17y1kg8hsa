@@ -15,11 +15,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://backend:5000',
+        target: 'http://backend:1050',
         changeOrigin: true
       },
       '/storage': {
-        target: 'http://backend:5000',
+        target: 'http://backend:1050',
         changeOrigin: true
       }
     }

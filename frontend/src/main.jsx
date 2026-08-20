@@ -9,15 +9,26 @@ window.fetch = async (url, options = {}) => {
   try {
     const userStr = localStorage.getItem('user');
     const token = localStorage.getItem('token');
-    options.headers = options.headers || {};
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      options.headers['x-user-email'] = user.email || '';
-      options.headers['x-user-name'] = user.name || '';
-      options.headers['x-user-role'] = user.role || '';
-    }
-    if (token) {
-      options.headers['Authorization'] = `Bearer ${token}`;
+    const user = userStr ? JSON.parse(userStr) : null;
+    if (options.headers instanceof Headers) {
+      if (user) {
+        if (user.email) options.headers.set('x-user-email', user.email);
+        if (user.name) options.headers.set('x-user-name', user.name);
+        if (user.role) options.headers.set('x-user-role', user.role);
+      }
+      if (token) {
+        options.headers.set('Authorization', `Bearer ${token}`);
+      }
+    } else {
+      options.headers = options.headers || {};
+      if (user) {
+        options.headers['x-user-email'] = user.email || '';
+        options.headers['x-user-name'] = user.name || '';
+        options.headers['x-user-role'] = user.role || '';
+      }
+      if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
   } catch (e) {
     console.error('Fetch interceptor error:', e);

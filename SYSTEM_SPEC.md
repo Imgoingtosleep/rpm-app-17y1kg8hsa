@@ -5,17 +5,10 @@
 
 ## 1. ข้อกำหนดฮาร์ดแวร์และเซิร์ฟเวอร์ (Hardware & Server Specifications)
 
-### Minimum Recommended Spec (สำหรับผู้ใช้งานไม่เกิน 10–20 Concurrent Users / Site Inspector)
-* **CPU**: 2 Cores (vCPU)
-* **RAM**: 4 GB (ขั้นต่ำจริง 2 GB แต่แนะนำ 4 GB เนื่องจากมี Node.js OCR Process)
-* **Storage**: 50 GB SSD (Expandable)
-* **OS**: Ubuntu 22.04 LTS / Debian 12 / RHEL 9
-
 ### Production Recommended Spec (สำหรับผู้ใช้งาน 50+ Concurrent Users & เก็บรูปภาพจำนวนมาก)
 * **CPU**: 4 Cores (vCPU)
 * **RAM**: 8 GB
-* **Storage**: 100–200 GB NVMe/SSD (รองรับรูปภาพที่อัปโหลดเข้า Storage Volume)
-* **Network**: 100 Mbps / 1 Gbps Bandwidth
+* **Storage**: 200+ GB NVMe/SSD (รองรับรูปภาพที่อัปโหลดเข้า Storage Volume)
 
 ---
 
@@ -32,16 +25,15 @@
 
 ---
 
-## 3. การคำนวณและประมาณการพื้นที่จัดเก็บข้อมูล (Storage Requirement Estimation)
+## 3. การคำนวณและประมาณการพื้นที่จัดเก็บข้อมูล (Storage Requirement E  stimation)
 
 1. **System & Docker Images**: `~5 - 10 GB` (สำหรับ Base Images & OS)
 2. **Database Data (`postgres_data`)**: `~2 - 10 GB` (สำหรับข้อความ ประวัติ และ Audit Logs)
 3. **Uploaded Media & Images (`storage`)**:
-   * รูปถ่ายเฉลี่ยต่อใบงาน: ~10 - 15 รูป
+   * รูปถ่ายเฉลี่ยต่อใบงาน: ~50 รูป
    * ขนาดรูปถ่ายเฉลี่ย (หลังบีบอัด): ~500 KB - 1 MB / รูป
-   * 1 ใบงาน = ~10 MB
-   * **1,000 ใบงาน = ~10 GB**
-   * **10,000 ใบงาน = ~100 GB**
+   * 1 ใบงาน = ~50 MB
+   * **2,000 ใบงาน = ~100 GB**
 
 ---
 
