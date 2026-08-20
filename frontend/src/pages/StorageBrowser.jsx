@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '../utils/navigation';
 import MainLayout from '../layouts/MainLayout';
 
 export default function StorageBrowser() {

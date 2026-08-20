@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 
 export default function SummaryTab({ site, rpmId, onComplete, isReadOnly, userRole, isSubmitted }) {

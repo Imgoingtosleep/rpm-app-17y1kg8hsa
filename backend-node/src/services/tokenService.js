@@ -40,23 +40,50 @@ function verifyToken(token) {
     }
 
     const parts = token.split('.');
-    if (parts.length !== 2) return null;
     
-    const payload = Buffer.from(parts[0], 'base64').toString('utf8');
-    const signature = parts[1];
-    
-    const hmac = crypto.createHmac('sha256', SECRET);
-    hmac.update(payload);
-    if (hmac.digest('hex') !== signature) {
+    // Standard 3-part JWT (header.payload.signature) from Next.js / NextAuth
+    if (parts.length === 3) {
+      const [headerB64, payloadB64, signature] = parts;
+      const expectedSigBase64Url = crypto
+        .createHmac('sha256', SECRET)
+        .update(`${headerB64}.${payloadB64}`)
+        .digest('base64url');
+      const expectedSigHex = crypto
+        .createHmac('sha256', SECRET)
+        .update(`${headerB64}.${payloadB64}`)
+        .digest('hex');
+
+      if (signature === expectedSigBase64Url || signature === expectedSigHex) {
+        const data = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
+        // JWT exp is in seconds
+        if (data.exp && data.exp < Math.floor(Date.now() / 1000) && data.exp < 10000000000) {
+          return null; // Token expired
+        }
+        return data;
+      }
       return null;
     }
-    
-    const data = JSON.parse(payload);
-    if (data.exp < Date.now()) {
-      return null; // Token expired
+
+    // 2-part custom token (payload.signature)
+    if (parts.length === 2) {
+      const payload = Buffer.from(parts[0], 'base64').toString('utf8');
+      const signature = parts[1];
+      
+      const hmac = crypto.createHmac('sha256', SECRET);
+      hmac.update(payload);
+      if (hmac.digest('hex') !== signature) {
+        return null;
+      }
+      
+      const data = JSON.parse(payload);
+      if (data.exp && data.exp < Date.now()) {
+        return null; // Token expired
+      }
+      
+      return data;
     }
-    
-    return data;
+
+    return null;
   } catch (err) {
     return null;
   }

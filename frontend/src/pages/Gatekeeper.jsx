@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/navigation';
 import { filterSitesByUserScope } from '../utils/scopeAccess';
 
 export default function Gatekeeper({ onOpenWorkOrder }) {
@@ -8,9 +10,7 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSite, setSelectedSite] = useState(null);
-  const [inspectorName, setInspectorName] = useState(() => {
-    return localStorage.getItem('inspectorName') || '';
-  });
+  const [inspectorName, setInspectorName] = useState('');
   const [rpmCycle, setRpmCycle] = useState('2026-R1');
   const [searchTerm, setSearchTerm] = useState('');
   const [jobNo, setJobNo] = useState('');
@@ -18,15 +18,16 @@ export default function Gatekeeper({ onOpenWorkOrder }) {
 
   const [selectedArea, setSelectedArea] = useState('All');
   const [selectedSubarea, setSelectedSubarea] = useState('All');
-  const [currentUser, setCurrentUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState({ role: 'Viewer' });
+
+  useEffect(() => {
     try {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : { role: 'Viewer' };
-    } catch (e) {
-      console.error(e);
-      return { role: 'Viewer' };
-    }
-  });
+      const storedInsp = localStorage.getItem('inspectorName');
+      if (storedInsp) setInspectorName(storedInsp);
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) setCurrentUser(JSON.parse(storedUser));
+    } catch (e) {}
+  }, []);
 
   // Editing states for site_grade, site_type, area, subarea
   const [isEditingSite, setIsEditingSite] = useState(false);

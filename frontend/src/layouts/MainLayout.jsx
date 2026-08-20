@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/navigation';
+import { signOut } from 'next-auth/react';
 import { filterSitesByUserScope, parseScopeList } from '../utils/scopeAccess';
 
 export default function MainLayout({ children, currentStep, currentSite, onNavigateBack }) {
@@ -7,9 +10,17 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
   const dropdownRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'dark';
-  });
+  const [theme, setTheme] = useState('dark');
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const storedTheme = localStorage.getItem('theme') || 'dark';
+      setTheme(storedTheme);
+      const stored = localStorage.getItem('user');
+      if (stored) setUser(JSON.parse(stored));
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -40,17 +51,10 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
-    localStorage.setItem('theme', nextTheme);
-  };
-
-  const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+      localStorage.setItem('theme', nextTheme);
+    } catch (e) {}
+  };
 
   const [isScopeModalOpen, setIsScopeModalOpen] = useState(false);
   const [scopeData, setScopeData] = useState(null);
@@ -83,11 +87,16 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('inspectorName');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('inspectorName');
+      await signOut({ redirect: false });
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
+    window.location.href = '/';
   };
 
   return (

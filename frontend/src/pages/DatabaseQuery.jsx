@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '../utils/navigation';
 
 export default function DatabaseQuery() {
   const navigate = useNavigate();

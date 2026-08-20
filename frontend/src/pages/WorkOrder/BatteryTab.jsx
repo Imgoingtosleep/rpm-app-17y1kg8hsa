@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from '../../utils/navigation';
 import ImagePreviewManager from '../../components/ImagePreviewManager';
 
 const BATTERY_MODELS = [

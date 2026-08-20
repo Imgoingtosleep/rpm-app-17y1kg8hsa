@@ -41,6 +41,7 @@ services:
       - PORT=${BACKEND_PORT}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - NODE_ENV=${NODE_ENV}
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
@@ -55,6 +56,12 @@ services:
     depends_on:
       - backend
     environment:
+      - PORT=${FRONTEND_PORT}
+      - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-rpm-secure-auth-secret-key-9988}
+      - AUTH_TRUST_HOST=true
+      - SHARED_JWT_SECRET=${JWT_SECRET:-netops-secure-token-signing-key-7892}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
       - VITE_API_URL=${VITE_API_URL}
     ports:
@@ -62,6 +69,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
 
 volumes:
   postgres_data:
