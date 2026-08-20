@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const db = require('../config/db');
 const upload = require('../middlewares/upload');
 const { authenticateToken } = require('../middlewares/auth');
@@ -1307,6 +1308,110 @@ router.post('/auth/google', async (req, res) => {
     res.json({ message: 'ลงชื่อเข้าใช้สำเร็จ', user, token });
   } catch (err) {
     res.status(500).json({ error: 'เกิดข้อผิดพลาดจากทางเซิร์ฟเวอร์: ' + err.message });
+  }
+});
+
+// 8.1 Setup TOTP (Authenticator App)
+router.post('/auth/totp/setup', async (req, res) => {
+  const { email, name } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'กรุณาระบุ Email' });
+  }
+
+  try {
+    const totpService = require('../services/totpService');
+    
+    // Find or create user
+    let userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [email.trim()]);
+    let user;
+    if (userRes.rows.length === 0) {
+      const insRes = await db.query(
+        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Viewer') RETURNING *;`,
+        [email.trim(), name || email.trim().split('@')[0]]
+      );
+      user = insRes.rows[0];
+    } else {
+      user = userRes.rows[0];
+    }
+
+    let secret = user.two_factor_secret;
+    if (!secret) {
+      secret = totpService.generateSecret();
+      await db.query(`UPDATE users SET two_factor_secret = $1 WHERE email = $2;`, [secret, user.email]);
+    }
+
+    const otpauthUrl = totpService.generateURI(user.email, secret, 'UIH RPM Portal');
+
+    res.json({
+      success: true,
+      email: user.email,
+      secret,
+      otpauth_url: otpauthUrl,
+      user: {
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('Error setting up TOTP:', err);
+    res.status(500).json({ error: 'Failed to setup TOTP: ' + err.message });
+  }
+});
+
+// 8.2 Verify TOTP 6-digit Code (Login via Authenticator App)
+router.post('/auth/totp/verify', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ error: 'กรุณาระบุ Email และรหัส 6 หลัก' });
+  }
+
+  const cleanCode = String(code).trim().replace(/\s+/g, '');
+  if (cleanCode.length !== 6 || !/^\d{6}$/.test(cleanCode)) {
+    return res.status(400).json({ error: 'รหัส OTP ต้องเป็นตัวเลข 6 หลัก' });
+  }
+
+  try {
+    const totpService = require('../services/totpService');
+
+    const userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [email.trim()]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบบัญชีผู้ใช้งานในระบบ' });
+    }
+
+    const user = userRes.rows[0];
+    if (!user.two_factor_secret) {
+      return res.status(400).json({ 
+        error: 'บัญชีนี้ยังไม่ได้ผูกกับแอป Authenticator กรุณากด "ผูกแอปครั้งแรก" ด้านล่าง' 
+      });
+    }
+
+    const isValid = totpService.verifyToken(user.two_factor_secret, cleanCode, 1);
+    if (!isValid) {
+      return res.status(400).json({ error: 'รหัส OTP 6 หลักไม่ถูกต้อง หรือหมดอายุแล้ว' });
+    }
+
+    // Role is strictly from Database
+    const userPayload = {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      area: user.area,
+      subarea: user.subarea,
+      avatar: user.name ? user.name.charAt(0).toUpperCase() : 'U'
+    };
+
+    const token = generateToken(userPayload);
+
+    res.json({
+      success: true,
+      message: 'เข้าสู่ระบบสำเร็จ',
+      token,
+      user: userPayload
+    });
+  } catch (err) {
+    console.error('Error verifying TOTP:', err);
+    res.status(500).json({ error: 'Failed to verify OTP: ' + err.message });
   }
 });
 

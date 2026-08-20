@@ -5,8 +5,9 @@ const { verifyToken } = require('../services/tokenService');
  */
 function authenticateToken(req, res, next) {
   // Allow public endpoints to pass without auth check
-  const publicPaths = ['/api/auth/google', '/api/auth/version', '/api/health'];
-  if (publicPaths.some(path => req.originalUrl.startsWith(path))) {
+  const publicPaths = ['/api/auth/', '/api/health', '/auth/', '/health'];
+  const targetUrl = req.originalUrl || req.url || req.path || '';
+  if (publicPaths.some(p => targetUrl.includes(p))) {
     return next();
   }
 

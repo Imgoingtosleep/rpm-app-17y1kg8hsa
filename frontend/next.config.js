@@ -4,6 +4,10 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        source: '/api/auth/totp/:path*',
+        destination: 'http://backend:1050/api/auth/totp/:path*',
+      },
+      {
         source: '/api/auth/:path*',
         destination: '/api/auth/:path*',
       },

@@ -10,6 +10,11 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+app.use((req, res, next) => {
+  console.log(`[BACKEND LOG] ${req.method} ${req.originalUrl || req.url}`);
+  next();
+});
+
 // Serve static storage for site photos
 app.use('/storage', express.static(path.join(__dirname, '../storage')));
 

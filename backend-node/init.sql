@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Team Lead', 'Inspector', 'Viewer')) DEFAULT 'Viewer',
+    two_factor_secret VARCHAR(64),
     area TEXT,                        -- JSON หรือ Comma-separated list ของพื้นที่ดูแล
     subarea TEXT,                     -- JSON หรือ Comma-separated list ของพื้นที่ย่อย
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
