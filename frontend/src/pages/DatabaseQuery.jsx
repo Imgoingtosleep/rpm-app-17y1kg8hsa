@@ -25,25 +25,21 @@ export default function DatabaseQuery() {
         if (parsed.role !== 'Admin') {
           alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)');
           navigate('/select-site');
+          return;
         }
+        fetchTables();
+        fetchCycles();
       } else {
         navigate('/');
       }
     } catch (e) {
       navigate('/');
     }
-  }, [navigate]);
+  }, []);
 
   const [cycles, setCycles] = useState([]);
   const [selectedCycle, setSelectedCycle] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('A');
-
-  useEffect(() => {
-    if (currentUser && currentUser.role === 'Admin') {
-      fetchTables();
-      fetchCycles();
-    }
-  }, [currentUser]);
 
   const fetchCycles = async () => {
     try {

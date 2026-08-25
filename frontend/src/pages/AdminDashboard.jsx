@@ -42,17 +42,13 @@ export default function AdminDashboard() {
   const isAdmin = currentUser?.role === 'Admin';
   const isTeamLead = currentUser?.role === 'Team Lead';
   const isInspector = currentUser?.role === 'Inspector';
+  const isViewer = currentUser?.role === 'Viewer';
   const userAreas = parseUserList(currentUser?.area);
   const userSubareas = parseUserList(currentUser?.subarea);
 
   useEffect(() => {
-    if (!isAdmin && !isTeamLead && !isInspector) {
-      alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
-      navigate('/select-site');
-      return;
-    }
     fetchWorkorders();
-  }, [navigate]);
+  }, []);
 
   // Close the action menu when clicking outside of it
   useEffect(() => {

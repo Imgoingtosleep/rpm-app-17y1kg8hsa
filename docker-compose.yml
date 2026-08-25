@@ -4,7 +4,7 @@ services:
   db:
     image: postgres:15-alpine
     container_name: rpm-db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -14,11 +14,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend-node/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: rpm-pgadmin
-    restart: always
+    restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
@@ -34,9 +39,10 @@ services:
       context: ./backend-node
       dockerfile: Dockerfile
     container_name: rpm-backend
-    restart: always
+    restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - PORT=${BACKEND_PORT}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
@@ -45,26 +51,27 @@ services:
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
+      - ./backend-node:/app
+      - /app/node_modules
       - ./storage:/app/storage
-      - ./backend-node/src:/app/src
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: rpm-frontend
-    restart: always
+    restart: unless-stopped
     depends_on:
-      - backend 
+      - backend
     environment:
       - PORT=${FRONTEND_PORT}
+      - NODE_ENV=${NODE_ENV}
       - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-rpm-secure-auth-secret-key-9988}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - AUTH_TRUST_HOST=true
-      - SHARED_JWT_SECRET=${JWT_SECRET:-netops-secure-token-signing-key-7892}
-      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-      - VITE_API_URL=${VITE_API_URL}
+      - SHARED_JWT_SECRET=${JWT_SECRET}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:
