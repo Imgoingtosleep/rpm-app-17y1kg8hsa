@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -13,7 +11,7 @@ services:
       - "${DB_PORT_EXTERNAL}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend-node/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend-node/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
@@ -51,9 +49,8 @@ services:
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
-      - ./backend-node:/app
-      - /app/node_modules
-      - ./storage:/app/storage
+      - ${STORAGE_PATH:-./storage}:/app/storage
+      - ./backend-node/src:/app/src
 
   frontend:
     build:
@@ -67,18 +64,22 @@ services:
       - PORT=${FRONTEND_PORT}
       - NODE_ENV=${NODE_ENV}
       - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-rpm-secure-auth-secret-key-9988}
       - AUTH_TRUST_HOST=true
-      - SHARED_JWT_SECRET=${JWT_SECRET}
-      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - SHARED_JWT_SECRET=${JWT_SECRET:-netops-secure-token-signing-key-7892}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-${VITE_GOOGLE_CLIENT_ID}}
+      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:1050}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:1050}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
 
 volumes:
   postgres_data:
   pgadmin_data:
+  frontend_node_modules:
+  frontend_next:

@@ -1366,19 +1366,16 @@ router.post('/auth/totp/setup', async (req, res) => {
   try {
     const totpService = require('../services/totpService');
     
-    // Find or create user in users table
-    let userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [targetEmail]);
-    let user;
+    // Check if user exists in database (Must have logged in via Google or registered in database first)
+    const userRes = await db.query(`SELECT * FROM users WHERE LOWER(email) = LOWER($1);`, [targetEmail]);
     if (userRes.rows.length === 0) {
-      // First time registering from Authenticator / not in system yet: default role is Viewer!
-      const insRes = await db.query(
-        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Viewer') RETURNING *;`,
-        [targetEmail, targetName]
-      );
-      user = insRes.rows[0];
-    } else {
-      user = userRes.rows[0];
+      return res.status(404).json({
+        error: `ไม่พบ Email "${targetEmail}" ในระบบ กรุณาเข้าสู่ระบบด้วย Google ก่อน เพื่อให้มีข้อมูลในฐานข้อมูล`,
+        notRegistered: true
+      });
     }
+
+    const user = userRes.rows[0];
 
     let secret = user.two_factor_secret;
     if (!secret) {

@@ -106,6 +106,10 @@ export default function SetupQrPage() {
                 placeholder="เช่น somchai@uih.co.th"
                 className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
+              <p className="text-[10px] text-amber-400/90 mt-1 flex items-center gap-1">
+                <span>💡</span>
+                <span>หมายเหตุ: ต้องเป็น Email ที่เคยล็อกอินผ่าน Google หรือมีข้อมูลในระบบแล้วเท่านั้น</span>
+              </p>
             </div>
 
             <div>
