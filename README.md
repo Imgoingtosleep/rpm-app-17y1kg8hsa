@@ -110,31 +110,34 @@ cd rpm-app
 cp .env.example .env
 ```
 
-### 2. ตรวจสอบค่าในไฟล์ `.env`
-เปิดไฟล์ `.env` และปรับแต่งค่าตามต้องการ (สำหรับ Dev สามารถใช้ค่าเริ่มต้นได้เลย):
+### 2. ตั้งค่าไฟล์ Environment Variables (`.env`)
+เปิดไฟล์ `.env` และกำหนดค่าความปลอดภัยตามสภาพแวดล้อม (ดูตัวอย่างโครงสร้างเต็มได้ที่ [`.env.example`](.env.example)):
 ```ini
 # Database Settings
 DB_USER=postgres
-DB_PASSWORD=123
+DB_PASSWORD=your_secure_db_password
 DB_NAME=rpm_db
 DB_PORT_EXTERNAL=5434
 
-# Backend Settings
+# Backend & Storage Settings
 BACKEND_PORT=1050
 NODE_ENV=development
 STORAGE_PATH=./storage
 
-# Frontend Settings
-FRONTEND_PORT=1000
+# Security Secrets (⚠️ ห้ามแชร์หรือ Push ขึ้น Git)
+JWT_SECRET=your_super_secret_jwt_signing_key_min_32_chars
+SHARED_JWT_SECRET=your_super_secret_jwt_signing_key_min_32_chars
+NEXTAUTH_SECRET=your_super_secret_nextauth_cookie_key
 NEXTAUTH_URL=http://localhost:1000
-NEXTAUTH_SECRET=rpm-secure-auth-secret-key-9988
-SHARED_JWT_SECRET=netops-secure-token-signing-key-7892
+
+# Frontend & OAuth Settings
+FRONTEND_PORT=1000
 NEXT_PUBLIC_API_URL=http://localhost:1050
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=1098192783957-79ecas4tjir7hunaco5etk1nujav3aro.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
 # pgAdmin Settings
 PGADMIN_EMAIL=admin@rpm.com
-PGADMIN_PASSWORD=adminpassword
+PGADMIN_PASSWORD=your_secure_pgadmin_password
 ```
 
 ### 3. สั่งรันระบบผ่าน Docker Compose
