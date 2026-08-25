@@ -1300,6 +1300,8 @@ router.post('/auth/google', async (req, res) => {
       name: dbUser.name,
       email: dbUser.email,
       role: dbUser.role, // 'Admin', 'Inspector', or 'Viewer'
+      area: dbUser.area,
+      subarea: dbUser.subarea,
       avatar: payload.picture || dbUser.name.charAt(0)
     };
 
@@ -1308,6 +1310,46 @@ router.post('/auth/google', async (req, res) => {
     res.json({ message: 'ลงชื่อเข้าใช้สำเร็จ', user, token });
   } catch (err) {
     res.status(500).json({ error: 'เกิดข้อผิดพลาดจากทางเซิร์ฟเวอร์: ' + err.message });
+  }
+});
+
+// 8.0 Sync User from NextAuth Google Login
+router.post('/auth/sync-user', async (req, res) => {
+  const { email, name, avatar } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name || cleanEmail.split('@')[0];
+
+    let userRes = await db.query('SELECT * FROM users WHERE email = $1;', [cleanEmail]);
+    let dbUser;
+    if (userRes.rows.length > 0) {
+      dbUser = userRes.rows[0];
+    } else {
+      // First time Google login: default role is Viewer
+      const insRes = await db.query(
+        'INSERT INTO users (email, name, role) VALUES ($1, $2, $3) RETURNING *;',
+        [cleanEmail, cleanName, 'Viewer']
+      );
+      dbUser = insRes.rows[0];
+    }
+
+    res.json({
+      success: true,
+      user: {
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role,
+        area: dbUser.area,
+        subarea: dbUser.subarea,
+        avatar: avatar || dbUser.name.charAt(0).toUpperCase()
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

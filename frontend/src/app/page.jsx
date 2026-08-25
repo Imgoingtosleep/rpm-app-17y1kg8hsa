@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -98,63 +98,74 @@ export default function LoginPage() {
     }
   };
 
-  // 1. Google OAuth Callback
-  const handleCredentialResponse = async (response) => {
+
+
+  // 1. Google OAuth Popup Callback (Method 2)
+  const handleGoogleCredentialResponse = async (response) => {
+    if (!response?.credential) return;
+    setErrorMessage('');
     try {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential }),
       });
-      if (res.ok) {
-        const data = await res.json();
+
+      const data = await res.json();
+      if (res.ok && data.token) {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
         window.location.href = '/select-site';
       } else {
-        const errData = await res.json();
-        setErrorMessage(errData.error || 'ยืนยันตัวตน Google ล้มเหลว');
+        setErrorMessage(data.error || 'ยืนยันตัวตน Google ไม่สำเร็จ');
       }
     } catch (err) {
       setErrorMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้');
     }
   };
 
-  // 2. Initialize Google Sign-In button if in 'google' mode
+  // 2. Initialize Google Sign-In Popup Button
   useEffect(() => {
     if (authMethod !== 'google') return;
 
-    const initializeGoogleSignIn = () => {
+    const setupGooglePopup = () => {
       if (window.google?.accounts?.id && clientId) {
         try {
           window.google.accounts.id.initialize({
             client_id: clientId,
-            callback: handleCredentialResponse,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
           });
 
-          const btnEl = document.getElementById('google-signin-btn');
-          if (btnEl) {
-            window.google.accounts.id.renderButton(
-              btnEl,
-              { theme: 'outline', size: 'large', width: 320 }
-            );
+          const container = document.getElementById('google-popup-btn-container');
+          if (container) {
+            container.innerHTML = '';
+            window.google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              width: 300,
+              text: 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+            });
           }
         } catch (err) {
-          console.error('Google Sign-In initialization failed:', err);
+          console.error('Google Popup init failed:', err);
         }
       }
     };
 
     if (window.google?.accounts?.id) {
-      initializeGoogleSignIn();
+      setupGooglePopup();
     } else {
       const interval = setInterval(() => {
         if (window.google?.accounts?.id) {
-          initializeGoogleSignIn();
+          setupGooglePopup();
           clearInterval(interval);
         }
-      }, 500);
+      }, 300);
       return () => clearInterval(interval);
     }
   }, [authMethod, clientId]);
@@ -556,13 +567,24 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Tab 2: Google Login */}
+        {/* Tab 2: Google Login via Google Popup (Method 2) */}
         {authMethod === 'google' && (
-          <div className="flex flex-col items-center justify-center space-y-4 py-4 min-h-[140px]">
-            <p className="text-xs text-gray-400 text-center">
-              เข้าสู่ระบบด้วยบัญชี Google Workspace ขององค์กร
+          <div className="flex flex-col items-center justify-center space-y-3.5 py-4 min-h-[140px] text-center">
+            <div>
+              <h3 className="text-xs font-bold text-white mb-0.5">Google Workspace Login</h3>
+              <p className="text-[11px] text-gray-400">
+                เข้าสู่ระบบด้วยบัญชี Google ขององค์กรผ่านหน้าต่าง Popup
+              </p>
+            </div>
+
+            {/* Google Official Popup Button Container */}
+            <div className="flex justify-center min-h-[44px] items-center my-1">
+              <div id="google-popup-btn-container" className="shadow-md rounded-lg overflow-hidden flex justify-center"></div>
+            </div>
+
+            <p className="text-[10px] text-gray-500 max-w-xs leading-tight">
+              ยืนยันตัวตนผ่าน Google และเชื่อมต่อสิทธิ์ความปลอดภัยด้วย JWT อัตโนมัติ
             </p>
-            <div id="google-signin-btn" className="flex justify-center min-h-[44px]"></div>
           </div>
         )}
 

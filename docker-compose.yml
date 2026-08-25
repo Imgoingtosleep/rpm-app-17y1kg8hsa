@@ -55,7 +55,7 @@ services:
     container_name: rpm-frontend
     restart: always
     depends_on:
-      - backend
+      - backend 
     environment:
       - PORT=${FRONTEND_PORT}
       - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT}
