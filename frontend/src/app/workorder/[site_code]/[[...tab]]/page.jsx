@@ -65,6 +65,11 @@ export default function WorkOrderPage() {
       return;
     }
 
+    // Reset current site & rpmId to prevent stale data bleed
+    setRpmId(null);
+    setSelectedSite(null);
+    setIsSubmitted(false);
+
     // Fetch site detail
     fetch(`/api/sites`)
       .then(res => res.json())
@@ -98,8 +103,6 @@ export default function WorkOrderPage() {
     const storedCycle = localStorage.getItem('rpmCycle') || '';
     const storedDate = localStorage.getItem('inspectionDate') || '';
     const storedTime = localStorage.getItem('inspectionTime') || '';
-    const storedRpmId = localStorage.getItem('currentRpmId');
-    if (storedRpmId) setRpmId(Number(storedRpmId));
 
     setInspector(storedInspector);
     setRpmCycle(storedCycle);
@@ -109,7 +112,7 @@ export default function WorkOrderPage() {
     const storedJob = localStorage.getItem('jobNo') || '';
     const storedSap = localStorage.getItem('sapNo') || '';
 
-    // Start or load work order from backend
+    // Start or load work order from backend for THIS specific site
     fetch('/api/workorder/start', {
       method: 'POST',
       headers: {
@@ -229,7 +232,7 @@ export default function WorkOrderPage() {
     }
   };
 
-  if (!selectedSite) {
+  if (!selectedSite || !rpmId) {
     return (
       <MainLayout currentStep="workorder" currentSite={null} onNavigateBack={handleReset}>
         <div className="flex justify-center items-center py-32 bg-dark-card border border-dark-border rounded-xl my-6">

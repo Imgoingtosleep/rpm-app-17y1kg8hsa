@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Storage destination pointing to storage/sites/
-const storageDir = path.join(__dirname, '../../../storage/sites');
+const storageDir = path.join(__dirname, '../../storage/sites');
 
 // Ensure directory exists
 if (!fs.existsSync(storageDir)) {

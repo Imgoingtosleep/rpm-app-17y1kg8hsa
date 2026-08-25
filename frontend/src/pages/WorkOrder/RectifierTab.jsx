@@ -91,6 +91,7 @@ export default function RectifierTab({ site, rpmId, rpmCycle, onComplete, isRead
   };
 
   useEffect(() => {
+    setRectifiers([]);
     fetchRectifiers();
 
     // Fetch configs

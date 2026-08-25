@@ -134,6 +134,8 @@ export default function BatteryTab({ site, rpmId, rpmCycle, onComplete, isReadOn
 
   // 1. Fetch rectifiers for current workorder (with site_code fallback for F5 page refresh)
   useEffect(() => {
+    setRectifiers([]);
+    setBatteries([]);
     const targetSiteCode = site_code || (site && site.code);
     if (!rpmId && !targetSiteCode) return;
 

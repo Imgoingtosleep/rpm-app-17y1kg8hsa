@@ -115,7 +115,7 @@ export default function StorageBrowser() {
     }
   };
 
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     try {
@@ -123,12 +123,13 @@ export default function StorageBrowser() {
       const user = stored ? JSON.parse(stored) : null;
       if (user && (user.role === 'Admin' || user.role === 'Team Lead')) {
         setIsAdmin(true);
-        const initialPath = searchParams.get('path') || '';
+        const initialPath = searchParams ? searchParams.get('path') || '' : '';
         fetchFolder(initialPath);
       } else {
         setIsAdmin(false);
       }
     } catch (e) {
+      console.error(e);
       setIsAdmin(false);
     } finally {
       setCheckingAuth(false);

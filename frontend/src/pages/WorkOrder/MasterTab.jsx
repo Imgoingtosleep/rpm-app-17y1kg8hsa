@@ -53,25 +53,21 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
       })
       .catch(err => console.error("Error loading configs:", err));
 
-    if (!site?.code) return;
-    fetch('/api/workorder/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        site_code: site.code,
-        rpm_cycle: localStorage.getItem('rpmCycle') || ''
-      })
-    })
+    setSl6Number('');
+    setSapNumber('');
+    setJobOpenedAt('');
+    setLoadedInspector('');
+
+    if (!rpmId) return;
+    fetch(`/api/workorder/${rpmId}/master`)
       .then(res => res.json())
-      .then(resData => {
-        if (resData.data) {
-          setSl6Number(resData.data.job_number_sl6 || '');
-          setSapNumber(resData.data.sap_number || '');
-          if (resData.data.created_at) {
+      .then(masterData => {
+        if (masterData) {
+          setSl6Number(masterData.job_number_sl6 || '');
+          setSapNumber(masterData.sap_number || '');
+          if (masterData.created_at) {
             try {
-              const createdDate = new Date(resData.data.created_at);
+              const createdDate = new Date(masterData.created_at);
               setJobOpenedAt(createdDate.toLocaleString('th-TH', {
                 year: 'numeric',
                 month: 'short',
@@ -80,29 +76,26 @@ export default function MasterTab({ site, rpmId, setRpmId, inspector, rpmCycle, 
                 minute: '2-digit'
               }) + ' น.');
             } catch (e) {
-              setJobOpenedAt(resData.data.created_at);
+              setJobOpenedAt(masterData.created_at);
             }
           }
-          const qty = resData.data.rectifier_qty_uih !== undefined && resData.data.rectifier_qty_uih !== null ? resData.data.rectifier_qty_uih : 0;
+          const qty = masterData.rectifier_qty_uih !== undefined && masterData.rectifier_qty_uih !== null ? masterData.rectifier_qty_uih : 0;
           setRectifierQtyUih(String(qty));
           if (onRectifierQtyChange) onRectifierQtyChange(parseInt(qty, 10));
           const now = new Date();
           const defaultDate = now.toISOString().split('T')[0];
           const defaultTime = now.toTimeString().split(' ')[0].substring(0, 5);
 
-          setLocalDate(resData.data.inspection_date ? resData.data.inspection_date.split('T')[0] : defaultDate);
-          setLocalTime(resData.data.inspection_time ? resData.data.inspection_time.substring(0, 5) : defaultTime);
+          setLocalDate(masterData.inspection_date ? masterData.inspection_date.split('T')[0] : defaultDate);
+          setLocalTime(masterData.inspection_time ? masterData.inspection_time.substring(0, 5) : defaultTime);
           
-          if (resData.data.inspector_name) {
-            setLoadedInspector(resData.data.inspector_name);
-          }
-          if (resData.data.rpm_id && setRpmId) {
-            setRpmId(resData.data.rpm_id);
+          if (masterData.inspector_name) {
+            setLoadedInspector(masterData.inspector_name);
           }
         }
       })
       .catch(err => console.error("Error loading master info:", err));
-  }, [site?.code]);
+  }, [rpmId]);
 
   const handleSave = async (e) => {
     e.preventDefault();

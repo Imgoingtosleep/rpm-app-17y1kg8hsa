@@ -55,6 +55,23 @@ export default function AcMainTab({ site, rpmId, rpmCycle, onComplete, isReadOnl
       })
       .catch(err => console.error("Error fetching AC config:", err));
 
+    setMeterSize('');
+    setCableStatus('');
+    setChangeOverSwitch('');
+    setPhaseQty('');
+    setSurgeProtection('');
+    setMdbTemp('');
+    setSiteTemp('');
+    setV1('');
+    setV2('');
+    setV3('');
+    setCur1('');
+    setCur2('');
+    setCur3('');
+    setGroundResistance('');
+    setExistingPaths({ meter: [], cable: [], changeOver: [], surge: [], mdb: [], ground: [] });
+    setImages({ meter: [], cable: [], changeOver: [], surge: [], mdb: [], ground: [] });
+
     if (!rpmId) return;
     fetch(`/api/workorder/${rpmId}/ac`)
       .then(res => res.json())

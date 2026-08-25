@@ -18,6 +18,8 @@ export default function SummaryTab({ site, rpmId, onComplete, isReadOnly, userRo
       })
       .catch(err => console.error("Error loading configs:", err));
 
+    setSummaryIssue('');
+
     if (!rpmId) return;
     fetch(`/api/workorder/${rpmId}/master`)
       .then(res => res.json())

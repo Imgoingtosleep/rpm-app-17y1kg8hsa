@@ -49,6 +49,33 @@ export default function FacilitiesTab({ site, rpmId, rpmCycle, onComplete, isRea
       })
       .catch(err => console.error("Error fetching field configs:", err));
 
+    setParams({
+      alarm_door: { status: '', file: [] },
+      alarm_ac_fail: { status: '', file: [] },
+      alarm_low_bat: { status: '', file: [] },
+      alarm_high_temp: { status: '', file: [] },
+      alarm_smoke: { status: '', file: [] },
+      alarm_air_fail: { status: '', file: [] },
+      vent_ac_fan: { status: '', file: [] },
+      vent_ac_fan_hood: { status: '', file: [] },
+      vent_dc_fan: { status: '', file: [] },
+      vent_dc_fan_hood: { status: '', file: [] },
+      vent_air_cond: { status: '', file: [] },
+      vent_filter_door: { status: '', file: [] },
+      vent_filter_window: { status: '', file: [] },
+      vent_equip_fan: { status: '', file: [] },
+      vent_filter_equip: { status: '', file: [] },
+      air_owner: { status: '', file: [] },
+      control_air_type: { status: '', file: [] },
+      control_air_status: { status: '', file: [] },
+      fac_site_sign: { status: '', file: [] },
+      fac_outdoor_clean: { status: '', file: [] },
+      fac_indoor_clean: { status: '', file: [] },
+      fac_lighting: { status: '', file: [] },
+      fac_grass_cut: { status: '', file: [] },
+    });
+    setExistingPaths({});
+
     if (!rpmId) return;
     fetch(`/api/workorder/${rpmId}/facilities`)
       .then(res => res.json())

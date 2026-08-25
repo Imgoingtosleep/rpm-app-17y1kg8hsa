@@ -177,7 +177,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
               </button>
             )}
 
-            {user?.role === 'Admin' && (
+            {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
               <button
                 onClick={() => { navigate('/admin/storage'); setIsSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
