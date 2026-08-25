@@ -14,7 +14,11 @@ node_modules/
 /frontend/node_modules/
 /backend-node/node_modules/
 
-# Production build outputs
+# Production build outputs & Next.js cache
+.next/
+/frontend/.next/
+out/
+/frontend/out/
 dist/
 /frontend/dist/
 build/
