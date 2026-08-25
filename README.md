@@ -1,178 +1,171 @@
-# NetOps Portal (RPM App)
+# NetOps Portal - RPM Application
 
-ระบบบันทึกและจัดการผลการเข้าตรวจบำรุงรักษาอุปกรณ์ตามรอบการปฏิบัติงาน (**Routine Preventive Maintenance - RPM**) สำหรับสถานี (Sites) ของทีมวิศวกรรมเครือข่าย
-
----
-
-## ภาพรวมโครงการ (Project Overview)
-
-**NetOps Portal (RPM App)** เป็นเว็บแอปพลิเคชันระดับองค์กรแบบ Full-stack (React + Node.js + PostgreSQL) สำหรับบริหารจัดการและจัดเก็บข้อมูลการตรวจรับงาน Preventive Maintenance (PM) รายสถานี มีระบบจำกัดสิทธิ์ผู้ใช้งานตามขอบเขตพื้นที่ (**Multi-Area & Sub-Area Scoping**), การบันทึกสถานะแบตเตอรี่สำรองแบบไดนามิก (VRLA AGM & Lithium), การอัปโหลดภาพถ่ายประกอบพร้อมการตรวจเช็คจำนวนรูปภาพ, การออกรายงาน PDF สรุปผลอัตโนมัติ และระบบบันทึกประวัติการแก้ไข (**Audit Logging**)
-
-### ฟังก์ชันเด่น (Key Features & Current Logic)
-
-1. **Dynamic RPM Work Order Tabs**:
-   - **Master Site**: บันทึกข้อมูลใบงานหลัก, เลข Job SL6, SAP ID, ผู้ตรวจสอบ, จำนวนตู้ Rectifier, วันเวลาที่เข้าตรวจ และสรุปปัญหาหน้างาน
-   - **AC Main**: บันทึกมิเตอร์ไฟ, สายไฟ, Changeover Switch, Surge Protection, อุณหภูมิ MDB, ค่าแรงดัน/กระแสไฟ (3-Phase) และค่าต้านทานกราวด์
-   - **Rectifier**: บันทึกรุ่น, AC Cable, Breaker (Phase 1-3), โมดูลปกติ/เสีย, ค่ากระแส Input/Output, Surge และเลือกประเภทแบตเตอรี่ (VRLA AGM หรือ Lithium)
-   - **Battery Bank (Dynamic Logic)**:
-     - รองรับแบตเตอรี่ประเภท **VRLA AGM** (กรอกรายละเอียดรายลูก 1-4 ค่า Volt, IR, แบรนด์, สเปก วันที่ติดตั้ง/ประกัน และรูปถ่าย)
-     - รองรับแบตเตอรี่ประเภท **Lithium** (บันทึกสเปกความจุ, สถานะการทำงาน RUN, SOH%, SOC%, Capacity%, LED Alarm และรูปถ่ายภาพรวม Bank)
-     - ระบบปรับแต่ง State การค้นหาและสลับ Bank อัตโนมัติ ป้องกันข้อมูลสูญหายเมื่อเปลี่ยน Bank หรือกด F5 Refresh
-   - **Facilities**: ตรวจสอบระบบความปลอดภัย (Security, Fire Alarm, FM200), พัดลมระบายอากาศ, แผ่นกรองอากาศ, เครื่องปรับอากาศ และความสะอาดสถานี
-   - **Summary**: หน้าสรุปสถานะใบงาน พร้อมการกดส่งอนุมัติ (**Submit Work Order**) หรือการปลดล็อกใบงาน (**Unlock**) สำหรับ Admin / Team Lead
-
-2. **Role-Based Access Control & Scope Access**:
-   - แบ่งสิทธิ์ออกเป็น **Admin**, **Team Lead**, **Inspector**, และ **Viewer**
-   - **Multi-Area & Sub-Area Scope**: กำหนดสิทธิ์ช่าง/ผู้ตรวจสอบให้มองเห็นเฉพาะสถานีที่อยู่ในเขตพื้นที่ (Area) หรือพื้นที่ย่อย (Sub-Area) ที่ได้รับมอบหมายเท่านั้น
-   - **Audit Logging**: บันทึกการแก้ไข (POST, PUT, DELETE) ลงไฟล์ `audit_log.txt` ใน `/storage/db_text` พร้อมระบุตัวตนผู้ทำรายการและเวลา Asia/Bangkok
-
-3. **Automated PDF Report & Backup**:
-   - ระบบสร้างรายงานสรุปผลการตรวจรับงาน (`report-[rpm_id].pdf`) และไฟล์สำรองข้อมูลดิบ (`backup-[rpm_id].json`) ลงในระบบจัดเก็บไฟล์โดยอัตโนมัติ
-
-4. **Field Configuration System**:
-   - ปรับแต่งการเปิด/ปิด (Enable/Disable) และการบังคับกรอก (Required) ของแต่ละฟิลด์ข้อมูลได้จากหน้าแอดมิน (`/admin/fields`)
-
-5. **Dockerized Microservices Setup**:
-   - บริหารจัดการผ่าน Docker Compose ประกอบด้วย PostgreSQL 15, Node.js Express Backend, React Vite Frontend และ pgAdmin 4 GUI
+ระบบบันทึกและบริหารจัดการผลการเข้าตรวจบำรุงรักษาอุปกรณ์ตามรอบการปฏิบัติงาน (**Routine Preventive Maintenance - RPM**) สำหรับสถานีโทรคมนาคม (Sites) ของทีมวิศวกรรมเครือข่าย
 
 ---
 
-## สแต็คเทคโนโลยี (Tech Stack)
+## 🌟 ภาพรวมระบบ (Project Overview)
 
-* **Frontend**:
-  * **React 18** (Vite Bundler)
-  * **Tailwind CSS** (Custom Styling Framework)
-  * **React Router DOM v6** (Nested & Param-based Routing)
-* **Backend**:
-  * **Node.js** & **Express**
-  * **PostgreSQL 15** (pg pool with SSL support)
-  * **Multer** (จัดการไฟล์อัปโหลดและสร้าง Structure ไดเรกทอรีอัตโนมัติ)
-  * **PDFKit** (สร้างเอกสารรายงาน PDF)
-* **DevOps & Tools**:
-  * **Docker** & **Docker Compose**
-  * **pgAdmin 4** (Database Management UI)
+**NetOps Portal (RPM App)** เป็นเว็บแอปพลิเคชันระดับองค์กรแบบ Full-stack (Next.js 14 + Node.js Express + PostgreSQL 15) ที่พัฒนาขึ้นเพื่อยกระดับการตรวจรับงานบำรุงรักษาอุปกรณ์หน้างานให้มีมาตรฐาน ปลอดภัย และตรวจสอบย้อนหลังได้ 100% 
+
+### จุดเด่นและฟังก์ชันหลักของระบบ (Key Features)
+1. **🔐 Multi-Method Authentication & Security**:
+   - **Google Workspace OAuth (Official Popup)**: ยืนยันตัวตนด้วยบัญชีองค์กร
+   - **2-Factor Authenticator (TOTP OTP 6 หลัก)**: สร้างและสแกน QR Code ด้วย Google / Microsoft Authenticator โดยระบบบังคับตรวจสอบว่า Email ต้องเคยมีในฐานข้อมูลก่อนเสมอ
+   - **Stateless JWT & NextAuth**: จัดการ Session และ Token ความปลอดภัยข้าม Frontend และ Backend
+2. **👥 Role-Based & Multi-Area Scope Control**:
+   - แบ่งระดับผู้ใช้งานเป็น **Admin**, **Team Lead**, **Inspector**, และ **Viewer**
+   - **Area & Sub-area Scoping**: กำหนดสิทธิ์ช่างให้มองเห็นและจัดการเฉพาะสถานีในเขตพื้นที่ (Area) หรือพื้นที่ย่อย (Sub-area) ที่ได้รับมอบหมาย
+3. **📋 Dynamic RPM Work Order (6 แท็บการตรวจงาน)**:
+   - **Master Site**: บันทึกข้อมูลใบงานหลัก, เลขที่ Job SL6, SAP ID, ผู้ตรวจสอบ, จำนวนตู้ Rectifier, วันเวลาที่เข้าตรวจ
+   - **AC Main**: บันทึกมิเตอร์ไฟ AC, สายไฟเมน, Changeover Switch, Surge Protection, อุณหภูมิ MDB, แรงดัน/กระแสไฟ 3 เฟส และค่าต้านทานกราวด์
+   - **Rectifier (1-6 ตู้)**: บันทึกข้อมูลตู้, เบรกเกอร์, DC PDB, โมดูลปกติ/เสีย, ค่ากระแสไฟ และ Surge ประจำตู้
+   - **Battery Bank (VRLA AGM & Lithium)**:
+     - **VRLA AGM**: บันทึกผลทดสอบรายลูก (Cell 1-4: Volt, IR, แบรนด์, ประกัน, รูปถ่าย)
+     - **Lithium**: บันทึกสถานะ RUN, SOH%, SOC%, Capacity%, LED Alarm และภาพรวม Bank
+   - **Facilities**: ตรวจสอบระบบ Alarm (ประตู, ไฟดับ, แบตเตอรี่ Low, ความร้อน, ควัน, แอร์เสีย), พัดลมระบายอากาศ, แผ่นกรองอากาศ, เครื่องปรับอากาศ และความสะอาดสถานี
+   - **Summary & Approval Flow**: สรุปปัญหาหน้างาน พร้อมระบบส่งอนุมัติ (**Submit** ➔ **TL Approve** ➔ **Admin Approve** / **Reject**)
+4. **📸 Intelligent Storage & Image Management**:
+   - จัดเก็บรูปภาพแยกโฟลเดอร์ตามสถานีและรอบการตรวจอย่างเป็นระเบียบ (`storage/db_img/[site_code]/[rpm_cycle]/...`)
+   - ระบบ FIFO Queue จำกัดไม่เกิน 10 รูปต่อหัวข้อ
+   - **Storage Browser (`/admin/storage`)**: หน้าจอเปิดดู ดาวน์โหลด และบริหารจัดการไฟล์รูปภาพสำหรับ Admin และ Team Lead
+   - รองรับการย้ายที่เก็บไฟล์ไปที่ NAS หรือ Drive อื่นผ่านตัวแปร `STORAGE_PATH` ใน `.env`
+5. **📊 Admin Management Hub**:
+   - **Dashboard (`/admin/dashboard`)**: ตรวจสอบสถานะใบงาน, กรองตามพื้นที่/รอบตรวจ, อนุมัติ/ตีกลับงาน, Export ข้อมูล Excel/CSV
+   - **User Management (`/admin/users`)**: กำหนดสิทธิ์และพื้นที่ดูแลของผู้ใช้งาน
+   - **Field Settings (`/admin/fields`)**: เปิด/ปิด หรือตั้งค่าบังคับกรอกฟิลด์ข้อมูลในแต่ละแท็บ
+   - **SQL Query Console (`/admin/query`)**: รันคำสั่งสืบค้นและจัดการฐานข้อมูลโดยตรงสำหรับ Admin
+6. **📝 Complete 3-Layer Logging Architecture**:
+   - **HTTP Access Logs**: บันทึก Traffic, Status Code, และ Response Time (ms)
+   - **Audit Trail Logs**: บันทึกประวัติการบันทึก/แก้ไข/อนุมัติลงไฟล์ `storage/db_text/audit_log.txt`
+   - **Centralized Error Handling**: ดักจับและบันทึก Stack Trace ข้อผิดพลาดอย่างละเอียด
 
 ---
 
-## โครงสร้างโปรเจกต์ (Project Structure)
+## 🛠️ สแต็คเทคโนโลยี (Tech Stack)
+
+| ส่วนของระบบ | เทคโนโลยีที่ใช้งาน | รายละเอียด |
+| :--- | :--- | :--- |
+| **Frontend** | **Next.js 14 (App Router)** | React 18, Tailwind CSS, NextAuth.js, Google OAuth GSI |
+| **Backend API** | **Node.js & Express** | RESTful API, Multer (Dynamic Storage), JWT, Speakeasy (TOTP) |
+| **Database** | **PostgreSQL 15 (Alpine)** | Relational DB พร้อม Connection Pooling และ Healthcheck |
+| **Storage & File** | **Local / NAS / POSIX File System** | จัดเก็บภาพและไฟล์แบบแยกโครงสร้างไดนามิก |
+| **DevOps / Infra** | **Docker & Docker Compose v2** | Named Volumes, Alpine Containers, Nginx Reverse Proxy Ready |
+| **DB Admin Tool** | **pgAdmin 4** | Web UI สำหรับจัดการฐานข้อมูล PostgreSQL |
+
+---
+
+## 📁 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```text
 rpm-app/
-├── backend-node/         # Backend API Server (Node.js + Express)
+├── backend-node/                 # Backend API Server (Express Node.js)
 │   ├── src/
-│   │   ├── config/       # Database & Environment configuration
-│   │   ├── middlewares/  # Auth & File Upload (Multer) Middlewares
-│   │   ├── routes/       # API endpoints definitions (api.js)
-│   │   ├── services/     # Utility services (PDF generator, etc.)
-│   │   └── server.js     # Entry point server
+│   │   ├── config/               # Database Connection (pg pool)
+│   │   ├── middlewares/          # Auth JWT, Multer Dynamic Upload
+│   │   ├── routes/               # API Endpoints & Audit Logging (api.js)
+│   │   ├── services/             # TOTP Authenticator, OCR, PDF Services
+│   │   └── server.js             # Entry Point & Centralized Error Handler
 │   ├── Dockerfile
-│   └── init.sql          # Initial database schema setup
+│   └── init.sql                  # PostgreSQL Initial Schema & Seed Data
 │
-├── frontend/             # Frontend Web Application (React + Vite + Tailwind)
+├── frontend/                     # Frontend Application (Next.js 14)
 │   ├── src/
-│   │   ├── components/   # Shared UI components (ImagePreview, Navbars)
-│   │   ├── layouts/      # MainLayout & Navigation Sidebars
-│   │   ├── pages/        # Gatekeeper, Admin Pages, WorkOrder Tabs
-│   │   │   └── WorkOrder/ # Master, AcMain, Rectifier, Battery, Facilities, Summary Tabs
-│   │   ├── utils/        # Scope Access Filtering & Helpers
-│   │   └── App.jsx       # Main Application Routing & React State Context
-│   ├── Dockerfile
-│   └── vite.config.js
+│   │   ├── app/                  # Next.js App Router Pages
+│   │   │   ├── admin/            # Dashboard, Fields, Users, Query, Storage
+│   │   │   ├── api/auth/         # NextAuth.js API Routes
+│   │   │   ├── workorder/        # Inspection Forms & Tabs
+│   │   │   ├── select-site/      # Gatekeeper & Site Selector
+│   │   │   ├── setup-qr/         # Authenticator QR Setup
+│   │   │   └── page.jsx          # Login Page (Google + TOTP + Demo)
+│   │   ├── components/           # ImagePreviewManager, Providers, Modals
+│   │   ├── layouts/              # MainLayout & Sidebar Navigation
+│   │   └── utils/                # Scope Access & Navigation Helpers
+│   ├── Dockerfile                # Production Multi-Stage Dockerfile
+│   ├── Dockerfile.dev            # Development Hot-Reload Dockerfile
+│   └── nginx.conf                # Nginx Reverse Proxy Template
 │
-├── storage/              # Physical storage for uploaded images & PDF reports
-├── .env                  # Environment Variables Configuration
-├── docker-compose.yml    # Docker orchestration setup
-├── rebuild.sh            # Complete No-Cache Docker Rebuild script
-└── update.sh             # Automated Deployment & Health-check script
+├── storage/                      # 🌟 โฟลเดอร์จัดเก็บข้อมูลจริง (Persistent Storage)
+│   ├── db_img/                   # รูปภาพหน้างานแยกตาม [site_code]/[rpm_cycle]/...
+│   ├── db_text/                  # ไฟล์ประวัติการแก้ไข audit_log.txt
+│   └── sites/                    # ไฟล์ Master Template / Import CSV
+│
+├── docker-compose.yml            # Docker Compose Orchestration (v2)
+├── path.md                       # 📄 เอกสารผังโฟลเดอร์และการประเมินขนาดพื้นที่จัดเก็บ (Sizing)
+├── .env.example                  # Template ตัวแปร Environment สำหรับเริ่มต้นระบบ
+├── .gitignore                    # กฎการป้องกันไฟล์ความลับและ Cache ขึ้น Git
+└── rebuild.sh / update.sh        # สคริปต์ช่วย Build และ Deploy อัตโนมัติ
 ```
 
 ---
 
-## โครงสร้างจัดเก็บไฟล์ (File Storage Directory Tree)
+## 🚀 ขั้นตอนการติดตั้งและรันระบบ (Getting Started)
 
-ไฟล์อัปโหลดและเอกสารจะถูกจัดเก็บเข้าไดเรกทอรีใน `storage/` ตามโครงสร้างมาตรฐานดังนี้:
-
-```text
-storage/
-├── db_text/
-│   ├── audit_log.txt                      # บันทึกประวัติการแก้ไขระบบ (Audit Logs)
-│   │   # ตัวอย่างรูปแบบบรรทัดบันทึกประวัติ (Audit Log Format):
-│   │   # [YYYY-MM-DD HH:mm:ss] | WHO: Name (Role: RoleName) | ACTION: Action Description | SITE: Site Code | PATH: API Endpoint
-│   │   # - ตัวอย่างสิทธิ์/พื้นที่: WHO: Alex (Role: Admin) | ACTION: มอบหมายสิทธิ์และพื้นที่ให้ผู้ใช้งาน [Samuel] -> สิทธิ์: Inspector | พื้นที่ (Area): ["กรุงเทพมหานคร"] | พื้นที่ย่อย (Subarea): ["นนทบุรี"]
-│   │   # - ตัวอย่างตั้งค่าฟิลด์: WHO: Alex (Role: Admin) | ACTION: ตั้งค่าฟิลด์ข้อมูล [แท็บ: acmain -> ฟิลด์: meter_ac_size] -> เปิดใช้งาน (Enabled), บังคับกรอก (Required) | ตัวเลือก Dropdown: [15A, 30A, 50A]
-│   ├── report-[rpm_id].pdf                # เอกสาร PDF รายงานสรุปผลงาน
-│   └── backup-[rpm_id].json               # ไฟล์สำรองข้อมูลดิบ JSON
-└── db_img/
-    └── [site_code]/                       # รหัสสถานี (เช่น BKK-5005-UR)
-        └── [rpm_cycle]/                   # รอบการตรวจ (เช่น 2026-R1)
-            ├── power_main_ac/             # รูปภาพระบบ AC Main
-            ├── power_rectifier/           # รูปภาพระบบ Rectifier & Battery
-            └── systems_and_facilities/    # รูปภาพระบบ Facilities & Security
-```
-
----
-
-## โครงสร้างฐานข้อมูล (Database Schema)
-
-1. `users`: บัญชีผู้ใช้, รหัสผ่าน, สิทธิ์ (`Admin`, `Team Lead`, `Inspector`, `Viewer`), พื้นที่ดูแล (`area`, `subarea`)
-2. `sites`: ข้อมูลสถานี (`site_code`, `site_name`, `site_grade`, `site_type`, `area`, `subarea`)
-3. `rpm_records_master`: ข้อมูลหลักของใบงาน (`job_number_sl6`, `sap_number`, `rpm_cycle`, `status`, `inspection_date`, `inspection_time`)
-4. `power_main_ac`: บันทึกระบบไฟฟ้าเมนหลัก AC
-5. `power_rectifier`: บันทึกข้อมูลตู้ Rectifier และประเภทแบตเตอรี่
-6. `rectifier_banks`: ข้อมูลกลุ่มแบตเตอรี่ (`bank_name`, `brand`, `capacity`, `installed_date`, `warrantee_date`)
-7. `battery_tests`: บันทึกผลทดสอบแบตเตอรี่ VRLA รายลูก (Cell 1-4: `voltage`, `internal_resistance`, `status`, `battery_img`)
-8. `systems_and_facilities`: บันทึกระบบความปลอดภัย สภาพแวดล้อม และเครื่องปรับอากาศ
-9. `field_configs`: การตั้งค่าเปิด/ปิดฟิลด์กรอกข้อมูลในแต่ละแท็บ
-10. `rpm_cycles`: รายการตัวเลือกรอบการตรวจ (เช่น 2026-R1, 2026-R2)
-
----
-
-## ขั้นตอนการติดตั้งและรันระบบ (Getting Started)
-
-### 1. การเตรียมไฟล์ Environment Variables (`.env`)
-สร้างไฟล์ `.env` ไว้ที่โฟลเดอร์ Root ของโปรเจกต์:
-```ini
-NODE_ENV=development
-
-# Database Configuration
-DB_USER=postgres
-DB_PASSWORD=your_secure_password
-DB_NAME=rpm_db
-DB_PORT_EXTERNAL=5432
-
-# pgAdmin Configuration
-PGADMIN_EMAIL=admin@netops.local
-PGADMIN_PASSWORD=admin_password
-
-# Application Ports
-BACKEND_PORT=8001
-FRONTEND_PORT=3000
-
-# API Configuration
-VITE_API_URL=http://localhost:8001
-```
-
-### 2. สั่งรันผ่าน Docker Compose
+### 1. โคลนโปรเจกต์และเตรียมไฟล์ `.env`
 ```bash
-docker-compose up -d
+git clone https://github.com/Imgoingtosleep/rpm-app.git
+cd rpm-app
+
+# คัดลอกไฟล์ตั้งค่าจาก Template
+cp .env.example .env
 ```
 
-### 3. การเข้าใช้งานผ่านเบราว์เซอร์
-* **Frontend Web App**: [http://localhost:3000](http://localhost:3000)
-* **Backend API / Health**: [http://localhost:8001/health](http://localhost:8001/health)
-* **pgAdmin 4 GUI**: [http://localhost:5050](http://localhost:5050)
+### 2. ตรวจสอบค่าในไฟล์ `.env`
+เปิดไฟล์ `.env` และปรับแต่งค่าตามต้องการ (สำหรับ Dev สามารถใช้ค่าเริ่มต้นได้เลย):
+```ini
+# Database Settings
+DB_USER=postgres
+DB_PASSWORD=123
+DB_NAME=rpm_db
+DB_PORT_EXTERNAL=5434
+
+# Backend Settings
+BACKEND_PORT=1050
+NODE_ENV=development
+STORAGE_PATH=./storage
+
+# Frontend Settings
+FRONTEND_PORT=1000
+NEXTAUTH_URL=http://localhost:1000
+NEXTAUTH_SECRET=rpm-secure-auth-secret-key-9988
+SHARED_JWT_SECRET=netops-secure-token-signing-key-7892
+NEXT_PUBLIC_API_URL=http://localhost:1050
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=1098192783957-79ecas4tjir7hunaco5etk1nujav3aro.apps.googleusercontent.com
+
+# pgAdmin Settings
+PGADMIN_EMAIL=admin@rpm.com
+PGADMIN_PASSWORD=adminpassword
+```
+
+### 3. สั่งรันระบบผ่าน Docker Compose
+```bash
+docker compose up -d
+```
+
+### 4. การเข้าใช้งานผ่านเว็บเบราว์เซอร์
+* 🌐 **Frontend Web Portal**: [http://localhost:1000](http://localhost:1000)
+* ⚙️ **Backend Health Check**: [http://localhost:1050/api/health](http://localhost:1050/api/health)
+* 🗄️ **pgAdmin 4 Database UI**: [http://localhost:5050](http://localhost:5050)
+* 📊 **Admin Dashboard**: [http://localhost:1000/admin/dashboard](http://localhost:1000/admin/dashboard)
+* 🗂️ **Storage Browser**: [http://localhost:1000/admin/storage](http://localhost:1000/admin/storage)
 
 ---
 
-## สคริปต์สำหรับการดูแลระบบ (Admin Utilities)
+## 🌐 การเตรียมความพร้อมขึ้น Production (Production Deployment)
 
-* **Clean Rebuild (ล้างแคชและบิลด์อิมเมจใหม่)**:
-  ```bash
-  chmod +x rebuild.sh
-  ./rebuild.sh
-  ```
-* **Auto Deploy & Health Check**:
-  ```bash
-  chmod +x update.sh
-  ./update.sh
-  ```
+1. **ตั้งค่า Nginx Reverse Proxy (พอร์ต 80/443 SSL)**:
+   - Forward `/*` ➔ `http://localhost:1000` (Frontend)
+   - Forward `/api/*` ➔ `http://localhost:1050/api/*` (Backend API)
+   - Forward `/storage/*` ➔ `http://localhost:1050/storage/*` (Storage Images)
+   - กำหนด `client_max_body_size 50M;` สำหรับรองรับการอัปโหลดรูปภาพ
+2. **อัปเดต Google Cloud OAuth**:
+   - เพิ่ม Domain จริง (เช่น `https://rpm.uih.co.th`) ลงใน *Authorized JavaScript origins* และ *Authorized redirect URIs* บน Google Cloud Console
+3. **กำหนดที่เก็บ Storage**:
+   - หากต้องการชี้รูปภาพไปที่ NAS หรือ Drive อื่น ให้กำหนด `STORAGE_PATH=/mnt/nas/rpm_storage` ใน `.env`
+   - ดูรายละเอียดโครงสร้างและแผนประเมินขนาดข้อมูล (Capacity Planning) ได้ที่ [`path.md`](path.md)
+
+---
+
+## 📜 สิทธิ์การใช้งานและการดูแลรักษา (License & Maintenance)
+พัฒนาขึ้นสำหรับ **ทีมงาน NetOps & Routine Preventive Maintenance (RPM)**  
+หากพบปัญหาหรือต้องการเสนอแนะการพัฒนา สามารถสร้าง Issue หรือติดต่อทีมพัฒนาได้ทันทีครับ
