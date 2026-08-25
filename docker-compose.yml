@@ -46,6 +46,7 @@ services:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./storage:/app/storage
+      - ./backend-node/src:/app/src
 
   frontend:
     build:

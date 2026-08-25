@@ -13,12 +13,16 @@ export default function LoginPage() {
   const [authMethod, setAuthMethod] = useState('totp'); // 'totp', 'google', 'demo'
 
   // TOTP Authenticator State
-  const [totpEmail, setTotpEmail] = useState('somchai.ins@rpm.com');
   const [totpCode, setTotpCode] = useState('');
   const [totpLoading, setTotpLoading] = useState(false);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [totpData, setTotpData] = useState(null); // { email, secret, otpauth_url }
   const [copiedSecret, setCopiedSecret] = useState(false);
+  
+  // TOTP Setup Mode State
+  const [setupMode, setSetupMode] = useState(false);
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupName, setSetupName] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [setupResult, setSetupResult] = useState(null); // { email, name, secret, otpauth_url, user }
 
   useEffect(() => {
     try {
@@ -62,32 +66,37 @@ export default function LoginPage() {
     }
   }, [status, session, router]);
 
-  // Load TOTP Setup QR Code whenever totpEmail changes
-  const fetchTotpSetup = async (emailToFetch) => {
-    if (!emailToFetch || !emailToFetch.includes('@')) return;
-    setQrLoading(true);
+  // Handle Generate Personalized QR Code
+  const handleGenerateQR = async (e) => {
+    if (e) e.preventDefault();
+    if (!setupEmail || !setupEmail.includes('@')) {
+      setErrorMessage('กรุณากรอก Email ให้ถูกต้อง (เช่น somchai@uih.co.th)');
+      return;
+    }
+
+    setSetupLoading(true);
+    setErrorMessage('');
     try {
       const res = await fetch('/api/auth/totp/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailToFetch.trim() }),
+        body: JSON.stringify({
+          email: setupEmail.trim(),
+          name: setupName.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setTotpData(data);
+        setSetupResult(data);
+      } else {
+        setErrorMessage(data.error || 'ไม่สามารถสร้าง QR Code ได้');
       }
     } catch (err) {
-      console.error('Failed to load TOTP QR:', err);
+      setErrorMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Backend ได้');
     } finally {
-      setQrLoading(false);
+      setSetupLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (authMethod === 'totp') {
-      fetchTotpSetup(totpEmail);
-    }
-  }, [authMethod, totpEmail]);
 
   // 1. Google OAuth Callback
   const handleCredentialResponse = async (response) => {
@@ -153,10 +162,6 @@ export default function LoginPage() {
   // 3. Handle TOTP Verify Login
   const handleTotpLogin = async (e) => {
     if (e) e.preventDefault();
-    if (!totpEmail.trim()) {
-      setErrorMessage('กรุณาระบุ Email');
-      return;
-    }
     if (!totpCode.trim() || totpCode.trim().length !== 6) {
       setErrorMessage('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก');
       return;
@@ -169,7 +174,6 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: totpEmail.trim(),
           code: totpCode.trim(),
         }),
       });
@@ -230,12 +234,6 @@ export default function LoginPage() {
       setTimeout(() => setCopiedSecret(false), 2000);
     }
   };
-
-  const quickAccounts = [
-    { label: 'Inspector', email: 'somchai.ins@rpm.com' },
-    { label: 'Team Lead', email: 'wichai.tl@rpm.com' },
-    { label: 'Admin', email: 'admin.dev@rpm.com' },
-  ];
 
   return (
     <div className="min-h-screen bg-dark-bg text-gray-100 flex flex-col justify-center items-center px-4 py-8 font-sans relative overflow-hidden">
@@ -339,134 +337,223 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Tab 1: Authenticator (TOTP) Login with Live Embedded QR Code */}
+        {/* Tab 1: Authenticator (TOTP) Login */}
         {authMethod === 'totp' && (
-          <form onSubmit={handleTotpLogin} className="space-y-4">
-            {/* Email Input & Quick Chips */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-gray-300">
-                  Email ผู้ใช้งาน:
-                </label>
-                <div className="flex gap-1.5">
-                  {quickAccounts.map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => {
-                        setTotpEmail(acc.email);
-                        fetchTotpSetup(acc.email);
-                      }}
-                      className={`text-[10px] px-2 py-0.5 rounded border transition-all ${
-                        totpEmail === acc.email
-                          ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300 font-bold'
-                          : 'bg-dark-bg border-dark-border text-gray-400 hover:text-gray-200'
-                      }`}
-                    >
-                      {acc.label}
-                    </button>
-                  ))}
+          <div>
+            {!setupMode ? (
+              /* --- A. Normal OTP Login View --- */
+              <form onSubmit={handleTotpLogin} className="space-y-4">
+                <div className="bg-dark-bg border border-dark-border rounded-2xl p-4 flex flex-col items-center justify-center text-center space-y-2 shadow-inner">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white">Google / Microsoft Authenticator</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      เปิดแอป Authenticator บนมือถือ แล้วกรอกรหัส 6 หลักเพื่อเข้าสู่ระบบ
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <input
-                type="email"
-                required
-                value={totpEmail}
-                onChange={(e) => setTotpEmail(e.target.value)}
-                onBlur={() => fetchTotpSetup(totpEmail)}
-                placeholder="เช่น somchai.ins@rpm.com"
-                className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
 
-            {/* Embedded Authenticator QR Code */}
-            <div className="bg-dark-bg border border-dark-border rounded-2xl p-4 flex flex-col items-center justify-center text-center space-y-2.5 shadow-inner">
-              <div className="flex items-center gap-1.5 text-xs text-indigo-300 font-semibold">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <span>สแกนด้วย Google / Microsoft Authenticator</span>
-              </div>
-
-              {/* QR Image Box */}
-              <div className="w-[160px] h-[160px] bg-white rounded-xl flex items-center justify-center p-2 shadow">
-                {qrLoading ? (
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                ) : totpData?.otpauth_url ? (
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                      totpData.otpauth_url
-                    )}`}
-                    alt="Authenticator QR Code"
-                    className="w-[145px] h-[145px] rounded"
+                {/* 6-Digit Code Input */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-300">
+                      รหัส 6 หลักจากแอป:
+                    </label>
+                    <span className="text-[10px] text-gray-400">รหัสจะเปลี่ยนทุก 30 วินาที</span>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoFocus
+                    required
+                    value={totpCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setTotpCode(val);
+                    }}
+                    placeholder="000000"
+                    className="w-full px-3.5 py-3 bg-dark-bg border border-dark-border rounded-xl text-center text-2xl tracking-[0.4em] font-mono font-bold text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
-                ) : (
-                  <span className="text-[11px] text-gray-500">กรุณากรอก Email เพื่อแสดง QR</span>
-                )}
-              </div>
+                </div>
 
-              {/* Key Code */}
-              {totpData?.secret && (
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-gray-400">Key:</span>
-                  <code className="bg-dark-card border border-dark-border px-2 py-0.5 rounded text-indigo-300 font-mono font-bold select-all text-[11px]">
-                    {totpData.secret}
-                  </code>
+                <button
+                  type="submit"
+                  disabled={totpLoading || totpCode.length !== 6}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {totpLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>กำลังตรวจสอบรหัส...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                      เข้าสู่ระบบด้วยรหัส 6 หลัก (Verify & Login)
+                    </>
+                  )}
+                </button>
+
+                {/* Setup Link */}
+                <div className="pt-2 border-t border-dark-border/40 text-center">
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(totpData.secret)}
-                    className="px-1.5 py-0.5 bg-dark-card hover:bg-indigo-600 border border-dark-border rounded text-[10px] text-gray-300 hover:text-white transition-all"
+                    onClick={() => {
+                      setSetupMode(true);
+                      setSetupResult(null);
+                      setErrorMessage('');
+                    }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center justify-center gap-1.5 mx-auto py-1 transition-colors hover:underline"
                   >
-                    {copiedSecret ? '✓' : 'คัดลอก'}
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    ลงทะเบียน / สร้าง QR Code ด้วย Email ประจำตัว
                   </button>
                 </div>
-              )}
-            </div>
+              </form>
+            ) : (
+              /* --- B. Personalized QR Code Setup View --- */
+              <div className="space-y-4 animate-in fade-in">
+                {!setupResult ? (
+                  <form onSubmit={handleGenerateQR} className="space-y-3.5">
+                    <div className="text-center space-y-1">
+                      <h3 className="text-sm font-bold text-white">สร้าง QR Code ประจำตัวผู้ใช้งาน</h3>
+                      <p className="text-xs text-gray-400">
+                        กรอก Email ของคุณเพื่อสร้าง QR Code ส่วนตัวสำหรับแอป Authenticator
+                      </p>
+                    </div>
 
-            {/* 6-Digit Code Input */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-xs font-semibold text-gray-300">
-                  รหัส 6 หลักจากแอป:
-                </label>
-                <span className="text-[10px] text-gray-400">รหัสจะเปลี่ยนทุก 30 วินาที</span>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        Email ผู้ใช้งาน: <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={setupEmail}
+                        onChange={(e) => setSetupEmail(e.target.value)}
+                        placeholder="เช่น somchai@uih.co.th"
+                        className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        ชื่อ - นามสกุล (ถ้ามี):
+                      </label>
+                      <input
+                        type="text"
+                        value={setupName}
+                        onChange={(e) => setSetupName(e.target.value)}
+                        placeholder="เช่น สมชาย ใจดี"
+                        className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSetupMode(false);
+                          setErrorMessage('');
+                        }}
+                        className="flex-1 py-2.5 bg-dark-bg hover:bg-dark-border border border-dark-border rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={setupLoading || !setupEmail}
+                        className="flex-[2] py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        {setupLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                            <span>กำลังสร้าง QR...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            สร้าง QR Code
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* Display Generated Personalized QR Code */
+                  <div className="space-y-3.5 text-center">
+                    <div className="bg-dark-bg border border-dark-border rounded-2xl p-4 flex flex-col items-center justify-center space-y-2.5 shadow-inner">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-indigo-300 text-[11px] font-semibold">
+                        <span>บัญชี:</span>
+                        <span className="text-white font-bold">{setupResult.email}</span>
+                      </div>
+
+                      {/* QR Image */}
+                      <div className="w-[160px] h-[160px] bg-white rounded-xl flex items-center justify-center p-2 shadow">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                            setupResult.otpauth_url
+                          )}`}
+                          alt="Personal Authenticator QR Code"
+                          className="w-[145px] h-[145px] rounded"
+                        />
+                      </div>
+
+                      {/* Key Code */}
+                      {setupResult.secret && (
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-gray-400">Key:</span>
+                          <code className="bg-dark-card border border-dark-border px-2 py-0.5 rounded text-indigo-300 font-mono font-bold select-all text-[11px]">
+                            {setupResult.secret}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(setupResult.secret)}
+                            className="px-1.5 py-0.5 bg-dark-card hover:bg-indigo-600 border border-dark-border rounded text-[10px] text-gray-300 hover:text-white transition-all"
+                          >
+                            {copiedSecret ? '✓' : 'คัดลอก'}
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="text-[11px] text-gray-400 leading-relaxed text-left bg-dark-card p-2.5 rounded-xl border border-dark-border/60 w-full space-y-1">
+                        <p className="font-bold text-gray-300">วิธีใช้งาน:</p>
+                        <p>1. เปิดแอป Google / Microsoft Authenticator บนมือถือ</p>
+                        <p>2. สแกน QR Code นี้ (จะขึ้นเป็นอีเมลของคุณในแอป)</p>
+                        <p>3. กดปุ่มด้านล่างเพื่อกลับไปกรอกรหัส 6 หลักเข้าสู่ระบบ</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSetupMode(false);
+                        setErrorMessage('');
+                      }}
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-emerald-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      เสร็จสิ้น / ไปหน้าล็อกอินเพื่อเข้าสู่ระบบ
+                    </button>
+                  </div>
+                )}
               </div>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                required
-                value={totpCode}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  setTotpCode(val);
-                }}
-                placeholder="000000"
-                className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-center text-xl tracking-[0.4em] font-mono font-bold text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={totpLoading || !totpEmail || totpCode.length !== 6}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {totpLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>กำลังตรวจสอบรหัส...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                  </svg>
-                  เข้าสู่ระบบด้วยรหัส 6 หลัก (Verify & Login)
-                </>
-              )}
-            </button>
-          </form>
+            )}
+          </div>
         )}
 
         {/* Tab 2: Google Login */}

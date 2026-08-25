@@ -1313,21 +1313,25 @@ router.post('/auth/google', async (req, res) => {
 
 // 8.1 Setup TOTP (Authenticator App)
 router.post('/auth/totp/setup', async (req, res) => {
-  const { email, name } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'กรุณาระบุ Email' });
+  const { email, name } = req.body || {};
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'กรุณาระบุ Email สำหรับสร้าง QR Code' });
   }
+
+  const targetEmail = email.trim().toLowerCase();
+  const targetName = name && name.trim() ? name.trim() : targetEmail.split('@')[0];
 
   try {
     const totpService = require('../services/totpService');
     
-    // Find or create user
-    let userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [email.trim()]);
+    // Find or create user in users table
+    let userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [targetEmail]);
     let user;
     if (userRes.rows.length === 0) {
+      // First time login from QR: role is Inspector!
       const insRes = await db.query(
-        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Viewer') RETURNING *;`,
-        [email.trim(), name || email.trim().split('@')[0]]
+        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Inspector') RETURNING *;`,
+        [targetEmail, targetName]
       );
       user = insRes.rows[0];
     } else {
@@ -1340,11 +1344,13 @@ router.post('/auth/totp/setup', async (req, res) => {
       await db.query(`UPDATE users SET two_factor_secret = $1 WHERE email = $2;`, [secret, user.email]);
     }
 
+    // Generate URI with user's actual email
     const otpauthUrl = totpService.generateURI(user.email, secret, 'UIH RPM Portal');
 
     res.json({
       success: true,
       email: user.email,
+      name: user.name,
       secret,
       otpauth_url: otpauthUrl,
       user: {
@@ -1361,9 +1367,9 @@ router.post('/auth/totp/setup', async (req, res) => {
 
 // 8.2 Verify TOTP 6-digit Code (Login via Authenticator App)
 router.post('/auth/totp/verify', async (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code) {
-    return res.status(400).json({ error: 'กรุณาระบุ Email และรหัส 6 หลัก' });
+  const { email, code } = req.body || {};
+  if (!code) {
+    return res.status(400).json({ error: 'กรุณากรอกรหัส OTP ให้ครบ 6 หลัก' });
   }
 
   const cleanCode = String(code).trim().replace(/\s+/g, '');
@@ -1373,25 +1379,37 @@ router.post('/auth/totp/verify', async (req, res) => {
 
   try {
     const totpService = require('../services/totpService');
+    let user = null;
+    let isValid = false;
 
-    const userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [email.trim()]);
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({ error: 'ไม่พบบัญชีผู้ใช้งานในระบบ' });
+    if (email && email.trim()) {
+      const targetEmail = email.trim().toLowerCase();
+      const userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [targetEmail]);
+      if (userRes.rows.length > 0) {
+        user = userRes.rows[0];
+        if (user.two_factor_secret) {
+          isValid = totpService.verifyToken(user.two_factor_secret, cleanCode, 1);
+        }
+      }
+    } else {
+      // Find matching user from database among all registered TOTP users
+      const allUsersWithSecret = await db.query(
+        `SELECT * FROM users WHERE two_factor_secret IS NOT NULL ORDER BY user_id DESC;`
+      );
+      for (const u of allUsersWithSecret.rows) {
+        if (totpService.verifyToken(u.two_factor_secret, cleanCode, 1)) {
+          user = u;
+          isValid = true;
+          break;
+        }
+      }
     }
 
-    const user = userRes.rows[0];
-    if (!user.two_factor_secret) {
-      return res.status(400).json({ 
-        error: 'บัญชีนี้ยังไม่ได้ผูกกับแอป Authenticator กรุณากด "ผูกแอปครั้งแรก" ด้านล่าง' 
-      });
-    }
-
-    const isValid = totpService.verifyToken(user.two_factor_secret, cleanCode, 1);
-    if (!isValid) {
+    if (!isValid || !user) {
       return res.status(400).json({ error: 'รหัส OTP 6 หลักไม่ถูกต้อง หรือหมดอายุแล้ว' });
     }
 
-    // Role is strictly from Database
+    // Role and profile is strictly from Database (latest assigned role!)
     const userPayload = {
       email: user.email,
       name: user.name,
