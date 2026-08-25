@@ -1328,9 +1328,9 @@ router.post('/auth/totp/setup', async (req, res) => {
     let userRes = await db.query(`SELECT * FROM users WHERE email = $1;`, [targetEmail]);
     let user;
     if (userRes.rows.length === 0) {
-      // First time login from QR: role is Inspector!
+      // First time registering from Authenticator / not in system yet: default role is Viewer!
       const insRes = await db.query(
-        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Inspector') RETURNING *;`,
+        `INSERT INTO users (email, name, role) VALUES ($1, $2, 'Viewer') RETURNING *;`,
         [targetEmail, targetName]
       );
       user = insRes.rows[0];
