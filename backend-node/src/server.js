@@ -11,7 +11,14 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
-  console.log(`[BACKEND LOG] ${req.method} ${req.originalUrl || req.url}`);
+  const start = Date.now();
+  const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' });
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const user = req.headers['x-user-email'] || req.headers['x-user-name'] || 'Anonymous';
+    console.log(`[${timestamp}] [HTTP] ${req.method} ${req.originalUrl || req.url} -> ${res.statusCode} (${duration}ms) [User: ${user}]`);
+  });
   next();
 });
 
@@ -26,6 +33,18 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Node.js Core API is running' });
 });
 
+// Global Centralized Error Handling Middleware
+app.use((err, req, res, next) => {
+  const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' });
+  console.error(`[${timestamp}] [ERROR] Unhandled exception in ${req.method} ${req.originalUrl}:`, err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    timestamp
+  });
+});
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {

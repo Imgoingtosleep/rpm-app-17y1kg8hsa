@@ -67,8 +67,8 @@ router.use((req, res, next) => {
         // Structured Action Mapping
         if (url.includes('/workorder/start')) action = `เริ่มต้นเปิดใบงาน (Start Work Order)`;
         else if (url.includes('/master')) action = `บันทึก/แก้ไขข้อมูลใบงานหลัก (Master Site)`;
-        else if (url.includes('/acmain')) action = `บันทึก/แก้ไขข้อมูลระบบไฟฟ้า AC (AC Main)`;
-        else if (url.includes('/bank-save')) action = `บันทึก/แก้ไขข้อมูลแบตเตอรี่ (Battery Bank & Cell Tests)`;
+        else if (url.includes('/ac')) action = `บันทึก/แก้ไขข้อมูลระบบไฟฟ้า AC (AC Main)`;
+        else if (url.includes('/bank-save') || url.includes('/battery')) action = `บันทึก/แก้ไขข้อมูลแบตเตอรี่ (Battery Bank & Cell Tests)`;
         else if (url.includes('/rectifier')) action = `บันทึก/แก้ไขข้อมูลตู้ Rectifier`;
         else if (url.includes('/facilities')) action = `บันทึก/แก้ไขข้อมูลระบบความปลอดภัยและสภาพแวดล้อม (Facilities)`;
         else if (url.includes('/summary')) action = `แก้ไขข้อมูลสรุปปัญหาหน้างาน (Summary Issues)`;
@@ -77,6 +77,11 @@ router.use((req, res, next) => {
         else if (url.includes('/admin-approve')) action = `อนุมัติใบงานขั้นสุดท้าย (Admin Approved Work Order)`;
         else if (url.includes('/reject')) action = `ปฏิเสธ/ตีกลับใบงาน (Reason: ${req.body?.reason || 'ไม่ได้ระบุเหตุผล'})`;
         else if (url.includes('/unlock')) action = `ปลดล็อกใบงาน (Unlock Work Order)`;
+        else if (url.includes('/auth/google')) action = `ลงชื่อเข้าใช้ผ่าน Google OAuth`;
+        else if (url.includes('/auth/totp/setup')) action = `ขอรหัส / สร้าง QR Code Authenticator`;
+        else if (url.includes('/auth/totp/verify')) action = `ยืนยันรหัส OTP 6 หลักเข้าสู่ระบบ`;
+        else if (url.includes('/auth/mock')) action = `ลงชื่อเข้าใช้แบบ Demo / Mock Mode`;
+        else if (url.includes('/query')) action = `รันคำสั่ง SQL Query บนฐานข้อมูล`;
         else if (url.includes('/users/update-role')) {
           const targetName = data?.user?.name || req.body?.targetName || `User ID ${req.body?.userId || '-'}`;
           const assignedRole = req.body?.role || '-';
