@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import ManageUsers from '../../../pages/ManageUsers';
+import ManageUsers from '../../../views/ManageUsers';
 
 export default function ManageUsersPage() {
   return <ManageUsers />;

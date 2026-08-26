@@ -2,7 +2,7 @@
 
 import React from 'react';
 import MainLayout from '../../../layouts/MainLayout';
-import AdminDashboard from '../../../pages/AdminDashboard';
+import AdminDashboard from '../../../views/AdminDashboard';
 
 export default function AdminDashboardPage() {
   return (

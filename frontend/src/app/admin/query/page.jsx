@@ -2,7 +2,7 @@
 
 import React from 'react';
 import MainLayout from '../../../layouts/MainLayout';
-import DatabaseQuery from '../../../pages/DatabaseQuery';
+import DatabaseQuery from '../../../views/DatabaseQuery';
 
 export default function DatabaseQueryPage() {
   return (

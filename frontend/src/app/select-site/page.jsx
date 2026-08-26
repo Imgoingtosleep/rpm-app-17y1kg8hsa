@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '../../layouts/MainLayout';
-import Gatekeeper from '../../pages/Gatekeeper';
+import Gatekeeper from '../../views/Gatekeeper';
 
 export default function SelectSitePage() {
   const router = useRouter();

@@ -5,12 +5,12 @@ import { useRouter, useParams } from 'next/navigation';
 import MainLayout from '../../../../layouts/MainLayout';
 
 // Tabs
-import MasterTab from '../../../../pages/WorkOrder/MasterTab';
-import AcMainTab from '../../../../pages/WorkOrder/AcMainTab';
-import RectifierTab from '../../../../pages/WorkOrder/RectifierTab';
-import BatteryTab from '../../../../pages/WorkOrder/BatteryTab';
-import FacilitiesTab from '../../../../pages/WorkOrder/FacilitiesTab';
-import SummaryTab from '../../../../pages/WorkOrder/SummaryTab';
+import MasterTab from '../../../../views/WorkOrder/MasterTab';
+import AcMainTab from '../../../../views/WorkOrder/AcMainTab';
+import RectifierTab from '../../../../views/WorkOrder/RectifierTab';
+import BatteryTab from '../../../../views/WorkOrder/BatteryTab';
+import FacilitiesTab from '../../../../views/WorkOrder/FacilitiesTab';
+import SummaryTab from '../../../../views/WorkOrder/SummaryTab';
 
 export default function WorkOrderPage() {
   const router = useRouter();
