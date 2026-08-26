@@ -4,7 +4,7 @@
 
 ---
 
-## 🏛️ สถาปัตยกรรมระบบ (System Architecture)
+## สถาปัตยกรรมระบบ (System Architecture)
 
 ระบบถูกออกแบบด้วยสถาปัตยกรรมแบบ **Client-Server Architecture** และคอนเทนเนอร์ไรเซชัน (Containerization):
 
@@ -25,7 +25,7 @@ graph TD
 
 ---
 
-## 🗄️ โครงสร้างฐานข้อมูล (Database Schema Spec)
+## โครงสร้างฐานข้อมูล (Database Schema Spec)
 
 ระบบทำงานบน PostgreSQL โดยประกอบด้วย 8 ตารางหลักดังนี้:
 
@@ -85,22 +85,22 @@ graph TD
 
 ---
 
-## 🔌 ข้อกำหนดทางเทคนิคของ API (API Reference Specification)
+## ข้อกำหนดทางเทคนิคของ API (API Reference Specification)
 
 ทุกจุดให้บริการปลายทาง (API Endpoints) จะใช้คำนำหน้าทางผ่านเป็น `/api`
 
-### 🔐 1. Authentication & Users
+### 1. Authentication & Users
 * **`POST /api/auth/google`**: ใช้ยืนยันตัวตนผ่าน Google Identity Token และลงทะเบียนผู้ใช้ใหม่
 * **`GET /api/users`**: ดึงรายชื่อผู้ใช้ทั้งหมดในระบบ (เฉพาะ Admin)
 * **`POST /api/users/update-role`**: อัปเดตบทบาทของสมาชิก (`Admin`, `Inspector`, `Viewer`)
 
-### 🏢 2. Site Management
+### 2. Site Management
 * **`GET /api/sites`**: แสดงรายการสถานีทั้งหมด
 * **`POST /api/sites`**: เพิ่มสถานีใหม่รายเดี่ยว
 * **`POST /api/sites/bulk`**: นำเข้าข้อมูลสถานีจำนวนมากพร้อมกันผ่านรูปแบบ Array JSON
 * **`PUT /api/sites/:site_id`**: แก้ไขข้อมูลสถานี
 
-### 📝 3. Work Order Life Cycle (วงจรใบงาน)
+### 3. Work Order Life Cycle (วงจรใบงาน)
 * **`GET /api/workorders/active`**: ดึงใบงานที่ยังทำไม่เสร็จหรือกำลังดำเนินการอยู่ (`Pending`)
 * **`GET /api/workorders/all`**: ดึงรายการใบงานทั้งหมดในระบบ
 * **`POST /api/workorder/start`**: สร้างและเริ่มต้นใบงานใหม่ (รับค่า `site_code`, `job_number_sl6`, `sap_number`, `rpm_cycle`)
@@ -109,14 +109,14 @@ graph TD
 * **`POST /api/workorder/:rpm_id/submit`**: ทำการส่งใบงานเพื่อล็อกข้อมูล (`Submitted`) ห้ามแก้ไขเว้นแต่จะมีการขอปลดล็อก
 * **`POST /api/workorder/:rpm_id/unlock`**: ปลดล็อกใบงานกลับเป็น `Pending` เพื่อให้เข้ามาทำการแก้ไขได้
 
-### 📑 4. Form Data Entries (การป้อนข้อมูลแยกหัวข้อ)
+### 4. Form Data Entries (การป้อนข้อมูลแยกหัวข้อ)
 ทุก Endpoint ด้านล่างรองรับ Multipart Form Data เพื่ออัปโหลดไฟล์รูปภาพพร้อมบันทึกฟิลด์ข้อมูล:
 * **`POST /api/workorder/:rpm_id/ac`**: บันทึกข้อมูลและอัปโหลดภาพชุดระบบเมน AC
 * **`POST /api/workorder/:rpm_id/rectifier`**: บันทึกข้อมูลและอัปโหลดภาพชุดตู้ Rectifier
 * **`POST /api/rectifier/:rect_id/battery`**: บันทึกรูปภาพและผลการทดสอบแบตเตอรี่ในแต่ละช่อง (Cell 1 - Cell 4)
 * **`POST /api/workorder/:rpm_id/facilities`**: บันทึกชุดพัดลมระบายอากาศ, แอร์, และภาพถ่ายความเรียบร้อยรอบสถานี
 
-### 📦 5. File System & Backup API
+### 5. File System & Backup API
 * **`GET /api/storage/browse`**: เบราส์ดูโครงสร้างโฟลเดอร์ไฟล์ภาพของไซต์ต่าง ๆ ในเซิร์ฟเวอร์
 * **`GET /api/storage/download-folder`**: ดาวน์โหลดโฟลเดอร์ของไซต์นั้น ๆ ในรูปของไฟล์บีบอัด Zip
 * **`POST /api/storage/download-selected`**: ดาวน์โหลดชุดไฟล์ที่เลือกแบบ Zip
@@ -124,7 +124,7 @@ graph TD
 
 ---
 
-## 🛠️ ระบบประมวลผลพิเศษ (Specialized Services)
+## ระบบประมวลผลพิเศษ (Specialized Services)
 
 ### 1. ระบบประมวลผล OCR (Tesseract.js)
 หลังบ้านได้ผสานโมดูล OCR เข้ามาช่วยดึงข้อความที่เป็นตัวเลขโดยอัตโนมัติจากภาพถ่ายหน้าปัดมิเตอร์ โดยการดึงภาพและเปลี่ยนสีให้มีคอนทราสต์เหมาะสมก่อนส่งให้โมเดลถอดข้อมูล
@@ -134,7 +134,7 @@ graph TD
 
 ---
 
-## ⚠️ แนวปฏิบัติสำหรับนักพัฒนา (Developer Checklist)
+## แนวปฏิบัติสำหรับนักพัฒนา (Developer Checklist)
 
 1. **การปรับแต่งฐานข้อมูล**: หากจำเป็นต้องเพิ่มฟิลด์ลงฐานข้อมูล ให้ปรับปรุงสคริปต์ลงใน `init.sql` ทุกครั้ง และปรับโมเดล Schema ใน API
 2. **การตั้งชื่อไฟล์รูปภาพ**: การอัปโหลดรูปภาพใหม่จะถูกนำไปคลีนชื่อให้อยู่ในรูปแบบ UTF-8/สากลเสมอ เพื่อป้องกันข้อผิดพลาดกรณีนำไปดาวน์โหลดบน OS ต่างระบบ
