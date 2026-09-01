@@ -10,7 +10,13 @@ export default function LoginPage() {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const [errorMessage, setErrorMessage] = useState('');
   const [theme, setTheme] = useState('dark');
-  const [authMethod, setAuthMethod] = useState('totp'); // 'totp', 'google', 'demo'
+  const [authMethod, setAuthMethod] = useState('singleview'); // 'singleview', 'totp', 'google', 'demo'
+
+  // Single View Login State
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [appName, setAppName] = useState('Noc Tools');
+  const [singleViewLoading, setSingleViewLoading] = useState(false);
 
   // TOTP Authenticator State
   const [totpCode, setTotpCode] = useState('');
@@ -65,6 +71,43 @@ export default function LoginPage() {
       return;
     }
   }, [status, session, router]);
+
+  // Handle Single View Authentication Login
+  const handleSingleViewLogin = async (e) => {
+    if (e) e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setErrorMessage('กรุณากรอก Username และ Password ให้ครบถ้วน');
+      return;
+    }
+
+    setSingleViewLoading(true);
+    setErrorMessage('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+          app_name: appName.trim() || 'Noc Tools',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.token && data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('inspectorName', data.user.name || data.user.username);
+        window.location.href = '/select-site';
+      } else {
+        setErrorMessage(data.error || 'Username หรือ Password ไม่ถูกต้อง');
+      }
+    } catch (err) {
+      setErrorMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Authentication ได้');
+    } finally {
+      setSingleViewLoading(false);
+    }
+  };
 
   // Handle Generate Personalized QR Code
   const handleGenerateQR = async (e) => {
@@ -294,14 +337,31 @@ export default function LoginPage() {
         )}
 
         {/* Tab Selection */}
-        <div className="flex bg-dark-bg p-1 rounded-xl border border-dark-border gap-1">
+        <div className="grid grid-cols-4 bg-dark-bg p-1 rounded-xl border border-dark-border gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMethod('singleview');
+              setErrorMessage('');
+            }}
+            className={`py-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+              authMethod === 'singleview'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Single View
+          </button>
           <button
             type="button"
             onClick={() => {
               setAuthMethod('totp');
               setErrorMessage('');
             }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
               authMethod === 'totp'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
@@ -310,7 +370,7 @@ export default function LoginPage() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Authenticator
+            OTP
           </button>
           <button
             type="button"
@@ -318,7 +378,7 @@ export default function LoginPage() {
               setAuthMethod('google');
               setErrorMessage('');
             }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
               authMethod === 'google'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
@@ -338,15 +398,102 @@ export default function LoginPage() {
               setAuthMethod('demo');
               setErrorMessage('');
             }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
               authMethod === 'demo'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            ⚡ Demo Mode
+            ⚡ Demo
           </button>
         </div>
+
+        {/* Tab 0: Single View (Noc Tools) Login */}
+        {authMethod === 'singleview' && (
+          <form onSubmit={handleSingleViewLogin} className="space-y-4 animate-in fade-in">
+            <div className="bg-dark-bg border border-dark-border rounded-2xl p-3.5 flex items-center gap-3 shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white">Single View Authentication</h3>
+                <p className="text-[10px] text-gray-400">
+                  เข้าสู่ระบบด้วยบัญชี Single View
+                </p>
+              </div>
+            </div>
+
+            {/* Username Input */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Username: <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="กรอกชื่อผู้ใช้งาน (Username)"
+                className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">
+                Password: <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="กรอกรหัสผ่าน (Password)"
+                className="w-full px-3.5 py-2.5 bg-dark-bg border border-dark-border rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* App Name Input */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[11px] font-semibold text-gray-400">
+                  App Name:
+                </label>
+                <span className="text-[10px] text-gray-500 font-mono">Default: Noc Tools</span>
+              </div>
+              <input
+                type="text"
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                placeholder="Noc Tools"
+                className="w-full px-3.5 py-2 bg-dark-bg/60 border border-dark-border rounded-xl text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={singleViewLoading || !username || !password}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-indigo-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {singleViewLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>กำลังตรวจสอบข้อมูล...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  เข้าสู่ระบบ (Single View Login)
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
         {/* Tab 1: Authenticator (TOTP) Login */}
         {authMethod === 'totp' && (

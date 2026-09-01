@@ -63,7 +63,7 @@ services:
     environment:
       - PORT=${FRONTEND_PORT}
       - NODE_ENV=${NODE_ENV}
-      - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://10.1.10.124}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-rpm-secure-auth-secret-key-9988}
       - AUTH_TRUST_HOST=true
       - SHARED_JWT_SECRET=${JWT_SECRET:-netops-secure-token-signing-key-7892}
@@ -88,6 +88,7 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+        
     depends_on:
       - frontend
       - backend

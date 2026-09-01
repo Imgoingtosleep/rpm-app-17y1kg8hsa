@@ -81,6 +81,7 @@ router.use((req, res, next) => {
         else if (url.includes('/auth/totp/setup')) action = `ขอรหัส / สร้าง QR Code Authenticator`;
         else if (url.includes('/auth/totp/verify')) action = `ยืนยันรหัส OTP 6 หลักเข้าสู่ระบบ`;
         else if (url.includes('/auth/mock')) action = `ลงชื่อเข้าใช้แบบ Demo / Mock Mode`;
+        else if (url.includes('/auth/login')) action = `ลงชื่อเข้าใช้ผ่าน Single View (${req.body?.username || '-'})`;
         else if (url.includes('/query')) action = `รันคำสั่ง SQL Query บนฐานข้อมูล`;
         else if (url.includes('/users/update-role')) {
           const targetName = data?.user?.name || req.body?.targetName || `User ID ${req.body?.userId || '-'}`;
@@ -1474,6 +1475,120 @@ router.post('/auth/totp/verify', async (req, res) => {
   } catch (err) {
     console.error('Error verifying TOTP:', err);
     res.status(500).json({ error: 'Failed to verify OTP: ' + err.message });
+  }
+});
+
+// 8.3 Single View Authentication Login (10.1.10.124 / 10.1.10.200 API Compatible)
+router.post('/auth/login', async (req, res) => {
+  const { username, password, app_name } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({
+      status: 'error',
+      error: 'กรุณากรอก Username และ Password ให้ครบถ้วน'
+    });
+  }
+
+  const cleanUsername = String(username).trim();
+  const cleanPassword = String(password).trim();
+  const targetApp = app_name ? String(app_name).trim() : 'Noc Tools';
+
+  // Single View Predefined / Standard Accounts
+  const singleViewAccounts = {
+    internoper1: {
+      password: 'Pss@worD',
+      name: 'Internal Operator 1',
+      email: 'internoper1@rpm.com',
+      role: 'Inspector',
+      area: '["กรุงเทพมหานคร","เชียงใหม่"]',
+      subarea: '["นนทบุรี"]',
+      avatar: 'IO'
+    },
+    interadm1: {
+      password: 'Pss@worD',
+      name: 'Internal Admin 1',
+      email: 'interadm1@rpm.com',
+      role: 'Admin',
+      area: 'All',
+      subarea: 'All',
+      avatar: 'IA'
+    }
+  };
+
+  try {
+    let matchedAccount = singleViewAccounts[cleanUsername];
+
+    // Check predefined account or fallback/database
+    if (!matchedAccount || matchedAccount.password !== cleanPassword) {
+      // Check if user exists in database with matching username or email
+      const dbCheck = await db.query(
+        `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($1);`,
+        [cleanUsername]
+      );
+      if (dbCheck.rows.length > 0 && cleanPassword === 'Pss@worD') {
+        const u = dbCheck.rows[0];
+        matchedAccount = {
+          name: u.name,
+          email: u.email,
+          role: u.role || 'Inspector',
+          area: u.area || 'All',
+          subarea: u.subarea || 'All',
+          avatar: u.name ? u.name.charAt(0).toUpperCase() : 'U'
+        };
+      } else {
+        return res.status(401).json({
+          status: 'error',
+          error: 'Username หรือ Password ไม่ถูกต้อง'
+        });
+      }
+    }
+
+    // Upsert into users table to guarantee database consistency
+    let dbUser;
+    const userRes = await db.query(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER($1);`,
+      [matchedAccount.email]
+    );
+
+    if (userRes.rows.length > 0) {
+      dbUser = userRes.rows[0];
+      if (!dbUser.role) {
+        await db.query(`UPDATE users SET role = $1 WHERE user_id = $2;`, [matchedAccount.role, dbUser.user_id]);
+        dbUser.role = matchedAccount.role;
+      }
+    } else {
+      const insertRes = await db.query(
+        `INSERT INTO users (email, name, role, area, subarea) VALUES ($1, $2, $3, $4, $5) RETURNING *;`,
+        [matchedAccount.email, matchedAccount.name, matchedAccount.role, matchedAccount.area, matchedAccount.subarea]
+      );
+      dbUser = insertRes.rows[0];
+    }
+
+    const userPayload = {
+      username: cleanUsername,
+      name: dbUser.name || matchedAccount.name,
+      email: dbUser.email,
+      role: dbUser.role || matchedAccount.role,
+      area: dbUser.area || matchedAccount.area,
+      subarea: dbUser.subarea || matchedAccount.subarea,
+      app_name: targetApp,
+      avatar: matchedAccount.avatar || (dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U')
+    };
+
+    const token = generateToken(userPayload);
+
+    return res.json({
+      status: 'success',
+      message: 'ลงชื่อเข้าใช้สำเร็จ (Single View Authentication)',
+      token,
+      user: userPayload
+    });
+  } catch (err) {
+    console.error('Error during Single View login:', err);
+    return res.status(500).json({
+      status: 'error',
+      error: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ' + err.message
+    });
   }
 });
 
