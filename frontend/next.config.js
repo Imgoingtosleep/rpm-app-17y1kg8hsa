@@ -1,23 +1,26 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_PORT = process.env.BACKEND_PORT || '8050';
+const BACKEND_HOST = process.env.BACKEND_HOST || 'backend';
+
 const nextConfig = {
   reactStrictMode: true,
   async rewrites() {
     return [
       {
         source: '/api/auth/google',
-        destination: 'http://backend:1050/api/auth/google',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/api/auth/google`,
       },
       {
         source: '/api/auth/mock',
-        destination: 'http://backend:1050/api/auth/mock',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/api/auth/mock`,
       },
       {
         source: '/api/auth/totp/:path*',
-        destination: 'http://backend:1050/api/auth/totp/:path*',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/api/auth/totp/:path*`,
       },
       {
         source: '/api/auth/sync-user',
-        destination: 'http://backend:1050/api/auth/sync-user',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/api/auth/sync-user`,
       },
       {
         source: '/api/auth/session',
@@ -45,11 +48,11 @@ const nextConfig = {
       },
       {
         source: '/api/:path*',
-        destination: 'http://backend:1050/api/:path*',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/api/:path*`,
       },
       {
         source: '/storage/:path*',
-        destination: 'http://backend:1050/storage/:path*',
+        destination: `http://${BACKEND_HOST}:${BACKEND_PORT}/storage/:path*`,
       },
     ];
   },

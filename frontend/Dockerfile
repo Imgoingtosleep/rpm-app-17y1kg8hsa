@@ -14,7 +14,7 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=1000
+ENV PORT=8001
 
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
@@ -23,6 +23,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/next.config.js ./
 
-EXPOSE 1000
+EXPOSE 8001
 
 CMD ["npm", "run", "start"]

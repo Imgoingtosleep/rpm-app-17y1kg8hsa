@@ -1478,7 +1478,47 @@ router.post('/auth/totp/verify', async (req, res) => {
   }
 });
 
-// 8.3 Single View Authentication Login (10.1.10.124 / 10.1.10.200 API Compatible)
+// 8.3 Single View Authentication Login (proxy to Accounting server 10.1.10.200)
+const SINGLE_VIEW_BASE_URL = (process.env.SINGLE_VIEW_API_URL || 'http://10.1.10.200').replace(/\/+$/, '');
+const SINGLE_VIEW_APP_NAME = process.env.SINGLE_VIEW_APP_NAME || 'Noc Tools';
+const SINGLE_VIEW_TIMEOUT_MS = Number(process.env.SINGLE_VIEW_TIMEOUT_MS || 10000);
+const SINGLE_VIEW_EMAIL_DOMAIN = process.env.SINGLE_VIEW_EMAIL_DOMAIN || 'rpm.com';
+
+// Upstream field names are not fixed, so pick the first key that carries a value.
+const pickField = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+  return undefined;
+};
+
+// Normalize upstream role into RPM System standard role ('Admin' | 'Team Lead' | 'Inspector' | 'Viewer')
+const normalizeRpmRole = (userInfo, rawRole) => {
+  if (userInfo?.is_admin === 1 || userInfo?.is_admin === '1' || userInfo?.is_admin === true) {
+    return 'Admin';
+  }
+
+  const roleCandidates = [];
+  if (Array.isArray(userInfo?.roles)) {
+    userInfo.roles.forEach(r => {
+      if (typeof r === 'string') roleCandidates.push(r.toLowerCase().trim());
+      else if (r && typeof r === 'object' && r.name) roleCandidates.push(String(r.name).toLowerCase().trim());
+    });
+  }
+  if (typeof userInfo?.role === 'string') roleCandidates.push(userInfo.role.toLowerCase().trim());
+  if (typeof rawRole === 'string') roleCandidates.push(rawRole.toLowerCase().trim());
+
+  for (const r of roleCandidates) {
+    if (r === 'admin' || r === 'administrator') return 'Admin';
+    if (r === 'team lead' || r === 'teamlead' || r === 'team-lead' || r === 'tl') return 'Team Lead';
+    if (r === 'inspector' || r === 'technician' || r === 'engineer' || r === 'oper' || r === 'operator') return 'Inspector';
+    if (r === 'viewer' || r === 'guest' || r === 'user') return 'Viewer';
+  }
+
+  return 'Viewer';
+};
+
 router.post('/auth/login', async (req, res) => {
   const { username, password, app_name } = req.body || {};
 
@@ -1491,88 +1531,84 @@ router.post('/auth/login', async (req, res) => {
 
   const cleanUsername = String(username).trim();
   const cleanPassword = String(password).trim();
-  const targetApp = app_name ? String(app_name).trim() : 'Noc Tools';
+  const targetApp = app_name ? String(app_name).trim() : SINGLE_VIEW_APP_NAME;
 
-  // Single View Predefined / Standard Accounts
-  const singleViewAccounts = {
-    internoper1: {
-      password: 'Pss@worD',
-      name: 'Internal Operator 1',
-      email: 'internoper1@rpm.com',
-      role: 'Inspector',
-      area: '["กรุงเทพมหานคร","เชียงใหม่"]',
-      subarea: '["นนทบุรี"]',
-      avatar: 'IO'
-    },
-    interadm1: {
-      password: 'Pss@worD',
-      name: 'Internal Admin 1',
-      email: 'interadm1@rpm.com',
-      role: 'Admin',
-      area: 'All',
-      subarea: 'All',
-      avatar: 'IA'
+  // 1. Authenticate against the Accounting server. No local password check exists.
+  let upstreamRes;
+  let upstreamBody;
+  try {
+    upstreamRes = await fetch(`${SINGLE_VIEW_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanUsername, password: cleanPassword, app_name: targetApp }),
+      signal: AbortSignal.timeout(SINGLE_VIEW_TIMEOUT_MS)
+    });
+    const rawBody = await upstreamRes.text();
+    try {
+      upstreamBody = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      upstreamBody = { raw: rawBody };
     }
-  };
+  } catch (err) {
+    console.error(`Single View upstream unreachable (${SINGLE_VIEW_BASE_URL}):`, err.message);
+    return res.status(502).json({
+      status: 'error',
+      error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Authentication (Single View) ได้ กรุณาตรวจสอบการเชื่อมต่อ VPN'
+    });
+  }
+
+  if (!upstreamRes.ok) {
+    const upstreamMessage = pickField(upstreamBody, ['error', 'message', 'detail', 'raw']);
+    const status = upstreamRes.status === 401 || upstreamRes.status === 403 ? upstreamRes.status : 401;
+    return res.status(status).json({
+      status: 'error',
+      error: upstreamMessage ? String(upstreamMessage) : 'Username หรือ Password ไม่ถูกต้อง'
+    });
+  }
 
   try {
-    let matchedAccount = singleViewAccounts[cleanUsername];
+    // 2. Normalize the upstream profile from user_info or nested keys
+    const userInfo = upstreamBody?.user_info || upstreamBody?.user || upstreamBody?.data?.user || upstreamBody?.data || upstreamBody?.result || upstreamBody || {};
+    const upstreamName = pickField(userInfo, ['name', 'fullname', 'full_name', 'display_name', 'displayName', 'username']) || cleanUsername;
+    const upstreamEmail = String(
+      pickField(userInfo, ['email', 'mail', 'user_email']) || `${cleanUsername}@${SINGLE_VIEW_EMAIL_DOMAIN}`
+    ).trim();
+    const rawRole = pickField(userInfo, ['role', 'user_role', 'position', 'permission']);
+    const mappedRole = normalizeRpmRole(userInfo, rawRole);
+    const upstreamArea = userInfo?.area && String(userInfo.area).trim() !== '' ? String(userInfo.area).trim() : 'All';
 
-    // Check predefined account or fallback/database
-    if (!matchedAccount || matchedAccount.password !== cleanPassword) {
-      // Check if user exists in database with matching username or email
-      const dbCheck = await db.query(
-        `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($1);`,
-        [cleanUsername]
-      );
-      if (dbCheck.rows.length > 0 && cleanPassword === 'Pss@worD') {
-        const u = dbCheck.rows[0];
-        matchedAccount = {
-          name: u.name,
-          email: u.email,
-          role: u.role || 'Inspector',
-          area: u.area || 'All',
-          subarea: u.subarea || 'All',
-          avatar: u.name ? u.name.charAt(0).toUpperCase() : 'U'
-        };
-      } else {
-        return res.status(401).json({
-          status: 'error',
-          error: 'Username หรือ Password ไม่ถูกต้อง'
-        });
-      }
-    }
-
-    // Upsert into users table to guarantee database consistency
+    // 3. Upsert into the local users table so app scope data stays consistent.
     let dbUser;
     const userRes = await db.query(
       `SELECT * FROM users WHERE LOWER(email) = LOWER($1);`,
-      [matchedAccount.email]
+      [upstreamEmail]
     );
 
     if (userRes.rows.length > 0) {
       dbUser = userRes.rows[0];
-      if (!dbUser.role) {
-        await db.query(`UPDATE users SET role = $1 WHERE user_id = $2;`, [matchedAccount.role, dbUser.user_id]);
-        dbUser.role = matchedAccount.role;
+      // Update role if user has no role or if Single View explicitly grants Admin
+      if (!dbUser.role || (mappedRole === 'Admin' && dbUser.role !== 'Admin')) {
+        await db.query(`UPDATE users SET role = $1 WHERE user_id = $2;`, [mappedRole, dbUser.user_id]);
+        dbUser.role = mappedRole;
       }
     } else {
       const insertRes = await db.query(
         `INSERT INTO users (email, name, role, area, subarea) VALUES ($1, $2, $3, $4, $5) RETURNING *;`,
-        [matchedAccount.email, matchedAccount.name, matchedAccount.role, matchedAccount.area, matchedAccount.subarea]
+        [upstreamEmail, upstreamName, mappedRole, upstreamArea, 'All']
       );
       dbUser = insertRes.rows[0];
     }
 
+    const resolvedName = dbUser.name || upstreamName;
     const userPayload = {
       username: cleanUsername,
-      name: dbUser.name || matchedAccount.name,
+      name: resolvedName,
       email: dbUser.email,
-      role: dbUser.role || matchedAccount.role,
-      area: dbUser.area || matchedAccount.area,
-      subarea: dbUser.subarea || matchedAccount.subarea,
+      role: dbUser.role || mappedRole,
+      area: dbUser.area || upstreamArea,
+      subarea: dbUser.subarea || 'All',
       app_name: targetApp,
-      avatar: matchedAccount.avatar || (dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U')
+      avatar: resolvedName ? resolvedName.charAt(0).toUpperCase() : 'U'
     };
 
     const token = generateToken(userPayload);
@@ -1581,6 +1617,7 @@ router.post('/auth/login', async (req, res) => {
       status: 'success',
       message: 'ลงชื่อเข้าใช้สำเร็จ (Single View Authentication)',
       token,
+      upstream_token: upstreamBody?.access_token || null,
       user: userPayload
     });
   } catch (err) {

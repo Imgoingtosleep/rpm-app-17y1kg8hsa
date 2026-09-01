@@ -45,7 +45,8 @@ export const authOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
         try {
-          const syncRes = await fetch('http://backend:1050/api/auth/sync-user', {
+          const backendPort = process.env.BACKEND_PORT || '8050';
+          const syncRes = await fetch(`http://backend:${backendPort}/api/auth/sync-user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

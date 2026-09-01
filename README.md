@@ -117,10 +117,10 @@ cp .env.example .env
 DB_USER=postgres
 DB_PASSWORD=your_secure_db_password
 DB_NAME=rpm_db
-DB_PORT_EXTERNAL=5434
+DB_PORT_EXTERNAL=8432
 
 # Backend & Storage Settings
-BACKEND_PORT=1050
+BACKEND_PORT=8050
 NODE_ENV=development
 STORAGE_PATH=./storage
 
@@ -128,14 +128,14 @@ STORAGE_PATH=./storage
 JWT_SECRET=your_super_secret_jwt_signing_key_min_32_chars
 SHARED_JWT_SECRET=your_super_secret_jwt_signing_key_min_32_chars
 NEXTAUTH_SECRET=your_super_secret_nextauth_cookie_key
-NEXTAUTH_URL=http://localhost:1000
+NEXTAUTH_URL=http://localhost:8000
 
 # Frontend & OAuth Settings
-FRONTEND_PORT=1000
-NEXT_PUBLIC_API_URL=http://localhost:1050
+FRONTEND_PORT=8001
+NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
-# pgAdmin Settings
+# pgAdmin Settings (Port 8055)
 PGADMIN_EMAIL=admin@rpm.com
 PGADMIN_PASSWORD=your_secure_pgadmin_password
 ```
@@ -146,20 +146,21 @@ docker compose up -d
 ```
 
 ### 4. การเข้าใช้งานผ่านเว็บเบราว์เซอร์
-* **Frontend Web Portal**: [http://localhost:1000](http://localhost:1000)
-* **Backend Health Check**: [http://localhost:1050/api/health](http://localhost:1050/api/health)
-* **pgAdmin 4 Database UI**: [http://localhost:5050](http://localhost:5050)
-* **Admin Dashboard**: [http://localhost:1000/admin/dashboard](http://localhost:1000/admin/dashboard)
-* **Storage Browser**: [http://localhost:1000/admin/storage](http://localhost:1000/admin/storage)
+* **Web Portal (Main Entry via Nginx)**: [http://localhost:8000](http://localhost:8000)
+* **Frontend Direct**: [http://localhost:8001](http://localhost:8001)
+* **Backend Health Check**: [http://localhost:8050/api/health](http://localhost:8050/api/health)
+* **pgAdmin 4 Database UI**: [http://localhost:8055](http://localhost:8055)
+* **Admin Dashboard**: [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+* **Storage Browser**: [http://localhost:8000/admin/storage](http://localhost:8000/admin/storage)
 
 ---
 
 ##  การเตรียมความพร้อมขึ้น Production (Production Deployment)
 
-1. **ตั้งค่า Nginx Reverse Proxy (พอร์ต 80/443 SSL)**:
-   - Forward `/*` ➔ `http://localhost:1000` (Frontend)
-   - Forward `/api/*` ➔ `http://localhost:1050/api/*` (Backend API)
-   - Forward `/storage/*` ➔ `http://localhost:1050/storage/*` (Storage Images)
+1. **ตั้งค่า Nginx Reverse Proxy (พอร์ต 8000 HTTP / 8443 HTTPS SSL)**:
+   - Forward `/*` ➔ `http://frontend:8001` (Frontend)
+   - Forward `/api/*` ➔ `http://backend:8050/api/*` (Backend API)
+   - Forward `/storage/*` ➔ `http://backend:8050/storage/*` (Storage Images)
    - กำหนด `client_max_body_size 50M;` สำหรับรองรับการอัปโหลดรูปภาพ
 2. **อัปเดต Google Cloud OAuth**:
    - เพิ่ม Domain จริง (เช่น `https://rpm.co.th`) ลงใน *Authorized JavaScript origins* และ *Authorized redirect URIs* บน Google Cloud Console
