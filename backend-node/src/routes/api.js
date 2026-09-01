@@ -1481,7 +1481,7 @@ router.post('/auth/totp/verify', async (req, res) => {
 // 8.3 Single View Authentication Login (proxy to Accounting server 10.1.10.200)
 const SINGLE_VIEW_BASE_URL = (process.env.SINGLE_VIEW_API_URL || 'http://10.1.10.200').replace(/\/+$/, '');
 const SINGLE_VIEW_APP_NAME = process.env.SINGLE_VIEW_APP_NAME || 'Noc Tools';
-const SINGLE_VIEW_TIMEOUT_MS = Number(process.env.SINGLE_VIEW_TIMEOUT_MS || 10000);
+const SINGLE_VIEW_TIMEOUT_MS = Number(process.env.SINGLE_VIEW_TIMEOUT_MS || 20000);
 const SINGLE_VIEW_EMAIL_DOMAIN = process.env.SINGLE_VIEW_EMAIL_DOMAIN || 'rpm.com';
 
 // Upstream field names are not fixed, so pick the first key that carries a value.
