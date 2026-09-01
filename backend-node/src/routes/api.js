@@ -1539,7 +1539,11 @@ router.post('/auth/login', async (req, res) => {
   try {
     upstreamRes = await fetch(`${SINGLE_VIEW_BASE_URL}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RPM-Auth-Client/1.0'
+      },
       body: JSON.stringify({ username: cleanUsername, password: cleanPassword, app_name: targetApp }),
       signal: AbortSignal.timeout(SINGLE_VIEW_TIMEOUT_MS)
     });
@@ -1550,10 +1554,12 @@ router.post('/auth/login', async (req, res) => {
       upstreamBody = { raw: rawBody };
     }
   } catch (err) {
-    console.error(`Single View upstream unreachable (${SINGLE_VIEW_BASE_URL}):`, err.message);
+    const errorDetails = err?.cause?.message || err?.message || 'Network connection failed';
+    console.error(`Single View upstream unreachable (${SINGLE_VIEW_BASE_URL}):`, err.message, err.cause || '');
     return res.status(502).json({
       status: 'error',
-      error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Authentication (Single View) ได้ กรุณาตรวจสอบการเชื่อมต่อ VPN'
+      error: `ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ Authentication (Single View) ได้ [${errorDetails}] กรุณาตรวจสอบการเชื่อมต่อ VPN`,
+      details: errorDetails
     });
   }
 
