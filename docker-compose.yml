@@ -9,8 +9,8 @@
         POSTGRES_USER: ${DB_USER}
         POSTGRES_PASSWORD: ${DB_PASSWORD}
         POSTGRES_DB: ${DB_NAME}
-      ports:
-        - "${DB_PORT_EXTERNAL:-8432}:5432"
+#      ports:
+#        - "${DB_PORT_EXTERNAL:-8432}:5432"
       volumes:
         - postgres_data:/var/lib/postgresql/data
         - ./backend-node/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -27,8 +27,8 @@
       environment:
         PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
         PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-      ports:
-        - "8055:80"
+#      ports:
+#        - "8055:80"
       volumes:
         - pgadmin_data:/var/lib/pgadmin
       depends_on:
@@ -52,8 +52,8 @@
         - SINGLE_VIEW_APP_NAME=${SINGLE_VIEW_APP_NAME:-Noc Tools}
         - SINGLE_VIEW_TIMEOUT_MS=${SINGLE_VIEW_TIMEOUT_MS:-10000}
         - SINGLE_VIEW_EMAIL_DOMAIN=${SINGLE_VIEW_EMAIL_DOMAIN:-rpm.com}
-      ports:
-        - "${BACKEND_PORT:-8050}:${BACKEND_PORT:-8050}"
+#      ports:
+#        - "${BACKEND_PORT:-8050}:${BACKEND_PORT:-8050}"
       volumes:
         - ${STORAGE_PATH:-./storage}:/app/storage
         - ./backend-node/src:/app/src
@@ -77,8 +77,8 @@
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
-      ports:
-        - "${FRONTEND_PORT:-8001}:${FRONTEND_PORT:-8001}"
+#      ports:
+#        - "${FRONTEND_PORT:-8001}:${FRONTEND_PORT:-8001}"
       volumes:
         - ./frontend:/app
         - frontend_node_modules:/app/node_modules
@@ -89,8 +89,6 @@
       container_name: rpm-nginx
       restart: unless-stopped
       ports:
-        - "80:80"
-        - "443:443"
         - "8000:8000"
       volumes:
         - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
