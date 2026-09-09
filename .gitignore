@@ -37,8 +37,8 @@ build/
 credentials.json
 
 # Storage & Uploaded Files (Keep directory structure if needed, ignore generated contents)
-storage/
-!storage/.gitkeep
+/storage/
+!/storage/.gitkeep
 postgres_data/
 
 # Logs & Audit Dumps
