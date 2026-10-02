@@ -5,6 +5,7 @@ import { useSearchParams } from '../utils/navigation';
 import MainLayout from '../layouts/MainLayout';
 
 export default function StorageBrowser() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const [currentPath, setCurrentPath] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -313,7 +314,7 @@ export default function StorageBrowser() {
             )}
 
             <a 
-              href={`/api/storage/download-folder?path=${encodeURIComponent(currentPath)}`}
+              href={`${basePath}/api/storage/download-folder?path=${encodeURIComponent(currentPath)}`}
               download
               className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-md shrink-0 hover:scale-[1.02]"
             >
@@ -376,7 +377,7 @@ export default function StorageBrowser() {
                 </div>
                 {/* File/Folder Icon / Image Preview */}
                 <div 
-                  onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`/storage/${item.relPath}`) : null}
+                  onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`${basePath}/storage/${item.relPath}`) : null}
                   className="w-16 h-16 flex items-center justify-center mb-3 cursor-pointer select-none relative overflow-hidden rounded"
                 >
                   {item.isDir ? (
@@ -395,7 +396,7 @@ export default function StorageBrowser() {
                 {/* Info & Actions */}
                 <div className="w-full space-y-1">
                   <p 
-                    onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`/storage/${item.relPath}`) : null}
+                    onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`${basePath}/storage/${item.relPath}`) : null}
                     className="text-xs font-semibold text-gray-200 truncate cursor-pointer hover:text-indigo-400 select-all" 
                     title={item.name}
                   >
@@ -410,7 +411,7 @@ export default function StorageBrowser() {
                 <div className="mt-3 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-full">
                   {!item.isDir && (
                     <a 
-                      href={`/storage/${item.relPath}`} 
+                      href={`${basePath}/storage/${item.relPath}`} 
                       download={item.name}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -462,7 +463,7 @@ export default function StorageBrowser() {
                     </td>
                     <td className="p-4">
                       <div 
-                        onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`/storage/${item.relPath}`) : null}
+                        onClick={() => item.isDir ? handleFolderClick(item.relPath) : isImageFile(item.name) ? setPreviewImage(`${basePath}/storage/${item.relPath}`) : null}
                         className="flex items-center gap-3 cursor-pointer"
                       >
                         {item.isDir ? (
@@ -486,7 +487,7 @@ export default function StorageBrowser() {
                         {!item.isDir && isImageFile(item.name) && (
                           <>
                             <button 
-                              onClick={() => setPreviewImage(`/storage/${item.relPath}`)}
+                              onClick={() => setPreviewImage(`${basePath}/storage/${item.relPath}`)}
                               className="text-gray-400 hover:text-white transition-colors"
                             >
                               ดูรูปภาพ
@@ -497,7 +498,7 @@ export default function StorageBrowser() {
                         {!item.isDir && (
                           <>
                             <a 
-                              href={`/storage/${item.relPath}`} 
+                              href={`${basePath}/storage/${item.relPath}`} 
                               download={item.name}
                               className="text-indigo-400 hover:text-indigo-300 font-semibold"
                             >

@@ -101,8 +101,9 @@ export default function ImagePreviewManager({
           {/* Existing Server Images */}
           {normalizedExisting.map((item, idx) => {
             const rawPath = typeof item === 'object' && item !== null ? (item.path || item.url || '') : String(item);
-            if (!rawPath) return null;
-            const imgUrl = rawPath.startsWith('/storage') ? rawPath : `/storage/${rawPath.replace(/^\/+/, '')}`;
+            const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+            const rawNormalized = rawPath.startsWith('/storage') ? rawPath : `/storage/${rawPath.replace(/^\/+/, '')}`;
+            const imgUrl = basePath && !rawNormalized.startsWith(basePath) ? `${basePath}${rawNormalized}` : rawNormalized;
             const fileName = rawPath.split('/').pop() || `รูปเดิม ${idx + 1}`;
 
             return (

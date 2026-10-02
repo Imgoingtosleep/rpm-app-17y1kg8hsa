@@ -69,14 +69,16 @@
       environment:
         - PORT=${FRONTEND_PORT:-8001}
         - NODE_ENV=${NODE_ENV}
-        - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-/rpm/8000}
+        - BASE_PATH=${BASE_PATH:-/rpm/8000}
+        - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:8000/rpm/8000}
         - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-rpm-secure-auth-secret-key-9988}
         - AUTH_TRUST_HOST=true
         - SHARED_JWT_SECRET=${JWT_SECRET:-netops-secure-token-signing-key-7892}
         - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-${VITE_GOOGLE_CLIENT_ID}}
         - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/rpm/8000}
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/rpm/8000}
 #      ports:
 #        - "${FRONTEND_PORT:-8001}:${FRONTEND_PORT:-8001}"
       volumes:

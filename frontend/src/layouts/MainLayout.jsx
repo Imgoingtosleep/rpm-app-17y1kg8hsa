@@ -96,7 +96,8 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
     } catch (e) {
       console.error('Logout error:', e);
     }
-    window.location.href = '/';
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    window.location.href = basePath ? `${basePath}/` : '/';
   };
 
   return (
