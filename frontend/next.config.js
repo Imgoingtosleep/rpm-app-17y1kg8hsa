@@ -6,7 +6,6 @@ const BASE_PATH = process.env.BASE_PATH || '';
 const nextConfig = {
   reactStrictMode: true,
   basePath: BASE_PATH || undefined,
-  assetPrefix: BASE_PATH || undefined,
   async rewrites() {
     return [
       {
