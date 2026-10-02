@@ -1,11 +1,9 @@
+/** @type {import('next').NextConfig} */
 const BACKEND_PORT = process.env.BACKEND_PORT || '8050';
 const BACKEND_HOST = process.env.BACKEND_HOST || 'backend';
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || process.env.BASE_PATH || '/rpm/8000';
 
 const nextConfig = {
   reactStrictMode: true,
-  basePath: BASE_PATH || undefined,
-  assetPrefix: BASE_PATH || undefined,
   async rewrites() {
     return [
       {

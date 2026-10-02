@@ -6,7 +6,6 @@ import { useSession, signIn } from 'next-auth/react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
   const { data: session, status } = useSession();
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const [errorMessage, setErrorMessage] = useState('');
@@ -99,7 +98,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name || data.user.username);
-        window.location.href = `${basePath}/select-site`;
+        window.location.href = '/select-site';
       } else {
         setErrorMessage(data.error || 'Username หรือ Password ไม่ถูกต้อง');
       }
@@ -160,7 +159,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = `${basePath}/select-site`;
+        window.location.href = '/select-site';
       } else {
         setErrorMessage(data.error || 'ยืนยันตัวตน Google ไม่สำเร็จ');
       }
@@ -238,7 +237,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = `${basePath}/select-site`;
+        window.location.href = '/select-site';
       } else {
         setErrorMessage(data.error || 'รหัส OTP 6 หลักไม่ถูกต้อง หรือหมดอายุแล้ว');
       }
@@ -270,7 +269,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = `${basePath}/select-site`;
+        window.location.href = '/select-site';
         return;
       }
     } catch (e) {
@@ -279,7 +278,7 @@ export default function LoginPage() {
 
     localStorage.setItem('user', JSON.stringify(mockUser));
     localStorage.setItem('inspectorName', mockUser.name);
-    window.location.href = `${basePath}/select-site`;
+    window.location.href = '/select-site';
   };
 
   const copyToClipboard = (text) => {

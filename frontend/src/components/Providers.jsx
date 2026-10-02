@@ -2,8 +2,6 @@
 import { SessionProvider } from 'next-auth/react';
 import React, { useEffect } from 'react';
 
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
-
 function FetchInterceptor() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -13,13 +11,6 @@ function FetchInterceptor() {
       const originalFetch = window.fetch;
 
       window.fetch = async (url, options = {}) => {
-        let finalUrl = url;
-        if (typeof url === 'string') {
-          if (BASE_PATH && (url.startsWith('/api/') || url.startsWith('/storage/')) && !url.startsWith(BASE_PATH)) {
-            finalUrl = `${BASE_PATH}${url}`;
-          }
-        }
-
         try {
           const userStr = localStorage.getItem('user');
           const token = localStorage.getItem('token');
@@ -49,18 +40,17 @@ function FetchInterceptor() {
           console.error('Fetch interceptor error:', e);
         }
 
-        const res = await originalFetch(finalUrl, options);
+        const res = await originalFetch(url, options);
 
         if (res.status === 401 || res.status === 403) {
-          const urlStr = typeof finalUrl === 'string' ? finalUrl : finalUrl?.url || '';
+          const urlStr = typeof url === 'string' ? url : url?.url || '';
           if (!urlStr.includes('/api/auth/')) {
             try {
               localStorage.removeItem('token');
               localStorage.removeItem('user');
             } catch (e) {}
-            const rootPath = BASE_PATH ? `${BASE_PATH}/` : '/';
-            if (window.location.pathname !== rootPath && window.location.pathname !== BASE_PATH) {
-              window.location.href = rootPath;
+            if (window.location.pathname !== '/') {
+              window.location.href = '/';
             }
           }
         }

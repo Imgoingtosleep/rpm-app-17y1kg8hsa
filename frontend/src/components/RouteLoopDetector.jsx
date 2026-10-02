@@ -64,8 +64,7 @@ export default function RouteLoopDetector() {
       sessionStorage.clear();
       window.__RPM_ROUTE_LOOP_DETECTED = false;
     } catch (e) {}
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-    window.location.href = basePath ? `${basePath}/` : '/';
+    window.location.href = '/';
   };
 
   const handleDismiss = () => {
