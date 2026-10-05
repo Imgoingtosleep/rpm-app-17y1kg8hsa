@@ -96,7 +96,7 @@ export default function MainLayout({ children, currentStep, currentSite, onNavig
     } catch (e) {
       console.error('Logout error:', e);
     }
-    window.location.href = '/';
+    navigate('/');
   };
 
   return (

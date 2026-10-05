@@ -49,8 +49,10 @@ function FetchInterceptor() {
               localStorage.removeItem('token');
               localStorage.removeItem('user');
             } catch (e) {}
-            if (window.location.pathname !== '/') {
-              window.location.href = '/';
+            const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+            const targetPath = basePath || '/';
+            if (window.location.pathname !== targetPath && window.location.pathname !== '/') {
+              window.location.href = targetPath;
             }
           }
         }

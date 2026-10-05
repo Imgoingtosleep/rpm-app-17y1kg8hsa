@@ -98,7 +98,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name || data.user.username);
-        window.location.href = '/select-site';
+        router.push('/select-site');
       } else {
         setErrorMessage(data.error || 'Username หรือ Password ไม่ถูกต้อง');
       }
@@ -159,7 +159,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = '/select-site';
+        router.push('/select-site');
       } else {
         setErrorMessage(data.error || 'ยืนยันตัวตน Google ไม่สำเร็จ');
       }
@@ -237,7 +237,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = '/select-site';
+        router.push('/select-site');
       } else {
         setErrorMessage(data.error || 'รหัส OTP 6 หลักไม่ถูกต้อง หรือหมดอายุแล้ว');
       }
@@ -269,7 +269,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
         localStorage.setItem('inspectorName', data.user.name);
-        window.location.href = '/select-site';
+        router.push('/select-site');
         return;
       }
     } catch (e) {
@@ -278,7 +278,7 @@ export default function LoginPage() {
 
     localStorage.setItem('user', JSON.stringify(mockUser));
     localStorage.setItem('inspectorName', mockUser.name);
-    window.location.href = '/select-site';
+    router.push('/select-site');
   };
 
   const copyToClipboard = (text) => {
